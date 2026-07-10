@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="nord_sync_queue_view_list" model="ir.ui.view">
+        <field name="name">nord.sync.queue.list</field>
+        <field name="model">nord.sync.queue</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="not company_uid">
+                <field name="id" string="Seq"/>
+                <field name="company_id"/>
+                <field name="company_uid"/>
+                <field name="model_name"/>
+                <field name="res_id"/>
+                <field name="operation"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="nord_sync_queue_view_form" model="ir.ui.view">
+        <field name="name">nord.sync.queue.form</field>
+        <field name="model">nord.sync.queue</field>
+        <field name="arch" type="xml">
+            <form string="Sync Queue Entry">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="company_uid"/>
+                            <field name="model_name"/>
+                            <field name="res_id"/>
+                            <field name="operation"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="payload"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="nord_sync_queue_action" model="ir.actions.act_window">
+        <field name="name">Sync Queue</field>
+        <field name="res_model">nord.sync.queue</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="nord_sync_queue_action_server_test_entry" model="ir.actions.server">
+        <field name="name">Create Test Entry</field>
+        <field name="model_id" ref="model_nord_sync_queue"/>
+        <field name="binding_model_id" ref="model_nord_sync_queue"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">model.action_create_test_entry()</field>
+        <field name="group_ids" eval="[(4, ref('group_nord_sync_manager'))]"/>
+    </record>
+</odoo>

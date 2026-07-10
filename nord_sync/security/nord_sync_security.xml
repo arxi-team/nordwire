@@ -1,0 +1,25 @@
+<odoo>
+    <record id="module_category_nord_sync" model="ir.module.category">
+        <field name="name">Nord Sync</field>
+    </record>
+
+    <record id="res_groups_privilege_nord_sync" model="res.groups.privilege">
+        <field name="name">Nord Sync</field>
+        <field name="category_id" ref="module_category_nord_sync"/>
+    </record>
+
+    <record id="group_nord_sync_manager" model="res.groups">
+        <field name="name">Nord Sync Manager</field>
+        <field name="privilege_id" ref="res_groups_privilege_nord_sync"/>
+        <field name="comment">Can configure Nord Sync and manage the sync queue.</field>
+    </record>
+
+    <record id="group_nord_sync_integration" model="res.groups">
+        <field name="name">Nord Sync Integration</field>
+        <field name="privilege_id" ref="res_groups_privilege_nord_sync"/>
+        <field name="comment">
+            Assign this group to the technical user whose API key the Nord Core
+            uses to call the pull-by-seq endpoint. Do not assign to human users.
+        </field>
+    </record>
+</odoo>

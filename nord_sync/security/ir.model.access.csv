@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_nord_sync_queue_manager,nord.sync.queue.manager,model_nord_sync_queue,group_nord_sync_manager,1,1,1,1
+access_nord_sync_queue_integration,nord.sync.queue.integration,model_nord_sync_queue,group_nord_sync_integration,1,0,0,0
+access_nord_sync_config_manager,nord.sync.config.manager,model_nord_sync_config,group_nord_sync_manager,1,1,1,1
+access_nord_sync_config_integration,nord.sync.config.integration,model_nord_sync_config,group_nord_sync_integration,1,0,0,0
+access_nord_sync_setup_wizard_manager,nord.sync.setup.wizard.manager,model_nord_sync_setup_wizard,group_nord_sync_manager,1,1,1,1
