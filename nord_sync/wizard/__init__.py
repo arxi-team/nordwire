@@ -1,1 +1,2 @@
-from . import nord_sync_setup_wizard
+# -*- coding: utf-8 -*-
+from . import nord_sync_install_wizard

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_nord_sync_install_wizard_form" model="ir.ui.view">
+            <field name="name">nord_sync.install.wizard.form</field>
+            <field name="model">nord_sync.install.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Nord Sync — Install">
+                    <div class="alert alert-warning" role="alert" invisible="preflight_ok">
+                        <field name="preflight_message" readonly="1" nolabel="1"/>
+                    </div>
+                    <div class="alert alert-success" role="alert" invisible="not preflight_ok">
+                        <field name="preflight_message" readonly="1" nolabel="1"/>
+                    </div>
+                    <group>
+                        <field name="cron_active"/>
+                        <field name="odoo_version_supported"/>
+                    </group>
+                    <group>
+                        <field name="company_id" readonly="1"/>
+                        <field name="company_uid"/>
+                        <field name="cloud_webhook_url"/>
+                    </group>
+                    <footer>
+                        <button name="action_confirm" type="object" string="Confirm"
+                                class="btn-primary" invisible="not preflight_ok"/>
+                        <button name="action_refresh_preflight" type="object"
+                                string="Refresh Preflight Check" invisible="preflight_ok"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_nord_sync_install_wizard" model="ir.actions.act_window">
+            <field name="name">Nord Sync — Install</field>
+            <field name="res_model">nord_sync.install.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+        <menuitem id="menu_nord_sync_install_wizard" name="Nord Sync — Install"
+                  parent="base.menu_custom" action="action_nord_sync_install_wizard"
+                  groups="base.group_system" sequence="119"/>
+
+    </data>
+</odoo>
