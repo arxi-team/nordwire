@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Docs/NordSyncFase2, Fase 4 Slice 4.3: complements the Core's own
+             periodic reconciliation (_incremental_sync) with one on the trigger
+             side — a webhook that failed to reach the Cloud (network blip, Cloud
+             briefly down) gets retried here instead of only ever being picked up
+             by the Core's next scheduled pull. -->
+        <record id="ir_cron_retry_failed_webhooks" model="ir.cron">
+            <field name="name">Nord Sync: Retry Failed Webhooks</field>
+            <field name="model_id" ref="model_nord_sync_config"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_retry_failed_webhooks()</field>
+            <field name="interval_number">5</field>
+            <field name="interval_type">minutes</field>
+            <field name="active">True</field>
+        </record>
+
+    </data>
+</odoo>

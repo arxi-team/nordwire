@@ -7,26 +7,50 @@
             <field name="model">nord_sync.install.wizard</field>
             <field name="arch" type="xml">
                 <form string="Nord Sync — Install">
-                    <div class="alert alert-warning" role="alert" invisible="preflight_ok">
-                        <field name="preflight_message" readonly="1" nolabel="1"/>
-                    </div>
-                    <div class="alert alert-success" role="alert" invisible="not preflight_ok">
-                        <field name="preflight_message" readonly="1" nolabel="1"/>
-                    </div>
-                    <group>
-                        <field name="cron_active"/>
-                        <field name="odoo_version_supported"/>
-                    </group>
-                    <group>
-                        <field name="company_id" readonly="1"/>
-                        <field name="company_uid"/>
-                        <field name="cloud_webhook_url"/>
-                    </group>
-                    <footer>
-                        <button name="action_confirm" type="object" string="Confirm"
-                                class="btn-primary" invisible="not preflight_ok"/>
+                    <field name="state" invisible="1"/>
+
+                    <div invisible="state != 'step_preflight'">
+                        <h3>Step 1. Environment Pre-flight</h3>
+                        <div class="alert alert-warning" role="alert" invisible="preflight_ok">
+                            <field name="preflight_message" readonly="1" nolabel="1"/>
+                        </div>
+                        <div class="alert alert-success" role="alert" invisible="not preflight_ok">
+                            <field name="preflight_message" readonly="1" nolabel="1"/>
+                        </div>
+                        <group>
+                            <field name="cron_active"/>
+                            <field name="odoo_version_supported"/>
+                        </group>
                         <button name="action_refresh_preflight" type="object"
                                 string="Refresh Preflight Check" invisible="preflight_ok"/>
+                    </div>
+
+                    <div invisible="state != 'step_connection'">
+                        <h3>Step 2. Connection</h3>
+                        <group>
+                            <field name="company_id" readonly="1"/>
+                            <field name="company_uid"/>
+                            <field name="cloud_webhook_url"/>
+                        </group>
+                    </div>
+
+                    <div invisible="state != 'step_finish'">
+                        <h3>Step 3. Confirm</h3>
+                        <group>
+                            <field name="company_id" readonly="1"/>
+                            <field name="company_uid" readonly="1"/>
+                            <field name="cloud_webhook_url" readonly="1"/>
+                        </group>
+                        <p>Confirming activates Nord Sync for this company.</p>
+                    </div>
+
+                    <footer>
+                        <button name="action_previous_step" type="object"
+                                string="Previous" invisible="not show_previous"/>
+                        <button name="action_next_step" type="object" string="Next"
+                                class="btn-primary" invisible="not show_next"/>
+                        <button name="action_confirm" type="object" string="Confirm"
+                                class="btn-primary" invisible="not show_finish"/>
                         <button string="Cancel" class="btn-secondary" special="cancel"/>
                     </footer>
                 </form>
@@ -40,9 +64,17 @@
             <field name="target">new</field>
         </record>
 
-        <menuitem id="menu_nord_sync_install_wizard" name="Nord Sync — Install"
-                  parent="base.menu_custom" action="action_nord_sync_install_wizard"
-                  groups="base.group_system" sequence="119"/>
+    </data>
 
+    <!-- Shown automatically right after installing the module (Odoo's own
+         "next step" mechanism) — noupdate so it doesn't reappear on every
+         module upgrade, only on first install. Mirrors the unrelated Shopify
+         addon's ir.actions.todo precedent (see wizard docstring). -->
+    <data noupdate="1">
+        <record id="config_wizard_nord_sync_install" model="ir.actions.todo">
+            <field name="action_id" ref="action_nord_sync_install_wizard"/>
+            <field name="sequence">10</field>
+            <field name="state">open</field>
+        </record>
     </data>
 </odoo>

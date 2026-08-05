@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class NordSyncQueue(models.Model):
@@ -40,3 +40,28 @@ class NordSyncQueue(models.Model):
              'yet configured (nothing attempted); "failed" entries are what the '
              'client-side reconciliation cron retries.',
     )
+    last_error = fields.Char(
+        string='Last Error',
+        help='Exception message from the most recent failed webhook attempt for '
+             'this entry — cleared on success. Docs/NordSyncFase2, Fase 4 Slice 4.2.',
+    )
+
+    # ── Fase 4 Slices 4.1/4.2: systray count + dedicated failures view ─────────
+
+    @api.model
+    def systray_get_failed_count(self):
+        return self.sudo().search_count([
+            ('status', '=', 'failed'), ('company_id', 'in', self.env.companies.ids),
+        ])
+
+    def action_retry_now(self):
+        """Manual resend (Slice 4.2) — same one-ping-per-company mechanism as the
+        periodic cron (Slice 4.3), just triggered on demand instead of waiting
+        for the next tick. Bound as a list-view server action, so it can act on
+        whatever's selected (or all failures, if the whole list is selected).
+        """
+        configs = self.env['nord_sync.config'].sudo().search([
+            ('company_id', 'in', self.mapped('company_id').ids),
+        ])
+        for config in configs:
+            config._retry_failed_webhooks()

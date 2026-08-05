@@ -14,6 +14,7 @@
                     <field name="operation"/>
                     <field name="status" decoration-danger="status == 'failed'"
                            decoration-muted="status == 'pending'"/>
+                    <field name="last_error" optional="hide"/>
                 </list>
             </field>
         </record>
@@ -24,8 +25,11 @@
             <field name="view_mode">list</field>
         </record>
 
+        <menuitem id="menu_nord_sync_root" name="Nord Sync"
+                  parent="base.menu_custom" groups="base.group_system" sequence="118"/>
+
         <menuitem id="menu_nord_sync_queue" name="Nord Sync Queue"
-                  parent="base.menu_custom" action="action_nord_sync_queue"
+                  parent="menu_nord_sync_root" action="action_nord_sync_queue"
                   groups="base.group_system" sequence="120"/>
 
     </data>

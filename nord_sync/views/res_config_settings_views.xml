@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="res_config_settings_view_form_nord_sync" model="ir.ui.view">
+            <field name="name">res.config.settings.view.form.nord.sync</field>
+            <field name="model">res.config.settings</field>
+            <field name="priority" eval="100"/>
+            <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//form" position="inside">
+                    <app data-string="Nord Sync" string="Nord Sync" name="nord_sync"
+                         groups="base.group_system">
+                        <h2>Nord Sync</h2>
+                        <div class="row mt16 o_settings_container" name="nord_sync_settings_container">
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="nord_sync_enabled"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="nord_sync_enabled" string="Nord Sync Enabled"/>
+                                    <div class="text-muted">
+                                        Queue mrp.production changes and notify the Nord Cloud webhook.
+                                    </div>
+                                    <div class="content-group" invisible="not nord_sync_enabled">
+                                        <div class="mt16">
+                                            <label for="nord_sync_company_uid"/>
+                                            <field name="nord_sync_company_uid"/>
+                                        </div>
+                                        <div class="mt8">
+                                            <label for="nord_sync_cloud_webhook_url"/>
+                                            <field name="nord_sync_cloud_webhook_url"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_right_pane">
+                                    <div class="text-muted mb-3">
+                                        Run the install wizard for environment pre-flight checks
+                                        (scheduler active, Odoo version) before configuring.
+                                    </div>
+                                    <button name="action_open_nord_sync_install_wizard" type="object"
+                                            string="Open Install Wizard" class="btn btn-outline-primary"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_right_pane">
+                                    <div class="text-muted mb-3">
+                                        Which MOs trigger a sync (default: on confirm) is an editable
+                                        Automation Rule, not fixed in code.
+                                    </div>
+                                    <button name="%(nord_sync.action_nord_sync_automation_rules)d" type="action"
+                                            string="Configure Trigger Rules" class="btn btn-outline-primary"/>
+                                </div>
+                            </div>
+                        </div>
+                    </app>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="action_nord_sync_res_config_settings" model="ir.actions.act_window">
+            <field name="name">Nord Sync Settings</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">res.config.settings</field>
+            <field name="view_id" ref="res_config_settings_view_form_nord_sync"/>
+            <field name="view_mode">form</field>
+            <field name="target">current</field>
+            <field name="context">{'module': 'nord_sync'}</field>
+        </record>
+
+    </data>
+</odoo>
