@@ -10,7 +10,6 @@
                     <field name="company_id"/>
                     <field name="enabled"/>
                     <field name="company_uid"/>
-                    <field name="cloud_webhook_url"/>
                 </list>
             </field>
         </record>
@@ -20,12 +19,16 @@
             <field name="model">nord_sync.config</field>
             <field name="arch" type="xml">
                 <form create="0">
+                    <header>
+                        <button name="%(action_nord_sync_install_wizard)d" type="action"
+                                string="Open Install Wizard" class="btn-primary"
+                                context="{'default_company_id': company_id}"/>
+                    </header>
                     <sheet>
                         <group>
                             <field name="company_id"/>
                             <field name="enabled"/>
                             <field name="company_uid"/>
-                            <field name="cloud_webhook_url"/>
                         </group>
                     </sheet>
                 </form>
@@ -33,10 +36,14 @@
         </record>
 
         <record id="action_nord_sync_config" model="ir.actions.act_window">
-            <field name="name">Nord Sync Configuration</field>
+            <field name="name">Configuration</field>
             <field name="res_model">nord_sync.config</field>
             <field name="view_mode">list,form</field>
         </record>
+
+        <menuitem id="menu_nord_sync_config" name="Configuration"
+                  parent="menu_nord_sync_root" action="action_nord_sync_config"
+                  groups="group_nord_sync_manager" sequence="30"/>
 
     </data>
 </odoo>

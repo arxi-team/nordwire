@@ -15,8 +15,11 @@ side already implemented in `nordos_nord_sync_cloud` / `nordos_nord_sync_core`
 and `nord-os/docs/nord_sync/`).
 
 - `nord_sync.config` (one record per company_id, multi-company: sync is opt-in
-  per company) holds `enabled`/`company_uid`/`cloud_webhook_url` — replaces the
-  fields that used to live directly on `res.company`.
+  per company) holds `enabled`/`company_uid` — replaces the fields that used to
+  live directly on `res.company`. The Cloud webhook target is not per-company:
+  the client only provides the host (`nord_sync.cloud_base_url` system
+  parameter, e.g. `https://nordwire.pt` or `http://localhost:8080`) —
+  the webhook path itself (`/nordos/sync/nord_sync/webhook`) is fixed in code.
 - `mrp.production` create/write/unlink append an entry to the local
   `nord.sync.queue` and best-effort POST a wake webhook to the Nord Cloud.
 - `GET /nord_sync/api/v1/queue` — the Nord Core pulls new queue entries here,
@@ -30,12 +33,18 @@ plus a delivery status (pending/sent/failed) for the wake webhook. No
 write-back endpoint yet.
 
 Install wizard (Docs/PLAN.md, Fase 1.2), 3 steps — pre-flight (scheduler active,
-Odoo version) / connection (company UID, Cloud webhook URL) / finish — opens
-automatically right after install via ir.actions.todo, and reachable afterwards
-from Settings > Nord Sync (own sidebar app section, not a top-level menu —
-mirrors an unrelated project's Shopify integration `res.config.settings`
-extension, see models/res_config_settings.py docstring). Technical/debug lists
-(Configuration, Sync Queue) stay under Settings > Technical.
+Odoo version) / connection (company UID) / finish — opens automatically right
+after install via ir.actions.todo, and reachable afterwards from a button on
+the Configuration screen.
+
+Own top-level app (not nested in Settings, Docs/ADR/0002) — Sync Queue/Sync
+Failures/Configuration/Automation Rules all live under the "Nord Sync" main
+menu. Two groups gate access: Nord Sync User (read Sync Queue/Sync Failures,
+retry a failed webhook) and Nord Sync Manager (implies User; Configuration,
+Install Wizard, and the nord_sync-tagged Automation Rules). Neither group is
+`base.group_system` — the Nord Cloud URL (`nord_sync.cloud_base_url` system
+parameter, Settings > Technical > Parameters) and non-Nord-Sync Automation
+Rules stay reserved to the real Odoo administrator, on purpose.
     """,
     'author': 'NORD / Nordwire',
     'license': 'LGPL-3',
@@ -43,13 +52,16 @@ extension, see models/res_config_settings.py docstring). Technical/debug lists
     'data': [
         'security/nord_sync_security.xml',
         'security/ir.model.access.csv',
-        'views/nord_sync_config_views.xml',
+        # Wizard views first: nord_sync_config_views.xml's "Open Install Wizard"
+        # button resolves %(action_nord_sync_install_wizard)d at load time (not
+        # lazily at render time), so the action must already be defined.
+        'wizard/nord_sync_install_wizard_views.xml',
         'views/nord_sync_queue_views.xml',
         'views/nord_sync_failures_views.xml',
+        'views/nord_sync_config_views.xml',
         'data/nord_sync_automation.xml',
         'data/nord_sync_cron.xml',
-        'views/res_config_settings_views.xml',
-        'wizard/nord_sync_install_wizard_views.xml',
+        'data/nord_sync_config_parameter.xml',
     ],
     'assets': {
         'web.assets_backend': [
@@ -59,5 +71,5 @@ extension, see models/res_config_settings.py docstring). Technical/debug lists
     },
     'installable': True,
     'auto_install': False,
-    'application': False,
+    'application': True,
 }

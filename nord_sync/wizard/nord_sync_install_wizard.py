@@ -40,7 +40,6 @@ class NordSyncInstallWizard(models.TransientModel):
         default=lambda self: self.env.company,
     )
     company_uid = fields.Char(string='Nord Company UID')
-    cloud_webhook_url = fields.Char(string='Nord Cloud Webhook URL')
 
     cron_active = fields.Boolean(string='Scheduler Active', readonly=True)
     odoo_version_supported = fields.Boolean(string='Odoo Version Supported', readonly=True)
@@ -102,7 +101,6 @@ class NordSyncInstallWizard(models.TransientModel):
         config_rec = self.env['nord_sync.config']._get_for_company(company)
         if config_rec:
             vals.setdefault('company_uid', config_rec.company_uid)
-            vals.setdefault('cloud_webhook_url', config_rec.cloud_webhook_url)
         vals.update(self._run_preflight())
         return vals
 
@@ -143,8 +141,8 @@ class NordSyncInstallWizard(models.TransientModel):
     # ── Step 2: Connection ───────────────────────────────────────────────────────
 
     def run_after_step_connection(self):
-        if not self.company_uid or not self.cloud_webhook_url:
-            raise UserError('Fill in the company UID and the webhook URL before continuing.')
+        if not self.company_uid:
+            raise UserError('Fill in the company UID before continuing.')
         return True
 
     # ── Step 3: Finish ───────────────────────────────────────────────────────────
@@ -160,11 +158,7 @@ class NordSyncInstallWizard(models.TransientModel):
         if not self.preflight_ok:
             raise UserError('Fix the environment issues before continuing (see pre-flight message).')
         config_rec = self.env['nord_sync.config']._get_or_create_for_company(self.company_id)
-        config_rec.write({
-            'enabled': True,
-            'company_uid': self.company_uid,
-            'cloud_webhook_url': self.cloud_webhook_url,
-        })
+        config_rec.write({'enabled': True, 'company_uid': self.company_uid})
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'base.automation',

@@ -9,13 +9,21 @@ _logger = logging.getLogger(__name__)
 
 WEBHOOK_TIMEOUT_SECONDS = 5
 
+# The Cloud webhook path is fixed per deployment, not something a client should
+# ever need to know or type — only the host (e.g. https://nordwire.pt or
+# http://localhost:8080) is client-provided, as a system parameter (one Nord
+# Cloud target per Odoo instance, not per company).
+CLOUD_BASE_URL_PARAM = 'nord_sync.cloud_base_url'
+CLOUD_WEBHOOK_PATH = '/nordos/sync/nord_sync/webhook'
+
 
 class NordSyncConfig(models.Model):
     """Nord Sync connection config — one record per company, replacing the
-    nord_sync_enabled/nord_sync_company_uid/nord_sync_cloud_webhook_url fields
-    that used to live directly on res.company. Kept company-scoped (not a
-    single global ir.config_parameter) so multi-company opt-in still works —
+    nord_sync_enabled/nord_sync_company_uid fields that used to live directly
+    on res.company. Kept company-scoped so multi-company opt-in still works —
     see docs/plano_addon_odoo_cliente_producao.md §7 (data scope section).
+    The Cloud base URL itself is not company-scoped (see CLOUD_BASE_URL_PARAM
+    above) — it lives in ir.config_parameter, not on this model.
     """
     _name = 'nord_sync.config'
     _description = 'Nord Sync Configuration'
@@ -30,11 +38,6 @@ class NordSyncConfig(models.Model):
              'Cloud/Core side). Sent in the wake webhook payload and used to '
              'identify this company on queue pulls.',
     )
-    cloud_webhook_url = fields.Char(
-        string='Nord Cloud Webhook URL',
-        help='Nord Cloud endpoint to notify when something changes '
-             '(e.g. http://<cloud-host>/nordos/sync/nord_sync/webhook).',
-    )
 
     _company_unique = models.Constraint(
         'UNIQUE(company_id)', 'Only one Nord Sync configuration per company is allowed.',
@@ -48,6 +51,19 @@ class NordSyncConfig(models.Model):
     def _get_or_create_for_company(self, company):
         config = self._get_for_company(company)
         return config or self.create({'company_id': company.id})
+
+    @api.model
+    def _get_cloud_base_url(self):
+        return self.env['ir.config_parameter'].sudo().get_param(CLOUD_BASE_URL_PARAM)
+
+    @api.model
+    def _set_cloud_base_url(self, base_url):
+        self.env['ir.config_parameter'].sudo().set_param(CLOUD_BASE_URL_PARAM, base_url or '')
+
+    @api.model
+    def _get_cloud_webhook_url(self):
+        base_url = self._get_cloud_base_url()
+        return base_url.rstrip('/') + CLOUD_WEBHOOK_PATH if base_url else False
 
     def _enqueue_and_notify(self, res_model, res_id, operation, payload):
         """Shared by every source model's create/write/unlink override (mrp.production,
@@ -74,11 +90,16 @@ class NordSyncConfig(models.Model):
         instead of only ever living in the server log.
         """
         self.ensure_one()
-        if not self.cloud_webhook_url or not self.company_uid:
+        webhook_url = self._get_cloud_webhook_url()
+        if not webhook_url or not self.company_uid:
             return None, None
+        _logger.info(
+            'nord_sync: sending wake webhook to Nord Cloud (url=%s, company_uid=%s)',
+            webhook_url, self.company_uid,
+        )
         try:
             response = requests.post(
-                self.cloud_webhook_url,
+                webhook_url,
                 json={'company_uid': self.company_uid},
                 timeout=WEBHOOK_TIMEOUT_SECONDS,
             )
@@ -86,6 +107,7 @@ class NordSyncConfig(models.Model):
         except Exception as exc:
             _logger.warning('nord_sync: failed to notify Nord Cloud webhook: %s', exc)
             return False, str(exc)
+        _logger.info('nord_sync: wake webhook delivered to Nord Cloud (company_uid=%s)', self.company_uid)
         return True, None
 
     def _retry_failed_webhooks(self):

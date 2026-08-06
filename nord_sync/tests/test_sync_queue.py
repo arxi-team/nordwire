@@ -113,10 +113,8 @@ class TestNordSyncQueue(TransactionCase):
         self.assertEqual(entry.data['name'], mo_name)
 
     def test_webhook_posted_when_configured(self):
-        self._configure(
-            company_uid='test-uid',
-            cloud_webhook_url='http://cloud.example.com/nordos/sync/nord_sync/webhook',
-        )
+        self._configure(company_uid='test-uid')
+        self.env['nord_sync.config']._set_cloud_base_url('http://cloud.example.com')
         with patch(POST_TARGET) as mocked_post:
             mo = self._create_mo()
             mo.action_confirm()
@@ -128,10 +126,8 @@ class TestNordSyncQueue(TransactionCase):
         self.assertEqual(entry.status, 'sent')
 
     def test_webhook_failure_does_not_raise(self):
-        self._configure(
-            company_uid='test-uid',
-            cloud_webhook_url='http://cloud.example.com/nordos/sync/nord_sync/webhook',
-        )
+        self._configure(company_uid='test-uid')
+        self.env['nord_sync.config']._set_cloud_base_url('http://cloud.example.com')
         with patch(POST_TARGET, side_effect=ConnectionError('refused')):
             mo = self._create_mo()
             mo.action_confirm()  # must not raise
@@ -140,10 +136,8 @@ class TestNordSyncQueue(TransactionCase):
         self.assertEqual(entry.status, 'failed')
 
     def test_webhook_non_2xx_response_marks_status_failed(self):
-        self._configure(
-            company_uid='test-uid',
-            cloud_webhook_url='http://cloud.example.com/nordos/sync/nord_sync/webhook',
-        )
+        self._configure(company_uid='test-uid')
+        self.env['nord_sync.config']._set_cloud_base_url('http://cloud.example.com')
         error_response = Mock()
         error_response.raise_for_status.side_effect = requests.HTTPError('502')
         with patch(POST_TARGET, return_value=error_response):

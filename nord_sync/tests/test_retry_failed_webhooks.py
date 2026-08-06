@@ -11,7 +11,7 @@ class TestRetryFailedWebhooks(TransactionCase):
     def _configure(self, company=None, **vals):
         vals.setdefault('enabled', True)
         vals.setdefault('company_uid', 'test-uid')
-        vals.setdefault('cloud_webhook_url', 'http://cloud.example.com/nordos/sync/nord_sync/webhook')
+        self.env['nord_sync.config']._set_cloud_base_url('http://cloud.example.com')
         return self.env['nord_sync.config'].create({'company_id': (company or self.env.company).id, **vals})
 
     def _failed_entry(self, company_id, **vals):

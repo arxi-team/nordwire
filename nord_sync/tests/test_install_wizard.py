@@ -26,11 +26,9 @@ class TestNordSyncInstallWizard(TransactionCase):
         self.env['nord_sync.config'].create({
             'company_id': self.env.company.id,
             'company_uid': 'existing-uid',
-            'cloud_webhook_url': 'http://cloud.example.com/webhook',
         })
         wizard = self._new_wizard()
         self.assertEqual(wizard.company_uid, 'existing-uid')
-        self.assertEqual(wizard.cloud_webhook_url, 'http://cloud.example.com/webhook')
 
     def test_default_get_starts_on_preflight_step(self):
         wizard = self._new_wizard()
@@ -87,9 +85,7 @@ class TestNordSyncInstallWizard(TransactionCase):
         self.assertEqual(wizard.state, 'step_connection')
 
     def test_next_step_advances_to_finish_with_fields_filled(self):
-        wizard = self._new_wizard(
-            company_uid='new-uid', cloud_webhook_url='http://cloud.example.com/webhook',
-        )
+        wizard = self._new_wizard(company_uid='new-uid')
         wizard.action_next_step()  # -> step_connection
         wizard.action_next_step()  # -> step_finish
         self.assertEqual(wizard.state, 'step_finish')
@@ -105,38 +101,29 @@ class TestNordSyncInstallWizard(TransactionCase):
     # ── Step 3: confirm ──────────────────────────────────────────────────────
 
     def test_confirm_writes_nord_sync_config(self):
-        wizard = self._new_wizard(
-            company_uid='new-uid', cloud_webhook_url='http://cloud.example.com/new-webhook',
-        )
+        wizard = self._new_wizard(company_uid='new-uid')
         wizard.action_confirm()
         config = self.env['nord_sync.config']._get_for_company(self.env.company)
         self.assertTrue(config.enabled)
         self.assertEqual(config.company_uid, 'new-uid')
-        self.assertEqual(config.cloud_webhook_url, 'http://cloud.example.com/new-webhook')
 
     def test_confirm_updates_existing_config_instead_of_duplicating(self):
         self.env['nord_sync.config'].create({'company_id': self.env.company.id, 'company_uid': 'old-uid'})
-        wizard = self._new_wizard(
-            company_uid='new-uid', cloud_webhook_url='http://cloud.example.com/new-webhook',
-        )
+        wizard = self._new_wizard(company_uid='new-uid')
         wizard.action_confirm()
         configs = self.env['nord_sync.config'].search([('company_id', '=', self.env.company.id)])
         self.assertEqual(len(configs), 1)
         self.assertEqual(configs.company_uid, 'new-uid')
 
     def test_confirm_hands_off_to_automation_rule(self):
-        wizard = self._new_wizard(
-            company_uid='new-uid', cloud_webhook_url='http://cloud.example.com/new-webhook',
-        )
+        wizard = self._new_wizard(company_uid='new-uid')
         action = wizard.action_confirm()
         self.assertEqual(action['type'], 'ir.actions.act_window')
         self.assertEqual(action['res_model'], 'base.automation')
         self.assertEqual(action['res_id'], self.env.ref('nord_sync.automation_mrp_production_confirmed').id)
 
     def test_confirm_raises_when_preflight_not_ok(self):
-        wizard = self._new_wizard(
-            cron_threads=0, company_uid='new-uid', cloud_webhook_url='http://cloud.example.com/webhook',
-        )
+        wizard = self._new_wizard(cron_threads=0, company_uid='new-uid')
         with self.assertRaises(UserError):
             wizard.action_confirm()
         self.assertFalse(self.env['nord_sync.config']._get_for_company(self.env.company))

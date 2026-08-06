@@ -5,4 +5,3 @@ from . import mrp_production
 from . import product_product
 from . import maintenance_request
 from . import ir_http
-from . import res_config_settings

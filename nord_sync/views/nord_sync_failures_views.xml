@@ -33,7 +33,7 @@
 
         <menuitem id="menu_nord_sync_failures" name="Sync Failures"
                   parent="menu_nord_sync_root" action="action_nord_sync_failures"
-                  groups="base.group_system" sequence="119"/>
+                  groups="group_nord_sync_user" sequence="20"/>
 
         <!-- Manual resend (Slice 4.2) — appears in the list view's Action (⚙)
              menu once one or more rows are selected. -->
