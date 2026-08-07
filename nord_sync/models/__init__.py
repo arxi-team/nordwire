@@ -4,4 +4,5 @@ from . import sync_queue
 from . import mrp_production
 from . import product_product
 from . import maintenance_request
+from . import ir_actions_server
 from . import ir_http

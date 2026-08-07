@@ -32,11 +32,30 @@
             <field name="groups" eval="[(4, ref('group_nord_sync_manager'))]"/>
             <field name="domain_force">[('name', 'like', 'Nord Sync')]</field>
         </record>
+        <!-- The base_automation.ir_cron_data_base_automation_check_ir_actions_server
+             OR-clause below exists because ir.cron uses _inherits =
+             {'ir.actions.server': 'ir_actions_server_id'} (odoo/addons/base/models/
+             ir_cron.py) — Odoo propagates a parent model's ir.rule onto the
+             delegating child model AS AN ADDITIONAL AND-ed CONSTRAINT (delegate
+             access = access to the child's own rules AND access to the parent
+             record), not as an alternative a same-group ir.cron-only rule could
+             OR against. base_automation's own write()/create()/unlink() hooks
+             (_update_cron(), base_automation/models/base_automation.py) read AND
+             write the shared base_automation.ir_cron_data_base_automation_check
+             cron record — and therefore its delegate ir.actions.server record too —
+             on every save of ANY base.automation record, including the Nord Sync
+             ones themselves. Without this exception, that silently broke editing
+             Nord Sync's own automation rules for anyone in Nord Sync Manager
+             (AccessError on ir.cron, record rules). Named by its own stable xmlid
+             (not the ir.cron's — a _inherits delegate record gets its own separate
+             one), scoped to that one shared system object specifically — Manager
+             still can't browse/edit arbitrary Scheduled Actions or other unrelated
+             Server Actions, in keeping with ADR 0002. -->
         <record id="rule_ir_actions_server_nord_sync_manager" model="ir.rule">
             <field name="name">Nord Sync Manager: only Nord Sync automation actions</field>
             <field name="model_id" ref="base.model_ir_actions_server"/>
             <field name="groups" eval="[(4, ref('group_nord_sync_manager'))]"/>
-            <field name="domain_force">[('name', 'like', 'Nord Sync')]</field>
+            <field name="domain_force" eval="['|', ('name', 'like', 'Nord Sync'), ('id', '=', ref('base_automation.ir_cron_data_base_automation_check_ir_actions_server'))]"/>
         </record>
     </data>
 </odoo>
