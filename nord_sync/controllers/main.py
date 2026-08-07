@@ -12,24 +12,25 @@ QUEUE_PAGE_SIZE = 500
 class NordSyncQueueController(http.Controller):
 
     @http.route('/nord_sync/api/v1/queue', type='http', auth='nord_sync_api_key', methods=['GET'], csrf=False)
-    def nord_sync_queue(self, company_uid=None, last_seq=0, **kwargs):
+    def nord_sync_queue(self, last_seq=0, **kwargs):
         """Entries carry the full business payload captured at enqueue time
         (nord.sync.queue.data) — the Core never needs a follow-up request per
         entry to know what changed.
+
+        Company is derived from the authenticated technical user (the Bearer
+        API key already resolved request.env in ir_http._auth_method_nord_sync_api_key)
+        rather than from a client-supplied company_uid — that field is the
+        Nord-side tenant identity, not something this endpoint needs to
+        cross-check to know who's asking.
         """
         try:
             last_seq = int(last_seq or 0)
         except (TypeError, ValueError):
             last_seq = 0
 
-        if not company_uid:
-            return request.make_json_response({'error': 'Missing company_uid'}, status=400)
-
-        config = request.env['nord_sync.config'].sudo().search(
-            [('company_uid', '=', company_uid)], limit=1,
-        )
+        config = request.env['nord_sync.config'].sudo()._get_for_company(request.env.company)
         if not config:
-            return request.make_json_response({'error': 'Unknown company_uid'}, status=403)
+            return request.make_json_response({'error': 'Nord Sync not configured for this company'}, status=403)
 
         entries = request.env['nord.sync.queue'].sudo().search([
             ('id', '>', last_seq),
@@ -63,17 +64,14 @@ class NordSyncQueueController(http.Controller):
         if not isinstance(body, dict):
             return request.make_json_response({'error': 'Invalid JSON body'}, status=400)
 
-        company_uid = body.get('company_uid')
         res_model = body.get('res_model')
         res_id = body.get('res_id')
-        if not company_uid or not res_model or not res_id:
-            return request.make_json_response({'error': 'Missing company_uid/res_model/res_id'}, status=400)
+        if not res_model or not res_id:
+            return request.make_json_response({'error': 'Missing res_model/res_id'}, status=400)
 
-        config = request.env['nord_sync.config'].sudo().search(
-            [('company_uid', '=', company_uid)], limit=1,
-        )
+        config = request.env['nord_sync.config'].sudo()._get_for_company(request.env.company)
         if not config:
-            return request.make_json_response({'error': 'Unknown company_uid'}, status=403)
+            return request.make_json_response({'error': 'Nord Sync not configured for this company'}, status=403)
 
         if res_model != 'mrp.production':
             return request.make_json_response({'error': f'Unsupported res_model: {res_model}'}, status=400)

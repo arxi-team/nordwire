@@ -44,13 +44,24 @@ class TestNordSyncResultController(HttpCase):
         self.assertEqual(response.status_code, 401)
 
     def test_missing_fields_is_bad_request(self):
-        response = self._post({'company_uid': 'core-result-test-uid'}, api_key=self.api_key)
+        response = self._post({}, api_key=self.api_key)
         self.assertEqual(response.status_code, 400)
 
-    def test_unknown_company_uid_is_forbidden(self):
+    def test_unconfigured_company_is_forbidden(self):
+        other_company = self.env['res.company'].create({'name': 'No Nord Sync Config'})
+        other_user = self.env['res.users'].create({
+            'name': 'Other Company Result Tech User',
+            'login': 'test_other_company_result_tech',
+            'company_id': other_company.id,
+            'company_ids': [(4, other_company.id)],
+            'group_ids': [(4, self.env.ref('nord_sync.group_nord_sync_integration').id)],
+        })
+        other_key = self.env['res.users.apikeys'].with_user(other_user).sudo()._generate(
+            'rpc', 'other company result test key', None,
+        )
         response = self._post(
-            {'company_uid': 'does-not-exist', 'res_model': 'mrp.production', 'res_id': 1, 'qty_produced': 1},
-            api_key=self.api_key,
+            {'res_model': 'mrp.production', 'res_id': 1, 'qty_produced': 1},
+            api_key=other_key,
         )
         self.assertEqual(response.status_code, 403)
 

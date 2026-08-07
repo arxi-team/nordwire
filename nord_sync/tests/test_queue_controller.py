@@ -38,8 +38,19 @@ class TestNordSyncQueueController(HttpCase):
         response = self._get(api_key='not-a-real-key')
         self.assertEqual(response.status_code, 403)
 
-    def test_unknown_company_uid_is_forbidden(self):
-        response = self._get(company_uid='does-not-exist', api_key=self.api_key)
+    def test_unconfigured_company_is_forbidden(self):
+        other_company = self.env['res.company'].create({'name': 'No Nord Sync Config'})
+        other_user = self.env['res.users'].create({
+            'name': 'Other Company Tech User',
+            'login': 'test_other_company_tech',
+            'company_id': other_company.id,
+            'company_ids': [(4, other_company.id)],
+            'group_ids': [(4, self.env.ref('nord_sync.group_nord_sync_integration').id)],
+        })
+        other_key = self.env['res.users.apikeys'].with_user(other_user).sudo()._generate(
+            'rpc', 'other company test key', None,
+        )
+        response = self._get(api_key=other_key)
         self.assertEqual(response.status_code, 403)
 
     def test_valid_key_returns_new_entries_since_last_seq(self):
