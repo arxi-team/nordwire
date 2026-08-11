@@ -2,12 +2,10 @@
 <odoo>
     <data>
 
-        <!-- Docs/NordSyncFase2, Fase 4 Slice 4.2: dedicated view, distinct from
-             the generic Sync Queue (which shows every entry regardless of
-             status) — built on the same nord.sync.queue table, per
-             custom/plano_addon_odoo_cliente_producao.md §7 ("a failure log/
-             dashboard can be built on top of the queue table itself"),
-             not a new model. -->
+        <!-- Dedicated view, distinct from the generic Sync Queue (which
+             shows every entry regardless of status) — built on the same
+             nord.sync.queue table (a failure log doesn't need its own
+             model), just filtered to status='failed'. -->
         <record id="view_nord_sync_failures_list" model="ir.ui.view">
             <field name="name">nord.sync.queue.failures.list</field>
             <field name="model">nord.sync.queue</field>
@@ -35,7 +33,7 @@
                   parent="menu_nord_sync_root" action="action_nord_sync_failures"
                   groups="group_nord_sync_user" sequence="20"/>
 
-        <!-- Manual resend (Slice 4.2) — appears in the list view's Action (⚙)
+        <!-- Manual resend — appears in the list view's Action (⚙)
              menu once one or more rows are selected. -->
         <record id="action_server_retry_now" model="ir.actions.server">
             <field name="name">Nord Sync: Retry Now</field>

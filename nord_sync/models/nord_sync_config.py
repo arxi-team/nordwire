@@ -48,9 +48,45 @@ class NordSyncConfig(models.Model):
         return self.search([('company_id', '=', company.id)], limit=1)
 
     @api.model
+    def _nord_sync_available_native_sources(self):
+        """Extension point — the single place every Nord Sync Source addon
+        (nord_sync_mrp, nord_sync_maintenance, ...) registers itself, via
+        _inherit chain: prepend its own {'source_model', 'source_field',
+        'label', 'default_target_state_by_value'} entry and call super().
+        Consumed by the install wizard's Job Stages & Mapping step and by
+        nord_sync.state.mapping's source_model/source_value Selections — one
+        registration, two consumers, so they can never drift apart. Base
+        returns none: with no source addon installed there's nothing native
+        to map yet.
+        """
+        return []
+
+    @api.model
     def _get_or_create_for_company(self, company):
         config = self._get_for_company(company)
         return config or self.create({'company_id': company.id})
+
+    def _ensure_state_mapping(self, source_model, source_value, target_state=False, target_job_stage_id=False):
+        """Idempotent upsert for one Nord Sync State Mapping row — the one
+        place that decides what "already configured" means, so the install
+        wizard (Job Stages & Mapping step) and _ensure_backward_compat_
+        state_mapping below (1.0.1 upgrade migration) can't disagree with
+        each other about it.
+        """
+        self.ensure_one()
+        StateMapping = self.env['nord_sync.state.mapping'].sudo()
+        existing = StateMapping.search([
+            ('company_id', '=', self.company_id.id),
+            ('source_model', '=', source_model),
+            ('source_value', '=', source_value),
+        ], limit=1)
+        vals = {'target_state': target_state, 'target_job_stage_id': target_job_stage_id}
+        if existing:
+            if existing.target_state != target_state or existing.target_job_stage_id.id != target_job_stage_id:
+                existing.write(vals)
+            return existing
+        vals.update({'company_id': self.company_id.id, 'source_model': source_model, 'source_value': source_value})
+        return StateMapping.create(vals)
 
     @api.model
     def _get_cloud_base_url(self):
@@ -66,9 +102,11 @@ class NordSyncConfig(models.Model):
         return base_url.rstrip('/') + CLOUD_WEBHOOK_PATH if base_url else False
 
     def _enqueue_and_notify(self, res_model, res_id, operation, payload):
-        """Shared by every source model's create/write/unlink override (mrp.production,
-        product.product, ...) — one nord.sync.queue entry + one best-effort wake
-        webhook per change, so each model only needs to supply its own payload.
+        """Shared by every Nord Sync Source's create/write/unlink override
+        (mrp.production, maintenance.request, ...), plus nord_sync.job.stage/
+        nord_sync.state.mapping — one nord.sync.queue entry + one best-effort
+        wake webhook per change, so each model only needs to supply its own
+        payload.
         """
         self.ensure_one()
         entry = self.env['nord.sync.queue'].sudo().create({
@@ -86,8 +124,8 @@ class NordSyncConfig(models.Model):
     def _send_wake_webhook(self):
         """Returns (status, error): status is None if skipped (not configured
         yet), True/False if attempted; error is the exception text on failure,
-        else None — surfaced on nord.sync.queue.last_error (Fase 4 Slice 4.2)
-        instead of only ever living in the server log.
+        else None — surfaced on nord.sync.queue.last_error instead of only
+        ever living in the server log.
         """
         self.ensure_one()
         webhook_url = self._get_cloud_webhook_url()
@@ -111,8 +149,8 @@ class NordSyncConfig(models.Model):
         return True, None
 
     def _retry_failed_webhooks(self):
-        """Docs/NordSyncFase2, Fase 4 Slice 4.3: nord.sync.queue.status='failed' is
-        exactly what this retries (see that field's help text). One webhook ping
+        """nord.sync.queue.status='failed' is exactly what this retries (see
+        that field's help text). One webhook ping
         per company, not per entry — the wake payload carries no entry-specific
         data (just company_uid), so a single successful ping resolves every
         pending entry for this company at once, same as the Core's own

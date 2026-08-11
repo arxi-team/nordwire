@@ -4,7 +4,7 @@ from odoo.tests import TransactionCase, tagged
 
 @tagged('post_install', '-at_install')
 class TestNordSyncSecurityGroups(TransactionCase):
-    """Docs/ADR/0002: Nord Sync User/Manager are deliberately narrower than
+    """Nord Sync User/Manager are deliberately narrower than
     base.group_system — this is the one runnable check that the ir.rule
     scoping Manager's base.automation/ir.actions.server access actually holds
     (a typo in the domain, or a missing rule, would silently open every
@@ -32,6 +32,15 @@ class TestNordSyncSecurityGroups(TransactionCase):
             'model_id': cls.env.ref('base.model_res_partner').id,
             'trigger': 'on_create',
         })
+        # Own fixture rather than a real source addon's xmlid (nord_sync_mrp's
+        # "MO confirmed" rule, say) — the base module is source-agnostic,
+        # so this test only needs a record matching the
+        # ir.rule's actual scoping mechanism: name like 'Nord Sync'.
+        cls.nord_sync_rule = cls.env['base.automation'].create({
+            'name': 'Nord Sync: Test Rule',
+            'model_id': cls.env.ref('base.model_res_partner').id,
+            'trigger': 'on_create',
+        })
 
     def test_user_can_read_queue(self):
         self.env['nord.sync.queue'].create({
@@ -50,11 +59,10 @@ class TestNordSyncSecurityGroups(TransactionCase):
         self.assertEqual(self.config.company_uid, 'updated-by-manager')
 
     def test_manager_sees_only_nord_sync_automation_rules(self):
-        nord_sync_rule = self.env.ref('nord_sync.automation_mrp_production_confirmed')
         visible = self.env['base.automation'].with_user(self.manager).search([
-            ('id', 'in', [nord_sync_rule.id, self.other_automation.id]),
+            ('id', 'in', [self.nord_sync_rule.id, self.other_automation.id]),
         ])
-        self.assertIn(nord_sync_rule, visible)
+        self.assertIn(self.nord_sync_rule, visible)
         self.assertNotIn(self.other_automation, visible)
 
     def test_manager_cannot_write_unrelated_automation_rule(self):

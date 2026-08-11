@@ -1,77 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Docs/NordSyncFase2, Slice 2.4: configurable trigger criterion, via Odoo's
-         native Automation Rules (Settings > Technical > Automation Rules) instead
-         of a bespoke rule-builder — editable/duplicable by the client after
-         install without touching code (e.g. narrowing "Apply on" to a tag,
-         warehouse or category, per the original Fase 2 spec). noupdate="1" so a
-         module upgrade doesn't overwrite whatever the client has since changed
-         here, same as the install wizard's ir.actions.todo. -->
-    <data noupdate="1">
+    <!-- Per-source Automation Rules (mrp.production, maintenance.request, ...)
+         live in their own Nord Sync Source addons — this base module only
+         keeps the generic navigation into whichever rules whatever's
+         installed actually shipped, filtered by name. -->
 
-        <record id="automation_mrp_production_confirmed" model="base.automation">
-            <field name="name">Nord Sync: MO confirmed</field>
-            <field name="model_id" ref="mrp.model_mrp_production"/>
-            <field name="trigger">on_create_or_write</field>
-            <field name="filter_pre_domain">[('state', '!=', 'confirmed')]</field>
-            <field name="filter_domain">[('state', '=', 'confirmed')]</field>
-        </record>
-        <record id="automation_mrp_production_confirmed_action" model="ir.actions.server">
-            <field name="name">Nord Sync: notify Cloud</field>
-            <field name="model_id" ref="mrp.model_mrp_production"/>
-            <field name="base_automation_id" ref="automation_mrp_production_confirmed"/>
-            <field name="state">nord_sync_notify</field>
-            <field name="nord_sync_operation">write</field>
-        </record>
-
-        <record id="automation_mrp_production_cancelled" model="base.automation">
-            <field name="name">Nord Sync: MO cancelled</field>
-            <field name="model_id" ref="mrp.model_mrp_production"/>
-            <field name="trigger">on_create_or_write</field>
-            <field name="filter_pre_domain">[('state', '!=', 'cancel')]</field>
-            <field name="filter_domain">[('state', '=', 'cancel')]</field>
-        </record>
-        <record id="automation_mrp_production_cancelled_action" model="ir.actions.server">
-            <field name="name">Nord Sync: notify Cloud</field>
-            <field name="model_id" ref="mrp.model_mrp_production"/>
-            <field name="base_automation_id" ref="automation_mrp_production_cancelled"/>
-            <field name="state">nord_sync_notify</field>
-            <field name="nord_sync_operation">write</field>
-        </record>
-
-        <record id="automation_mrp_production_unlink" model="base.automation">
-            <field name="name">Nord Sync: MO deleted</field>
-            <field name="model_id" ref="mrp.model_mrp_production"/>
-            <field name="trigger">on_unlink</field>
-        </record>
-        <record id="automation_mrp_production_unlink_action" model="ir.actions.server">
-            <field name="name">Nord Sync: notify Cloud</field>
-            <field name="model_id" ref="mrp.model_mrp_production"/>
-            <field name="base_automation_id" ref="automation_mrp_production_unlink"/>
-            <field name="state">nord_sync_notify</field>
-            <field name="nord_sync_operation">unlink</field>
-        </record>
-
-        <!-- Second source model (Fase 5 Slice 5.1) — no draft/confirmed state on
-             maintenance.request, so this fires on_create instead of a state
-             transition (see models/maintenance_request.py's docstring). -->
-        <record id="automation_maintenance_request_created" model="base.automation">
-            <field name="name">Nord Sync: Maintenance Request created</field>
-            <field name="model_id" ref="maintenance.model_maintenance_request"/>
-            <field name="trigger">on_create</field>
-        </record>
-        <record id="automation_maintenance_request_created_action" model="ir.actions.server">
-            <field name="name">Nord Sync: notify Cloud</field>
-            <field name="model_id" ref="maintenance.model_maintenance_request"/>
-            <field name="base_automation_id" ref="automation_maintenance_request_created"/>
-            <field name="state">nord_sync_notify</field>
-            <field name="nord_sync_operation">create</field>
-        </record>
-
-    </data>
-
-    <!-- Not noupdate: pure navigation, safe to refine on a future module upgrade
-         without wiping client customization (unlike the rules above). -->
     <record id="action_nord_sync_automation_rules" model="ir.actions.act_window">
         <field name="name">Nord Sync: Automation Rules</field>
         <field name="res_model">base.automation</field>

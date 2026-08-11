@@ -22,7 +22,7 @@ class TestNordSyncQueue(TransactionCase):
 
     def _confirm_mo(self):
         """Create + confirm — the trigger the "MO confirmed" Automation Rule
-        (data/nord_sync_automation.xml, Docs/NordSyncFase2 Slice 2.4) watches for.
+        (data/nord_sync_automation.xml) watches for.
         """
         with patch(POST_TARGET):
             mo = self._create_mo()
@@ -34,7 +34,7 @@ class TestNordSyncQueue(TransactionCase):
         return self.env['nord_sync.config'].create({'company_id': self.env.company.id, **vals})
 
     def test_create_alone_does_not_enqueue(self):
-        """Slice 2.4: a draft MO is not synced — only on confirm (or delete)."""
+        """A draft MO is not synced — only on confirm (or delete)."""
         self._configure()
         with patch(POST_TARGET) as mocked_post:
             mo = self._create_mo()
@@ -147,8 +147,8 @@ class TestNordSyncQueue(TransactionCase):
         self.assertEqual(entry.status, 'failed')
 
     def test_cancel_enqueues(self):
-        """Docs/NordSyncFase2, Fase 3 Slice 3.2: cancelling (not deleting) an MO
-        has its own Automation Rule, separate from "MO confirmed"."""
+        """Cancelling (not deleting) an MO has its own Automation Rule,
+        separate from "MO confirmed"."""
         mo = self._confirm_mo()
         self._configure()
         with patch(POST_TARGET) as mocked_post:

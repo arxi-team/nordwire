@@ -25,16 +25,94 @@
                                 string="Refresh Preflight Check" invisible="preflight_ok"/>
                     </div>
 
+                    <div invisible="state != 'step_sources'">
+                        <h3>Step 2. Sources</h3>
+                        <p class="text-muted">
+                            Which business models feed the Nord Sync bridge — checking
+                            one here installs its addon for real (Apps screen does the
+                            same thing), which is also what determines which native
+                            states the next step can offer to map. Already installed
+                            ones are pre-checked and locked.
+                        </p>
+                        <p class="text-muted">
+                            Checking a new one and clicking Next installs it for real
+                            (same as installing it from Apps) — the page reloads once,
+                            then comes straight back to this wizard on the next step,
+                            now seeing its native states too.
+                        </p>
+                        <field name="available_source_ids">
+                            <list editable="bottom" create="0" delete="0">
+                                <field name="module_id" column_invisible="1"/>
+                                <field name="name" readonly="1" string="Source"/>
+                                <field name="summary" readonly="1"/>
+                                <field name="installed" column_invisible="1"/>
+                                <field name="selected" readonly="installed"/>
+                            </list>
+                        </field>
+                    </div>
+
                     <div invisible="state != 'step_connection'">
-                        <h3>Step 2. Connection</h3>
+                        <h3>Step 3. Connection</h3>
                         <group>
                             <field name="company_id" readonly="1"/>
                             <field name="company_uid"/>
                         </group>
                     </div>
 
+                    <div invisible="state != 'step_job_stages'">
+                        <h3>Step 4. Job Stages &amp; Mapping</h3>
+                        <group>
+                            <field name="job_stage_mode" widget="radio"/>
+                        </group>
+                        <field name="job_stage_line_ids">
+                            <list editable="bottom">
+                                <field name="sequence" widget="handle"/>
+                                <field name="name"/>
+                            </list>
+                        </field>
+                        <p class="text-muted">
+                            Optional — leave empty for no stage granularity (a job's
+                            state alone still works).
+                        </p>
+
+                        <h4>Mapping</h4>
+                        <p class="text-muted">
+                            For each state a native value from an installed Nord Sync
+                            Source (Manufacturing Orders, and any other source addon you
+                            have installed) can be in, choose what happens to its job on
+                            the Nord Core — its state, its stage, both, or leave it blank
+                            to not map that value at all. You decide which values matter;
+                            nothing here is forced.
+                        </p>
+                        <field name="mapping_line_ids">
+                            <!-- create/delete disabled deliberately: one row per native
+                                 value per installed source IS the row set (see the line
+                                 model's own docstring) — a manually added row could never
+                                 have a valid source_value (readonly, no default), only
+                                 ever error. Rows are grouped by source via `sequence`
+                                 (assigned block-by-block in _mapping_line_vals), told
+                                 apart by the Source column since a Transient wizard list
+                                 can't render one sub-section per source. -->
+                            <list editable="bottom" create="0" delete="0">
+                                <field name="sequence" column_invisible="1"/>
+                                <field name="source_model" column_invisible="1"/>
+                                <field name="source_value" column_invisible="1"/>
+                                <field name="source_label" readonly="1" string="Source"/>
+                                <field name="source_value_label" readonly="1" string="Source Value"/>
+                                <field name="target_state" string="Job State"/>
+                                <field name="target_job_stage_line_id" string="Job Stage"/>
+                            </list>
+                        </field>
+                        <p class="text-muted">
+                            Installing another Nord Sync Source addon later (from Apps,
+                            outside this wizard) won't retroactively add its rows here —
+                            reopen this wizard from Settings &gt; Nord Sync afterwards to
+                            configure its mapping too.
+                        </p>
+                    </div>
+
                     <div invisible="state != 'step_finish'">
-                        <h3>Step 3. Confirm</h3>
+                        <h3>Step 5. Confirm</h3>
                         <group>
                             <field name="company_id" readonly="1"/>
                             <field name="company_uid" readonly="1"/>
@@ -45,8 +123,10 @@
                     <footer>
                         <button name="action_previous_step" type="object"
                                 string="Previous" invisible="not show_previous"/>
+                        <button name="action_confirm_sources" type="object" string="Next"
+                                class="btn-primary" invisible="not show_next or state != 'step_sources'"/>
                         <button name="action_next_step" type="object" string="Next"
-                                class="btn-primary" invisible="not show_next"/>
+                                class="btn-primary" invisible="not show_next or state == 'step_sources'"/>
                         <button name="action_confirm" type="object" string="Confirm"
                                 class="btn-primary" invisible="not show_finish"/>
                         <button string="Cancel" class="btn-secondary" special="cancel"/>
@@ -65,14 +145,32 @@
     </data>
 
     <!-- Shown automatically right after installing the module (Odoo's own
-         "next step" mechanism) — noupdate so it doesn't reappear on every
-         module upgrade, only on first install. Mirrors the unrelated Shopify
-         addon's ir.actions.todo precedent (see wizard docstring). -->
+         "next step" mechanism, ir.module.module.next()) — noupdate so it
+         doesn't reappear on every module upgrade, only on first install. -->
     <data noupdate="1">
         <record id="config_wizard_nord_sync_install" model="ir.actions.todo">
             <field name="action_id" ref="action_nord_sync_install_wizard"/>
             <field name="sequence">10</field>
             <field name="state">open</field>
+        </record>
+
+        <!-- Dedicated resume action/todo for action_confirm_sources below —
+             never touched by the "Open Install Wizard" button (that one
+             always starts a fresh wizard via action_nord_sync_install_wizard
+             above). context/state get overwritten at runtime each time a
+             source install needs to hand the client back to this exact
+             wizard record after the reload ir.module.module.next() performs
+             — state starts 'done' so it's inert until then. -->
+        <record id="action_nord_sync_install_wizard_resume" model="ir.actions.act_window">
+            <field name="name">Nord Sync — Install</field>
+            <field name="res_model">nord_sync.install.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+        <record id="todo_nord_sync_install_wizard_resume" model="ir.actions.todo">
+            <field name="action_id" ref="action_nord_sync_install_wizard_resume"/>
+            <field name="sequence">10</field>
+            <field name="state">done</field>
         </record>
     </data>
 </odoo>

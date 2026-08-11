@@ -3,11 +3,11 @@ from odoo import models
 
 
 class MaintenanceRequest(models.Model):
-    """Second source model for the Nord Sync bridge (Docs/NordSyncFase2, Fase 5
-    Slice 5.1) — proof that the dispatcher built in Fase 2 is genuinely generic:
-    this model only needs its own notify/payload methods and an Automation Rule
-    (data/nord_sync_automation.xml), same shape as mrp.production, nothing
-    shared touched. `operation_type` in the payload below is what tells the
+    """A second source model for the Nord Sync bridge, proving the
+    dispatcher is genuinely generic: this model only needs its own notify/
+    payload methods and an Automation Rule (data/nord_sync_automation.xml),
+    same shape as mrp.production, nothing shared touched. `operation_type`
+    in the payload below is what tells the
     Core which nord.job.type to use (production/purchase/sale/maintenance/
     inventory) — the Core never hardcodes "maintenance.request → maintenance"
     itself, so a future third source model can declare whichever type fits

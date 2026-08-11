@@ -51,11 +51,13 @@ class NordSyncQueueController(http.Controller):
 
     @http.route('/nord_sync/api/v1/result', type='http', auth='nord_sync_api_key', methods=['POST'], csrf=False)
     def nord_sync_result(self, **kwargs):
-        """Docs/NordSyncFase2, Fase 3 Slice 3.1: the Core pushes here when a
-        Nord-sourced job finishes. Chaveado por res_model/res_id (not
-        MRP-specific in the wire format) per the 2026-08-05 architecture note in
-        NordSyncFase2Plan.md — mrp.production is the only handler today, same
-        deliberately-minimal dispatch-by-model shape as the queue side.
+        """The Core pushes here when a Nord-sourced job finishes, or a real
+        work session closes. Keyed by res_model (not MRP-specific in the
+        wire format), same deliberately-minimal dispatch-by-model shape as
+        the queue side — but not every res_model is keyed by a literal
+        res_id: mrp.workorder never gets one (the Core never creates a
+        client-side workorder to reference), so its own handler resolves by
+        two source references instead — see that handler's docstring.
         """
         try:
             body = request.get_json_data()
@@ -65,20 +67,20 @@ class NordSyncQueueController(http.Controller):
             return request.make_json_response({'error': 'Invalid JSON body'}, status=400)
 
         res_model = body.get('res_model')
-        res_id = body.get('res_id')
-        if not res_model or not res_id:
-            return request.make_json_response({'error': 'Missing res_model/res_id'}, status=400)
+        if not res_model:
+            return request.make_json_response({'error': 'Missing res_model'}, status=400)
 
         config = request.env['nord_sync.config'].sudo()._get_for_company(request.env.company)
         if not config:
             return request.make_json_response({'error': 'Nord Sync not configured for this company'}, status=403)
 
-        if res_model != 'mrp.production':
-            return request.make_json_response({'error': f'Unsupported res_model: {res_model}'}, status=400)
+        return self._nord_sync_apply_result(config, body, res_model)
 
-        record = request.env['mrp.production'].sudo().browse(int(res_id))
-        if not record.exists() or record.company_id != config.company_id:
-            return request.make_json_response({'error': 'Unknown record'}, status=404)
-
-        applied, message = record._nord_sync_apply_result(body.get('qty_produced') or 0.0)
-        return request.make_json_response({'success': applied, 'message': message})
+    def _nord_sync_apply_result(self, config, body, res_model):
+        """Extension point — each Nord Sync Source addon that pushes a
+        result back (today only nord_sync_mrp: mrp.production/mrp.workorder)
+        subclasses this controller and overrides this method, checking its
+        own res_model(s) first and calling super() otherwise. Base has none
+        — unsupported is the correct answer when no source addon claims it.
+        """
+        return request.make_json_response({'error': f'Unsupported res_model: {res_model}'}, status=400)

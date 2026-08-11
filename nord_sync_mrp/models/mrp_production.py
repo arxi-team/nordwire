@@ -9,14 +9,13 @@ _logger = logging.getLogger(__name__)
 class MrpProduction(models.Model):
     """Source model for the Nord Sync bridge's MO channel.
 
-    No create/write/unlink override here (Docs/NordSyncFase2, Slice 2.4:
-    configurable trigger criterion) — `_nord_sync_notify` is called from the
-    native Automation Rules in data/nord_sync_automation.xml instead (a
-    "MO confirmed" state-transition rule + an unconditional "MO deleted" rule),
+    No create/write/unlink override here — the trigger criterion is
+    configurable: `_nord_sync_notify` is called from the native Automation
+    Rules in data/nord_sync_automation.xml instead (a "MO confirmed"
+    state-transition rule + an unconditional "MO deleted" rule),
     editable/duplicable by the client afterwards (Settings > Technical >
     Automation Rules) without touching code, e.g. narrowing "Apply on" to a
-    tag/warehouse/category per the original Fase 2 spec. Earlier versions of
-    this module fired unconditionally on every create/write/unlink instead.
+    tag/warehouse/category.
     """
     _inherit = 'mrp.production'
 
@@ -30,9 +29,12 @@ class MrpProduction(models.Model):
     def _nord_sync_payload(self):
         """Business payload for this MO, captured at enqueue time.
 
-        Reference only (docs/plano_addon_odoo_cliente_producao.md §7, data scope
-        section): product name/UoM/internal reference, never BOM components/
-        quantities — those are explicitly not replicated to the Nord side.
+        Product name/UoM/internal reference only — never BOM components/
+        quantities inline, those are explicitly not replicated into this
+        payload. bom_source_res_id is just a reference to the mrp.bom
+        actually used for this MO, not its contents — the Core resolves the already-synced
+        nord.bom by source reference and loads it, same distinction as
+        nord_sync_source_res_id everywhere else in this bridge.
         """
         self.ensure_one()
         product = self.product_id
@@ -41,6 +43,7 @@ class MrpProduction(models.Model):
             'product_qty': self.product_qty,
             'state': self.state,
             'operation_type': 'production',
+            'bom_source_res_id': self.bom_id.id or False,
             'product': {
                 'name': product.name,
                 'default_code': product.default_code or False,
@@ -49,9 +52,8 @@ class MrpProduction(models.Model):
         }
 
     def _nord_sync_apply_result(self, qty_produced):
-        """Applies a finished Nord job's result via the standard MRP flow
-        (Docs/NordSyncFase2, Fase 3 Slice 3.1) — the real value is always
-        recorded, even if it differs from what was expected (no validation
+        """Applies a finished Nord job's result via the standard MRP flow —
+        the real value is always recorded, even if it differs from what was expected (no validation
         against the original quantity). A state that's already terminal
         (done/cancel) is a benign no-op (duplicate delivery, or the MO moved on
         client-side before the Core's result arrived) — logged, not alarmed.

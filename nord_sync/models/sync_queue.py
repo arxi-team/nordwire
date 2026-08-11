@@ -43,10 +43,10 @@ class NordSyncQueue(models.Model):
     last_error = fields.Char(
         string='Last Error',
         help='Exception message from the most recent failed webhook attempt for '
-             'this entry — cleared on success. Docs/NordSyncFase2, Fase 4 Slice 4.2.',
+             'this entry — cleared on success.',
     )
 
-    # ── Fase 4 Slices 4.1/4.2: systray count + dedicated failures view ─────────
+    # ── Systray failed-count + dedicated failures view ──────────────────────────
 
     @api.model
     def systray_get_failed_count(self):
@@ -55,9 +55,9 @@ class NordSyncQueue(models.Model):
         ])
 
     def action_retry_now(self):
-        """Manual resend (Slice 4.2) — same one-ping-per-company mechanism as the
-        periodic cron (Slice 4.3), just triggered on demand instead of waiting
-        for the next tick. Bound as a list-view server action, so it can act on
+        """Manual resend — same one-ping-per-company mechanism as the
+        periodic cron, just triggered on demand instead of waiting for the
+        next tick. Bound as a list-view server action, so it can act on
         whatever's selected (or all failures, if the whole list is selected).
         """
         configs = self.env['nord_sync.config'].sudo().search([

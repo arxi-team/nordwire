@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate="1" so a module upgrade doesn't overwrite whatever the
+         client has since changed here, same as nord_sync's own automation
+         rules. -->
+    <data noupdate="1">
+
+        <record id="automation_mrp_production_confirmed" model="base.automation">
+            <field name="name">Nord Sync: MO confirmed</field>
+            <field name="model_id" ref="mrp.model_mrp_production"/>
+            <field name="trigger">on_create_or_write</field>
+            <field name="filter_pre_domain">[('state', '!=', 'confirmed')]</field>
+            <field name="filter_domain">[('state', '=', 'confirmed')]</field>
+        </record>
+        <record id="automation_mrp_production_confirmed_action" model="ir.actions.server">
+            <field name="name">Nord Sync: notify Cloud</field>
+            <field name="model_id" ref="mrp.model_mrp_production"/>
+            <field name="base_automation_id" ref="automation_mrp_production_confirmed"/>
+            <field name="state">nord_sync_notify</field>
+            <field name="nord_sync_operation">write</field>
+        </record>
+
+        <record id="automation_mrp_production_cancelled" model="base.automation">
+            <field name="name">Nord Sync: MO cancelled</field>
+            <field name="model_id" ref="mrp.model_mrp_production"/>
+            <field name="trigger">on_create_or_write</field>
+            <field name="filter_pre_domain">[('state', '!=', 'cancel')]</field>
+            <field name="filter_domain">[('state', '=', 'cancel')]</field>
+        </record>
+        <record id="automation_mrp_production_cancelled_action" model="ir.actions.server">
+            <field name="name">Nord Sync: notify Cloud</field>
+            <field name="model_id" ref="mrp.model_mrp_production"/>
+            <field name="base_automation_id" ref="automation_mrp_production_cancelled"/>
+            <field name="state">nord_sync_notify</field>
+            <field name="nord_sync_operation">write</field>
+        </record>
+
+        <record id="automation_mrp_production_unlink" model="base.automation">
+            <field name="name">Nord Sync: MO deleted</field>
+            <field name="model_id" ref="mrp.model_mrp_production"/>
+            <field name="trigger">on_unlink</field>
+        </record>
+        <record id="automation_mrp_production_unlink_action" model="ir.actions.server">
+            <field name="name">Nord Sync: notify Cloud</field>
+            <field name="model_id" ref="mrp.model_mrp_production"/>
+            <field name="base_automation_id" ref="automation_mrp_production_unlink"/>
+            <field name="state">nord_sync_notify</field>
+            <field name="nord_sync_operation">unlink</field>
+        </record>
+
+    </data>
+</odoo>

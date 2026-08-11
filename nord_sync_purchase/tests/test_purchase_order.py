@@ -6,11 +6,14 @@ POST_TARGET = 'odoo.addons.nord_sync.models.nord_sync_config.requests.post'
 
 
 @tagged('post_install', '-at_install')
-class TestMaintenanceRequestNordSync(TransactionCase):
-    """Docs/NordSyncFase2, Fase 5 Slice 5.1 — second source model, wired only via
-    the "Maintenance Request created" Automation Rule (on_create), unlike
-    mrp.production/product.product which also react to write/unlink.
-    """
+class TestPurchaseOrderNordSync(TransactionCase):
+    """Same minimal shape as nord_sync_maintenance — create-only, no write/
+    unlink Automation Rule wired."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.partner = cls.env['res.partner'].create({'name': 'Nord Sync Test Vendor'})
 
     def _configure(self, **vals):
         vals.setdefault('enabled', True)
@@ -18,43 +21,43 @@ class TestMaintenanceRequestNordSync(TransactionCase):
 
     def test_no_config_does_not_enqueue(self):
         with patch(POST_TARGET) as mocked_post:
-            request = self.env['maintenance.request'].create({'name': 'No Config Request'})
+            order = self.env['purchase.order'].create({'partner_id': self.partner.id})
         self.assertFalse(self.env['nord.sync.queue'].search([
-            ('res_id', '=', request.id), ('res_model', '=', 'maintenance.request'),
+            ('res_id', '=', order.id), ('res_model', '=', 'purchase.order'),
         ]))
         mocked_post.assert_not_called()
 
     def test_disabled_config_does_not_enqueue(self):
         self._configure(enabled=False)
         with patch(POST_TARGET) as mocked_post:
-            request = self.env['maintenance.request'].create({'name': 'Disabled Config Request'})
+            order = self.env['purchase.order'].create({'partner_id': self.partner.id})
         self.assertFalse(self.env['nord.sync.queue'].search([
-            ('res_id', '=', request.id), ('res_model', '=', 'maintenance.request'),
+            ('res_id', '=', order.id), ('res_model', '=', 'purchase.order'),
         ]))
         mocked_post.assert_not_called()
 
     def test_enabled_config_enqueues_on_create(self):
         self._configure()
         with patch(POST_TARGET):
-            request = self.env['maintenance.request'].create({'name': 'Fix conveyor belt'})
+            order = self.env['purchase.order'].create({'partner_id': self.partner.id})
         entry = self.env['nord.sync.queue'].search([
-            ('res_id', '=', request.id), ('res_model', '=', 'maintenance.request'),
+            ('res_id', '=', order.id), ('res_model', '=', 'purchase.order'),
         ])
         self.assertEqual(len(entry), 1)
         self.assertEqual(entry.operation, 'create')
-        self.assertEqual(entry.data['name'], 'Fix conveyor belt')
-        self.assertEqual(entry.data['operation_type'], 'maintenance')
+        self.assertEqual(entry.data['name'], order.name)
+        self.assertEqual(entry.data['operation_type'], 'purchase')
 
     def test_write_does_not_enqueue(self):
-        """No write Automation Rule wired for this model (unlike MO/product) —
-        confirms the per-model trigger choice, not a shared default."""
+        """No write Automation Rule wired for this model — confirms the
+        per-model trigger choice, not a shared default."""
         self._configure()
         with patch(POST_TARGET):
-            request = self.env['maintenance.request'].create({'name': 'Fix conveyor belt'})
+            order = self.env['purchase.order'].create({'partner_id': self.partner.id})
         with patch(POST_TARGET) as mocked_post:
-            request.write({'name': 'Fix conveyor belt urgently'})
+            order.write({'origin': 'Urgent'})
         entries = self.env['nord.sync.queue'].search([
-            ('res_id', '=', request.id), ('res_model', '=', 'maintenance.request'), ('operation', '=', 'write'),
+            ('res_id', '=', order.id), ('res_model', '=', 'purchase.order'), ('operation', '=', 'write'),
         ])
         self.assertFalse(entries)
         mocked_post.assert_not_called()

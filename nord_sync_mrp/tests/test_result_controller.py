@@ -89,3 +89,77 @@ class TestNordSyncResultController(HttpCase):
         body = response.json()
         self.assertTrue(body['success'])
         self.assertEqual(mo.state, 'done')
+
+    # ── mrp.workorder (Timesheet Bridge) ────────────────────────────────────────
+
+    def _create_mo_with_workorder(self, workcenter_name='Result Test WC'):
+        with patch(POST_TARGET):
+            wc = self.env['mrp.workcenter'].create({'name': workcenter_name})
+            bom = self.env['mrp.bom'].create({
+                'product_tmpl_id': self.product.product_tmpl_id.id,
+                'product_qty': 1.0,
+                'operation_ids': [(0, 0, {'name': 'Op', 'workcenter_id': wc.id, 'time_cycle_manual': 30})],
+            })
+            mo = self.env['mrp.production'].create({
+                'product_id': self.product.id, 'product_qty': 1.0, 'bom_id': bom.id,
+            })
+            mo.action_confirm()
+        return mo, wc
+
+    def test_workorder_missing_source_references_is_bad_request(self):
+        response = self._post(
+            {'company_uid': 'core-result-test-uid', 'res_model': 'mrp.workorder', 'duration': 1.0},
+            api_key=self.api_key,
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_workorder_unknown_production_is_not_found(self):
+        response = self._post(
+            {
+                'company_uid': 'core-result-test-uid', 'res_model': 'mrp.workorder',
+                'production_source_res_id': 999999, 'workcenter_source_res_id': 1, 'duration': 1.0,
+            },
+            api_key=self.api_key,
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_workorder_no_matching_workorder_is_not_found(self):
+        mo, _wc = self._create_mo_with_workorder()
+        other_wc = self.env['mrp.workcenter'].create({'name': 'Unrelated WC'})
+        response = self._post(
+            {
+                'company_uid': 'core-result-test-uid', 'res_model': 'mrp.workorder',
+                'production_source_res_id': mo.id, 'workcenter_source_res_id': other_wc.id, 'duration': 1.0,
+            },
+            api_key=self.api_key,
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_workorder_valid_request_applies_duration(self):
+        mo, wc = self._create_mo_with_workorder()
+        workorder = self.env['mrp.workorder'].search([
+            ('production_id', '=', mo.id), ('workcenter_id', '=', wc.id),
+        ], limit=1)
+        response = self._post(
+            {
+                'company_uid': 'core-result-test-uid', 'res_model': 'mrp.workorder',
+                'production_source_res_id': mo.id, 'workcenter_source_res_id': wc.id, 'duration': 1.5,
+            },
+            api_key=self.api_key,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
+        self.assertEqual(workorder.duration, 90.0)  # 1.5h -> 90 minutes
+
+    def test_workorder_second_session_accumulates_duration(self):
+        mo, wc = self._create_mo_with_workorder()
+        workorder = self.env['mrp.workorder'].search([
+            ('production_id', '=', mo.id), ('workcenter_id', '=', wc.id),
+        ], limit=1)
+        body = {
+            'company_uid': 'core-result-test-uid', 'res_model': 'mrp.workorder',
+            'production_source_res_id': mo.id, 'workcenter_source_res_id': wc.id,
+        }
+        self._post({**body, 'duration': 1.0}, api_key=self.api_key)
+        self._post({**body, 'duration': 0.5}, api_key=self.api_key)
+        self.assertEqual(workorder.duration, 90.0)  # 60 + 30 minutes

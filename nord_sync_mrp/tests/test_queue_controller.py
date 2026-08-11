@@ -57,7 +57,7 @@ class TestNordSyncQueueController(HttpCase):
         with patch(POST_TARGET):
             product = self.env['product.product'].create({'name': 'Nord Sync Controller Test Product'})
             mo = self.env['mrp.production'].create({'product_id': product.id})
-            mo.action_confirm()  # a draft MO alone doesn't enqueue, see Slice 2.4
+            mo.action_confirm()  # a draft MO alone doesn't enqueue, only confirming does
 
         response = self._get(api_key=self.api_key)
         self.assertEqual(response.status_code, 200)
