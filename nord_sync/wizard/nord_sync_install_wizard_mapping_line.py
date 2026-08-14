@@ -1,17 +1,21 @@
 # -*- coding: utf-8 -*-
 from odoo import fields, models
 
-from ..models.nord_sync_state_mapping import TARGET_STATE_SELECTION
-
 
 class NordSyncInstallWizardMappingLine(models.TransientModel):
     """One row per value the source model can actually take — not narrowed
     to whichever values today's shipped Automation Rules happen to send. The
     client edits Automation Rules directly, so any native state could reach
     the bridge; the wizard shouldn't decide on the client's behalf which ones are worth
-    mapping. A row left entirely blank (no target_state, no stage) just means
-    that value isn't mapped — never an error, same resilience posture as
+    mapping. A row left entirely blank (no stage) just means that value isn't
+    mapped — never an error, same resilience posture as
     _resolve_nord_sync_state_mapping on the Core.
+
+    Job state is never shown or mapped here at all — it's exclusive to the
+    job, resolved on the Core from each source addon's own hardcoded
+    registration, with no client-side counterpart of any kind (not even a
+    read-only echo — that was itself removed, this wizard has no notion of
+    job state left). Job Stage is the only thing a row here ever means.
 
     Rows themselves aren't freely addable/removable — the fixed set of native
     values *is* the row set (see _mapping_line_vals in the wizard), so
@@ -45,7 +49,6 @@ class NordSyncInstallWizardMappingLine(models.TransientModel):
     source_label = fields.Char(readonly=True, help='Human label for source_model (e.g. "Manufacturing Orders").')
     source_value = fields.Char(required=True, readonly=True)
     source_value_label = fields.Char(readonly=True, help='Human label for source_value (e.g. "Confirmed").')
-    target_state = fields.Selection(TARGET_STATE_SELECTION)
     target_job_stage_line_id = fields.Many2one(
         'nord_sync.install.wizard.stage.line', string='Job Stage',
         domain="[('wizard_id', '=', wizard_id)]", ondelete='set null',

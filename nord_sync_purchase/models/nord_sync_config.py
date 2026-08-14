@@ -17,8 +17,4 @@ class NordSyncConfig(models.Model):
             'source_model': 'purchase.order',
             'source_field': 'state',
             'label': 'Purchase Orders',
-            # Only the unambiguous transitions default — every other native
-            # state still gets its own row in the wizard, just with no
-            # default filled in (the client decides).
-            'default_target_state_by_value': {'purchase': 'open', 'cancel': 'cancelled'},
         }]

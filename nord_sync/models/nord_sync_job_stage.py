@@ -22,6 +22,11 @@ class NordSyncJobStage(models.Model):
         'res.company', required=True, default=lambda self: self.env.company,
     )
 
+    _company_name_unique = models.Constraint(
+        'UNIQUE(company_id, name)',
+        'A job stage with this name already exists for this company.',
+    )
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)

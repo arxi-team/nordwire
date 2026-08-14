@@ -26,7 +26,7 @@
                 </p>
                 <p>
                     Pushed to the Nord Core automatically — reference them from
-                    a State Mapping row below to control which stage a job
+                    a Job Stage Mapping row below to control which stage a job
                     lands in.
                 </p>
             </field>
@@ -42,14 +42,13 @@
                     <field name="company_id" groups="base.group_multi_company"/>
                     <field name="source_model"/>
                     <field name="source_value"/>
-                    <field name="target_state"/>
                     <field name="target_job_stage_id"/>
                 </list>
             </field>
         </record>
 
         <record id="action_nord_sync_state_mapping" model="ir.actions.act_window">
-            <field name="name">State Mapping</field>
+            <field name="name">Job Stage Mapping</field>
             <field name="res_model">nord_sync.state.mapping</field>
             <field name="view_mode">list</field>
             <field name="help" type="html">
@@ -57,10 +56,12 @@
                     No mapping configured yet.
                 </p>
                 <p>
-                    Each row says what a source value (e.g. a Manufacturing
-                    Order state) should do to the matching job on the Nord
-                    Core — set its state, its stage, or both. A value with no
-                    matching row here is left alone.
+                    Each row says which job stage a source value (e.g. a
+                    Manufacturing Order state) should set on the matching job
+                    on the Nord Core. Job state itself is never configured
+                    anywhere on this client — it's exclusive to the job,
+                    resolved entirely on the Nord Core. A value with no
+                    matching row here just leaves its job stage alone.
                 </p>
             </field>
         </record>
@@ -69,7 +70,7 @@
                   parent="menu_nord_sync_root" action="action_nord_sync_job_stage"
                   groups="group_nord_sync_manager" sequence="30"/>
 
-        <menuitem id="menu_nord_sync_state_mapping" name="State Mapping"
+        <menuitem id="menu_nord_sync_state_mapping" name="Job Stage Mapping"
                   parent="menu_nord_sync_root" action="action_nord_sync_state_mapping"
                   groups="group_nord_sync_manager" sequence="40"/>
 

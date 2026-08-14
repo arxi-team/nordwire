@@ -26,27 +26,21 @@
                     </div>
 
                     <div invisible="state != 'step_sources'">
-                        <h3>Step 2. Sources</h3>
+                        <h3>Step 2. What do you want to sync?</h3>
                         <p class="text-muted">
-                            Which business models feed the Nord Sync bridge — checking
-                            one here installs its addon for real (Apps screen does the
-                            same thing), which is also what determines which native
-                            states the next step can offer to map. Already installed
-                            ones are pre-checked and locked.
+                            Pick the parts of your business that should sync with Nord.
+                            Anything already active is checked and can't be changed here.
                         </p>
                         <p class="text-muted">
-                            Checking a new one and clicking Next installs it for real
-                            (same as installing it from Apps) — the page reloads once,
-                            then comes straight back to this wizard on the next step,
-                            now seeing its native states too.
+                            Adding a new one takes a moment to set up — the page will
+                            refresh once and bring you straight back here.
                         </p>
                         <field name="available_source_ids">
                             <list editable="bottom" create="0" delete="0">
                                 <field name="module_id" column_invisible="1"/>
-                                <field name="name" readonly="1" string="Source"/>
-                                <field name="summary" readonly="1"/>
+                                <field name="name" readonly="1" string="Area"/>
                                 <field name="installed" column_invisible="1"/>
-                                <field name="selected" readonly="installed"/>
+                                <field name="selected" readonly="installed" string="Sync this"/>
                             </list>
                         </field>
                     </div>
@@ -60,7 +54,7 @@
                     </div>
 
                     <div invisible="state != 'step_job_stages'">
-                        <h3>Step 4. Job Stages &amp; Mapping</h3>
+                        <h3>Step 4. Job Stages</h3>
                         <group>
                             <field name="job_stage_mode" widget="radio"/>
                         </group>
@@ -74,15 +68,17 @@
                             Optional — leave empty for no stage granularity (a job's
                             state alone still works).
                         </p>
+                    </div>
 
-                        <h4>Mapping</h4>
+                    <div invisible="state != 'step_mapping'">
+                        <h3>Step 5. Mapping</h3>
                         <p class="text-muted">
                             For each state a native value from an installed Nord Sync
                             Source (Manufacturing Orders, and any other source addon you
-                            have installed) can be in, choose what happens to its job on
-                            the Nord Core — its state, its stage, both, or leave it blank
-                            to not map that value at all. You decide which values matter;
-                            nothing here is forced.
+                            have installed) can be in, choose which Job Stage its job
+                            lands in on the Nord Core, or leave it blank to not map that
+                            value at all. You decide which values matter; nothing here
+                            is forced.
                         </p>
                         <field name="mapping_line_ids">
                             <!-- create/delete disabled deliberately: one row per native
@@ -99,7 +95,6 @@
                                 <field name="source_value" column_invisible="1"/>
                                 <field name="source_label" readonly="1" string="Source"/>
                                 <field name="source_value_label" readonly="1" string="Source Value"/>
-                                <field name="target_state" string="Job State"/>
                                 <field name="target_job_stage_line_id" string="Job Stage"/>
                             </list>
                         </field>
@@ -111,8 +106,22 @@
                         </p>
                     </div>
 
+                    <div invisible="state != 'step_job_naming'">
+                        <h3>Step 6. Job Naming</h3>
+                        <p class="text-muted">
+                            How should jobs created on the Nord Core from your synced
+                            records be named?
+                        </p>
+                        <group>
+                            <field name="job_naming_mode" widget="radio"/>
+                            <field name="job_naming_custom_prefix"
+                                   invisible="job_naming_mode != 'custom_prefix'"
+                                   placeholder="ACME-JOB/2026/"/>
+                        </group>
+                    </div>
+
                     <div invisible="state != 'step_finish'">
-                        <h3>Step 5. Confirm</h3>
+                        <h3>Step 7. Confirm</h3>
                         <group>
                             <field name="company_id" readonly="1"/>
                             <field name="company_uid" readonly="1"/>

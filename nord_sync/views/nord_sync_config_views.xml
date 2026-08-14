@@ -29,6 +29,9 @@
                             <field name="company_id"/>
                             <field name="enabled"/>
                             <field name="company_uid"/>
+                            <field name="job_naming_mode"/>
+                            <field name="job_naming_custom_prefix"
+                                   invisible="job_naming_mode != 'custom_prefix'"/>
                         </group>
                     </sheet>
                 </form>

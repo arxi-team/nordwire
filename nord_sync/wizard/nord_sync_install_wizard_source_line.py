@@ -20,13 +20,21 @@ class NordSyncInstallWizardSourceLine(models.TransientModel):
 
     wizard_id = fields.Many2one('nord_sync.install.wizard', required=True, ondelete='cascade')
     module_id = fields.Many2one('ir.module.module', required=True, readonly=True)
-    name = fields.Char(related='module_id.shortdesc', readonly=True)
-    summary = fields.Char(related='module_id.summary', readonly=True)
+    name = fields.Char(compute='_compute_name', readonly=True)
     installed = fields.Boolean(compute='_compute_installed')
     selected = fields.Boolean(
         default=False,
         help='Install this Nord Sync Source now, alongside the base module.',
     )
+
+    @api.depends('module_id.shortdesc')
+    def _compute_name(self):
+        # Every source addon names itself "Nord Sync: X" (ir.module.module's
+        # own name, meant for the technical Apps screen) — stripped down to
+        # just "X" here since this wizard is meant for a less technical
+        # audience picking business areas, not addon names.
+        for line in self:
+            line.name = (line.module_id.shortdesc or '').removeprefix('Nord Sync: ')
 
     @api.depends('module_id.state')
     def _compute_installed(self):

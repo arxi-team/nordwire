@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Nord Sync',
-    'version': '1.0.2',
+    'version': '1.0.4',
     'category': 'Manufacturing',
     'summary': 'Bridges this Odoo to the Nord platform: notifies the Nord Cloud of changes, '
                'exposes a queue for the Nord Core to pull, authenticated by API key.',

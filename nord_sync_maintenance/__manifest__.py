@@ -18,5 +18,6 @@ and `maintenance` — never forces installing any other business app.
     ],
     'installable': True,
     'auto_install': False,
+    'post_init_hook': 'post_init_hook',
     'application': False,
 }

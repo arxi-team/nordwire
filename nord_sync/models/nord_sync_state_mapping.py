@@ -1,23 +1,19 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
 
-# Mirrors nord.job.state on the Core (nordos_onpremise/models/job.py) —
-# duplicated here deliberately: the state enum is a fixed, stable contract,
-# not something worth pushing/syncing on its own.
-TARGET_STATE_SELECTION = [
-    ('draft', 'Draft'),
-    ('open', 'Confirmed'),
-    ('in_progress', 'In Progress'),
-    ('done', 'Done'),
-    ('cancelled', 'Cancelled'),
-]
-
 
 class NordSyncStateMapping(models.Model):
-    """Client-authored Nord Sync State Mapping — ties a raw source value
+    """Client-authored Nord Sync Job Stage Mapping — ties a raw source value
     (e.g. mrp.production's own 'confirmed'/'cancel' state, or another adapter's
-    stage name) to what should happen on the matching nord.job on the Core:
-    its state and/or its job stage.
+    stage name) to the job stage that should land on the matching nord.job
+    on the Core.
+
+    Only job stage lives here — nord.job.state is exclusive to the job
+    itself, resolved entirely on the Core from each source addon's own
+    hardcoded registration there (_nord_sync_default_target_state_by_value
+    in nordos_nord_sync_core*). Nothing about job state is mirrored,
+    mapped, or even displayed on this client at all — no row here, no
+    field on this model, no column in the install wizard.
 
     Pushed one way (client -> Core) through the same nord.sync.queue/webhook/
     pull pipeline every other Nord Sync source model uses — the Core keeps
@@ -26,7 +22,7 @@ class NordSyncStateMapping(models.Model):
     authoring surface.
     """
     _name = 'nord_sync.state.mapping'
-    _description = 'Nord Sync State Mapping'
+    _description = 'Nord Sync Job Stage Mapping'
 
     company_id = fields.Many2one(
         'res.company', required=True, default=lambda self: self.env.company,
@@ -36,7 +32,6 @@ class NordSyncStateMapping(models.Model):
         selection='_selection_source_value', required=True,
         help='Value as this model itself tracks it — picked from a real list, never typed.',
     )
-    target_state = fields.Selection(TARGET_STATE_SELECTION)
     target_job_stage_id = fields.Many2one('nord_sync.job.stage')
 
     _company_source_unique = models.Constraint(
@@ -124,6 +119,5 @@ class NordSyncStateMapping(models.Model):
         return {
             'source_model': self.source_model,
             'source_value': self.source_value,
-            'target_state': self.target_state or False,
             'target_job_stage_source_res_id': self.target_job_stage_id.id or False,
         }

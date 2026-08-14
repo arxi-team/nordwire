@@ -16,6 +16,13 @@ WEBHOOK_TIMEOUT_SECONDS = 5
 CLOUD_BASE_URL_PARAM = 'nord_sync.cloud_base_url'
 CLOUD_WEBHOOK_PATH = '/nordos/sync/nord_sync/webhook'
 
+JOB_NAMING_MODES = [
+    ('sequence', 'Core Sequence'),
+    ('source_document', 'Source Document Name'),
+    ('custom_prefix', 'Custom Prefix'),
+]
+JOB_NAMING_FIELDS = {'job_naming_mode', 'job_naming_custom_prefix'}
+
 
 class NordSyncConfig(models.Model):
     """Nord Sync connection config — one record per company, replacing the
@@ -39,9 +46,38 @@ class NordSyncConfig(models.Model):
              'identify this company on queue pulls.',
     )
 
+    job_naming_mode = fields.Selection(
+        JOB_NAMING_MODES, default='sequence', string='Job Naming',
+        help='How jobs created on the Nord Core from this company\'s synced '
+             "records get their name/reference — the Core's own sequence, "
+             "the originating document's own name (e.g. a Manufacturing "
+             "Order's WH/MO/00019), or a custom prefix on the Core sequence.",
+    )
+    job_naming_custom_prefix = fields.Char(
+        string='Custom Job Naming Prefix',
+        help='Only used when Job Naming is Custom Prefix — Core ir.sequence '
+             'prefix syntax, e.g. "ACME-JOB/%(year)s/".',
+    )
+
     _company_unique = models.Constraint(
         'UNIQUE(company_id)', 'Only one Nord Sync configuration per company is allowed.',
     )
+
+    def write(self, vals):
+        changed = JOB_NAMING_FIELDS & set(vals)
+        result = super().write(vals)
+        if changed:
+            for config in self:
+                if config.enabled:
+                    config._push_job_naming_signal()
+        return result
+
+    def _push_job_naming_signal(self):
+        self.ensure_one()
+        self._enqueue_and_notify('nord_sync.config', self.company_id.id, 'write', {
+            'job_naming_mode': self.job_naming_mode,
+            'job_naming_custom_prefix': self.job_naming_custom_prefix or False,
+        })
 
     @api.model
     def _get_for_company(self, company):
@@ -52,10 +88,14 @@ class NordSyncConfig(models.Model):
         """Extension point — the single place every Nord Sync Source addon
         (nord_sync_mrp, nord_sync_maintenance, ...) registers itself, via
         _inherit chain: prepend its own {'source_model', 'source_field',
-        'label', 'default_target_state_by_value'} entry and call super().
-        Consumed by the install wizard's Job Stages & Mapping step and by
-        nord_sync.state.mapping's source_model/source_value Selections — one
-        registration, two consumers, so they can never drift apart. Base
+        'label'} entry and call super(). Consumed by the install wizard's
+        Job Stages & Mapping step and by nord_sync.state.mapping's
+        source_model/source_value Selections — one registration, two
+        consumers, so they can never drift apart. Job state has no entry
+        here at all — it's exclusive to the job, resolved on the Core from
+        each source's own hardcoded registration there
+        (_nord_sync_default_target_state_by_value in
+        nordos_nord_sync_core*), with nothing mirrored on this side. Base
         returns none: with no source addon installed there's nothing native
         to map yet.
         """
@@ -66,12 +106,13 @@ class NordSyncConfig(models.Model):
         config = self._get_for_company(company)
         return config or self.create({'company_id': company.id})
 
-    def _ensure_state_mapping(self, source_model, source_value, target_state=False, target_job_stage_id=False):
-        """Idempotent upsert for one Nord Sync State Mapping row — the one
-        place that decides what "already configured" means, so the install
-        wizard (Job Stages & Mapping step) and _ensure_backward_compat_
-        state_mapping below (1.0.1 upgrade migration) can't disagree with
-        each other about it.
+    def _ensure_state_mapping(self, source_model, source_value, target_job_stage_id=False):
+        """Idempotent upsert for one Nord Sync Job Stage Mapping row — the
+        one place that decides what "already configured" means, so the
+        install wizard (Job Stages & Mapping step) is the only writer and
+        never disagrees with itself about it. Job stage only — nord.job.state
+        is resolved on the Core from each source's own hardcoded
+        registration, never from a row here.
         """
         self.ensure_one()
         StateMapping = self.env['nord_sync.state.mapping'].sudo()
@@ -80,9 +121,9 @@ class NordSyncConfig(models.Model):
             ('source_model', '=', source_model),
             ('source_value', '=', source_value),
         ], limit=1)
-        vals = {'target_state': target_state, 'target_job_stage_id': target_job_stage_id}
+        vals = {'target_job_stage_id': target_job_stage_id}
         if existing:
-            if existing.target_state != target_state or existing.target_job_stage_id.id != target_job_stage_id:
+            if existing.target_job_stage_id.id != target_job_stage_id:
                 existing.write(vals)
             return existing
         vals.update({'company_id': self.company_id.id, 'source_model': source_model, 'source_value': source_value})
@@ -120,6 +161,32 @@ class NordSyncConfig(models.Model):
         if sent is not None:
             entry.write({'status': 'sent' if sent else 'failed', 'last_error': error})
         return entry
+
+    def _push_source_installed_signal(self, module_name):
+        """Tells the Core (via the same queue/pull channel as job stages and
+        state mappings) that this client has a Nord Sync Source addon
+        installed, so it can auto-install its own matching counterpart
+        (nordos_nord_sync_core_<x>) instead of requiring an operator to do
+        it by hand on every client onboarding. No dedicated model: the
+        signal rides nord.sync.queue with a synthetic res_model
+        ('ir.module.module') and just the addon's technical name as payload
+        — nobody edits this fact, it's derived from ir.module.module, so a
+        real table for it would just be another thing to keep in sync.
+        Idempotent — skipped if already signalled for this module, so a
+        reinstall/upgrade doesn't spam the queue with duplicates.
+        """
+        self.ensure_one()
+        module = self.env['ir.module.module'].sudo().search([('name', '=', module_name)], limit=1)
+        if not module:
+            return
+        already = self.env['nord.sync.queue'].sudo().search_count([
+            ('company_id', '=', self.company_id.id),
+            ('res_model', '=', 'ir.module.module'),
+            ('res_id', '=', module.id),
+        ])
+        if already:
+            return
+        self._enqueue_and_notify('ir.module.module', module.id, 'write', {'name': module_name})
 
     def _send_wake_webhook(self):
         """Returns (status, error): status is None if skipped (not configured

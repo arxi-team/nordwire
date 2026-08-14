@@ -1,40 +1,60 @@
 # -*- coding: utf-8 -*-
-import logging
-
-from odoo import models
-
-_logger = logging.getLogger(__name__)
+from odoo import api, models
 
 
 class MrpWorkorder(models.Model):
-    """Result side of the Timesheet Bridge — never authored by this
-    client (a real work session only exists on the Core, via NordGo), only
-    the result (duration) flows back here on session close.
+    """Source side of the Workorder Bridge: each real mrp.workorder
+    (one per actual MO operation, not the BOM's routing template — that's
+    the separate BOM Bridge in mrp_bom.py) is pushed create/write/unlink so
+    the Core can create/update the matching real nord.timesheet, resolving
+    resource_id from its own workcenter_id instead of relying on the BOM
+    template's — real MOs can deviate from their BOM's routing (a
+    workcenter reassignment), which the template alone could never reflect.
+    Also carries employee_assigned_ids (Shop Floor) as a second, optional
+    resource reference — the workplace (workcenter_id) and the person
+    allocated to the work are two distinct resources on the Core side,
+    each with its own real work session.
+
+    No result side anymore (reverted 2026-08-13): a real work session's
+    start/end only ever existed on the Core, and nothing about it —
+    start, duration — pushes back here mid-flight. The only thing the
+    Core ever writes back to the client is the finished job's result
+    (mrp.production._nord_sync_apply_result), on a deliberate 'Mark Done'.
     """
     _inherit = 'mrp.workorder'
 
-    def _nord_sync_apply_result(self, duration_hours):
-        """Adds a closed Nord work session's duration to this workorder's
-        own duration (its inverse setter manages the underlying time_ids,
-        same "standard flow" spirit as mrp.production._nord_sync_apply_result
-        using qty_producing/button_mark_done instead of writing raw fields).
-        Additive, not a plain overwrite — more than one Nord session can
-        close against the same workorder over time (known, accepted gap
-        when the same operation repeats on the same MO and both sessions
-        land on the same workorder record — this still adds up correctly
-        session by session either way).
-        """
-        self.ensure_one()
-        try:
-            # mrp.workorder.duration is in minutes; the Core sends hours.
-            self.duration = self.duration + (duration_hours * 60)
-        except Exception as exc:
-            message = f'Nord Sync: failed to apply work session duration ({exc}).'
-            _logger.warning('nord_sync: failed to apply workorder result to %s: %s', self.id, exc)
-            self.production_id.message_post(body=message)
-            return False, message
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._nord_sync_notify('create')
+        return records
 
-        self.production_id.message_post(
-            body=f'Nord Sync: {duration_hours}h work session applied to "{self.name}" ({self.workcenter_id.name}).',
-        )
-        return True, 'ok'
+    def write(self, vals):
+        result = super().write(vals)
+        self._nord_sync_notify('write')
+        return result
+
+    def unlink(self):
+        self._nord_sync_notify('unlink')
+        return super().unlink()
+
+    def _nord_sync_notify(self, operation):
+        for record in self:
+            config = self.env['nord_sync.config'].sudo()._get_for_company(record.company_id)
+            if not config or not config.enabled:
+                continue
+            config._enqueue_and_notify('mrp.workorder', record.id, operation, record._nord_sync_payload())
+
+    def _nord_sync_payload(self):
+        self.ensure_one()
+        return {
+            'production_source_res_id': self.production_id.id,
+            'workcenter_source_res_id': self.workcenter_id.id,
+            # duration_expected is in minutes; nord.timesheet.expected_duration is hours.
+            'expected_duration': self.duration_expected / 60.0,
+            # employee_assigned_ids (Shop Floor) can hold several people —
+            # only the first is carried over, one operator per task on the
+            # Core side today.
+            'employee_source_res_id': self.employee_assigned_ids[:1].id or False,
+        }
+

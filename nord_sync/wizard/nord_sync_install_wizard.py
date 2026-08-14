@@ -3,6 +3,8 @@ from odoo import api, fields, models, release
 from odoo.exceptions import UserError
 from odoo.tools import config
 
+from ..models.nord_sync_config import JOB_NAMING_MODES
+
 SUPPORTED_MAJOR_VERSIONS = (19,)
 
 RUN_BEFORE_PREFIX = 'run_before_'
@@ -14,15 +16,18 @@ JOB_STAGE_SUGGESTED_NAMES = ['Queued', 'In Progress', 'Quality Check', 'Done']
 
 
 class NordSyncInstallWizard(models.TransientModel):
-    """Install wizard, 5 steps — pre-flight, sources, connection, job
-    stages & mapping, finish.
+    """Install wizard, 7 steps — pre-flight, sources, connection, job
+    stages, mapping, job naming, finish. Job stages and mapping used to be one combined
+    step; split into two so the person configuring this only has to think
+    about one thing at a time (name the stages, then map states to them),
+    matching how the rest of the wizard already isolates one concern per step.
 
     Multi-step shape (state + _steps + run_before_/run_after_ per-step
     hooks) is a small self-contained step machine — no reusable abstract
     base, since Nord Sync is the only wizard using it today.
 
-    The Sources step exists because Job Stages & Mapping (step 4) can only
-    show a source's native states once that source's addon is installed —
+    The Sources step exists because the Mapping step can only show a
+    source's native states once that source's addon is installed —
     choosing a Nord Sync Source *is* installing its addon (nord_sync_mrp,
     nord_sync_maintenance, ...), there's no separate enable/disable toggle.
     A wizard auto-opened right after installing just the base `nord_sync`
@@ -40,7 +45,7 @@ class NordSyncInstallWizard(models.TransientModel):
     button_immediate_install() itself) picks up and reopens automatically:
     the client lands back on this same wizard, continuing right where it
     left off, now correctly seeing the newly installed source's native
-    states once it reaches Job Stages & Mapping.
+    states once it reaches Job Stages/Mapping.
     """
     _name = 'nord_sync.install.wizard'
     _description = 'Nord Sync Installation Wizard'
@@ -49,7 +54,9 @@ class NordSyncInstallWizard(models.TransientModel):
         ('step_preflight', 'Pre-flight'),
         ('step_sources', 'Sources'),
         ('step_connection', 'Connection'),
-        ('step_job_stages', 'Job Stages & Mapping'),
+        ('step_job_stages', 'Job Stages'),
+        ('step_mapping', 'Mapping'),
+        ('step_job_naming', 'Job Naming'),
         ('step_finish', 'Finish'),
     ]
 
@@ -84,6 +91,19 @@ class NordSyncInstallWizard(models.TransientModel):
 
     mapping_line_ids = fields.One2many(
         'nord_sync.install.wizard.mapping.line', 'wizard_id', string='Mapping',
+    )
+
+    job_naming_mode = fields.Selection(
+        JOB_NAMING_MODES, default='sequence', string='Job Naming',
+        help='How jobs created on the Nord Core from this company\'s synced '
+             "records get their name/reference — the Core's own sequence, "
+             "the originating document's own name (e.g. a Manufacturing "
+             "Order's WH/MO/00019), or a custom prefix on the Core sequence.",
+    )
+    job_naming_custom_prefix = fields.Char(
+        string='Custom Job Naming Prefix',
+        help='Only used when Job Naming is Custom Prefix — Core ir.sequence '
+             'prefix syntax, e.g. "ACME-JOB/%(year)s/".',
     )
 
     cron_active = fields.Boolean(string='Scheduler Active', readonly=True)
@@ -169,6 +189,8 @@ class NordSyncInstallWizard(models.TransientModel):
         config_rec = self.env['nord_sync.config']._get_for_company(company)
         if config_rec:
             vals.setdefault('company_uid', config_rec.company_uid)
+            vals.setdefault('job_naming_mode', config_rec.job_naming_mode)
+            vals.setdefault('job_naming_custom_prefix', config_rec.job_naming_custom_prefix)
         vals.update(self._run_preflight())
         # Computed once here (not re-triggered on every step re-entry) so a
         # user who deliberately empties the list and navigates back/forward
@@ -287,9 +309,14 @@ class NordSyncInstallWizard(models.TransientModel):
         once, at create() time, which predates any install the Sources step
         itself triggered — the resume after that install lands back on
         Connection, not here, so create()'s snapshot is never touched again
-        on its own) without wiping manual edits (job stage renames,
-        target_state picks) on the common case of just going back to this
-        step from Finish and forward again with nothing installed meanwhile.
+        on its own) without wiping manual edits (job stage renames, job
+        stage picks) on the common case of just going back to this step
+        from Finish and forward again with nothing installed meanwhile.
+
+        Fires on the way into the Job Stages step (not Mapping, even though
+        it also refreshes mapping_line_ids) — both need to be ready before
+        either step is shown, and Job Stages always comes first, so doing it
+        once here means the Mapping step needs no refresh hook of its own.
         """
         self.ensure_one()
         registered_models = {s['source_model'] for s in self._nord_sync_available_native_sources()}
@@ -303,7 +330,7 @@ class NordSyncInstallWizard(models.TransientModel):
         self._default_mapping_targets()
         return True
 
-    # ── Step 4: Job Stages & Mapping ─────────────────────────────────────────────
+    # ── Steps 4-5: Job Stages & Mapping ──────────────────────────────────────────
 
     @api.model
     def _nord_sync_available_native_sources(self):
@@ -325,11 +352,19 @@ class NordSyncInstallWizard(models.TransientModel):
 
     @api.model
     def _job_stage_line_commands(self, mode):
+        # 'both' concatenates the native labels with the suggested list —
+        # the two can genuinely share a name (mrp.production's own native
+        # states already include 'In Progress'/'Done', both also in
+        # JOB_STAGE_SUGGESTED_NAMES), which would violate nord_sync.job.
+        # stage's per-company name uniqueness on Confirm. Deduped here,
+        # across both lists together, not just within each — native wins
+        # the earlier sequence slot since it's added first.
         names = []
         if mode in ('native', 'both'):
             names += self._native_state_labels()
         if mode in ('own', 'both'):
             names += JOB_STAGE_SUGGESTED_NAMES
+        names = list(dict.fromkeys(names))
         return [(5, 0, 0)] + [
             (0, 0, {'name': name, 'sequence': (i + 1) * 10}) for i, name in enumerate(names)
         ]
@@ -376,7 +411,6 @@ class NordSyncInstallWizard(models.TransientModel):
         sequence = 0
         for source in self._nord_sync_available_native_sources():
             selection = self.env[source['source_model']]._fields[source['source_field']].selection
-            defaults = source.get('default_target_state_by_value') or {}
             for value, label in selection:
                 sequence += 10
                 vals.append({
@@ -385,7 +419,6 @@ class NordSyncInstallWizard(models.TransientModel):
                     'source_label': source.get('label') or source['source_model'],
                     'source_value': value,
                     'source_value_label': label,
-                    'target_state': defaults.get(value, False),
                 })
         return vals
 
@@ -407,7 +440,14 @@ class NordSyncInstallWizard(models.TransientModel):
                 if match:
                     map_line.target_job_stage_line_id = match.id
 
-    # ── Step 5: Finish ───────────────────────────────────────────────────────────
+    # ── Step: Job Naming ─────────────────────────────────────────────────────────
+
+    def run_after_step_job_naming(self):
+        if self.job_naming_mode == 'custom_prefix' and not self.job_naming_custom_prefix:
+            raise UserError('Fill in the custom prefix before continuing.')
+        return True
+
+    # ── Step: Finish ─────────────────────────────────────────────────────────────
 
     def action_confirm(self):
         """Finish: saves the config, then hands off to the "Nord Sync:
@@ -422,7 +462,11 @@ class NordSyncInstallWizard(models.TransientModel):
         if not self.preflight_ok:
             raise UserError('Fix the environment issues before continuing (see pre-flight message).')
         config_rec = self.env['nord_sync.config']._get_or_create_for_company(self.company_id)
-        config_rec.write({'enabled': True, 'company_uid': self.company_uid})
+        config_rec.write({
+            'enabled': True, 'company_uid': self.company_uid,
+            'job_naming_mode': self.job_naming_mode,
+            'job_naming_custom_prefix': self.job_naming_custom_prefix,
+        })
         # Real records (and their push to the Core) only happen here, once
         # config.enabled is actually True — matches _nord_sync_notify's own
         # guard, and means nothing pushes for a wizard that gets cancelled.
@@ -437,13 +481,13 @@ class NordSyncInstallWizard(models.TransientModel):
         # id the mapping row actually needs to point at.
         real_stage_id_by_line_id = dict(zip(stage_lines.ids, real_stages.ids))
         for map_line in self.mapping_line_ids:
-            # A row left entirely blank isn't mapped, not mapped-to-nothing —
-            # skip it rather than create an inert nord_sync.state.mapping row.
-            if not map_line.target_state and not map_line.target_job_stage_line_id:
+            # Job state is never a wizard choice at all (see the line
+            # model's own docstring) — only a real job-stage choice is
+            # worth a persisted/pushed row.
+            if not map_line.target_job_stage_line_id:
                 continue
             config_rec._ensure_state_mapping(
                 map_line.source_model, map_line.source_value,
-                target_state=map_line.target_state,
                 target_job_stage_id=real_stage_id_by_line_id.get(map_line.target_job_stage_line_id.id, False),
             )
         return {
