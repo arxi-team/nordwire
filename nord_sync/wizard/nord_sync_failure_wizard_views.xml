@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Not editable="bottom": with a <form> also defined below, clicking
+             a row opens that form as its own dialog instead of editing the
+             row in place — the list here is just enough to identify which
+             failure is which, everything actionable (assignee, note, the
+             two buttons) lives in the form, one failure at a time, so it
+             doesn't turn into a wall of inline fields once there's more
+             than one or two rows. -->
+        <record id="view_nord_sync_failure_wizard_form" model="ir.ui.view">
+            <field name="name">nord_sync.failure.wizard.form</field>
+            <field name="model">nord_sync.failure.wizard</field>
+            <field name="arch" type="xml">
+                <form>
+                    <field name="line_ids">
+                        <list create="0" delete="0">
+                            <field name="record_name"/>
+                            <field name="message"/>
+                        </list>
+                        <form>
+                            <sheet>
+                                <group>
+                                    <field name="record_name" readonly="1"/>
+                                    <field name="message" readonly="1"/>
+                                    <field name="assignee_id"/>
+                                    <field name="activity_deadline"/>
+                                    <field name="activity_note"/>
+                                </group>
+                            </sheet>
+                            <footer>
+                                <button name="action_create_activity" type="object"
+                                        string="Create Activity" class="btn-primary"/>
+                                <button name="action_open_related_record" type="object"
+                                        string="Open Related Record" class="btn-secondary"/>
+                                <button string="Close" class="btn-secondary" special="cancel"/>
+                            </footer>
+                        </form>
+                    </field>
+                    <footer>
+                        <button string="Close" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>

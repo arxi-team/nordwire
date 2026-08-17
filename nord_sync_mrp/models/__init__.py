@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from . import nord_sync_config
+from . import sync_queue
 from . import mrp_production
 from . import mrp_workcenter
 from . import hr_employee

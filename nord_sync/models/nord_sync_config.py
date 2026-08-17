@@ -148,6 +148,17 @@ class NordSyncConfig(models.Model):
         nord_sync.state.mapping — one nord.sync.queue entry + one best-effort
         wake webhook per change, so each model only needs to supply its own
         payload.
+
+        Delegates the actual send to _retry_failed_webhooks rather than
+        pinging on its own: that method already sweeps every pending/failed
+        entry for this company in one webhook call (the wake payload carries
+        no entry-specific data), so this new entry rides along with any
+        stragglers left behind by an earlier skipped/failed attempt (e.g. an
+        install wizard run that pushed stages/a state mapping before
+        cloud_base_url was configured) — they get resolved the moment any
+        new activity happens, not just every 5 minutes via the cron. One
+        webhook call either way, whether this is the only entry or there are
+        ten stale ones waiting.
         """
         self.ensure_one()
         entry = self.env['nord.sync.queue'].sudo().create({
@@ -157,9 +168,7 @@ class NordSyncConfig(models.Model):
             'company_id': self.company_id.id,
             'data': payload,
         })
-        sent, error = self._send_wake_webhook()
-        if sent is not None:
-            entry.write({'status': 'sent' if sent else 'failed', 'last_error': error})
+        self._retry_failed_webhooks()
         return entry
 
     def _push_source_installed_signal(self, module_name):
@@ -216,25 +225,36 @@ class NordSyncConfig(models.Model):
         return True, None
 
     def _retry_failed_webhooks(self):
-        """nord.sync.queue.status='failed' is exactly what this retries (see
-        that field's help text). One webhook ping
-        per company, not per entry — the wake payload carries no entry-specific
+        """Resends both 'failed' (webhook attempted, got an error) and
+        'pending' (webhook attempt was skipped outright, e.g. cloud_base_url
+        wasn't configured yet at push time — the install wizard's Finish step
+        pushes stages/mapping before an operator has necessarily set that
+        param, see nord_sync_install_wizard.py) — both are just "never
+        confirmed delivered", same recovery. Also the send path
+        _enqueue_and_notify itself delegates to, so a brand-new entry (still
+        'pending' from its own create) is swept by this same query — no
+        separate single-entry write needed there. One webhook ping per
+        company, not per entry — the wake payload carries no entry-specific
         data (just company_uid), so a single successful ping resolves every
-        pending entry for this company at once, same as the Core's own
-        reconciliation (_incremental_sync) already guarantees on its side; this
-        cron only shortens the wait, it's not the correctness guarantee.
+        stale entry for this company at once, same as the Core's own
+        reconciliation (_incremental_sync) already guarantees on its side;
+        this is just what shortens the wait, not the correctness guarantee.
+        status is written on failure too (not just last_error) — otherwise a
+        brand-new 'pending' entry whose first-ever attempt fails would be
+        left in 'pending' with an error message attached, instead of
+        'failed' like every other failed attempt.
         """
         self.ensure_one()
-        failed_entries = self.env['nord.sync.queue'].sudo().search([
-            ('company_id', '=', self.company_id.id), ('status', '=', 'failed'),
+        stale_entries = self.env['nord.sync.queue'].sudo().search([
+            ('company_id', '=', self.company_id.id), ('status', 'in', ('failed', 'pending')),
         ])
-        if not failed_entries:
+        if not stale_entries:
             return False
         sent, error = self._send_wake_webhook()
         if sent:
-            failed_entries.write({'status': 'sent', 'last_error': False})
+            stale_entries.write({'status': 'sent', 'last_error': False})
         elif error:
-            failed_entries.write({'last_error': error})
+            stale_entries.write({'status': 'failed', 'last_error': error})
         return bool(sent)
 
     @api.model

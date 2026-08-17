@@ -188,3 +188,4 @@ class MrpProduction(models.Model):
             note=message,
             user_id=self.user_id.id or self.env.user.id,
         )
+

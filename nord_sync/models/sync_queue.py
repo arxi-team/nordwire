@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 
 
 class NordSyncQueue(models.Model):
@@ -50,9 +50,15 @@ class NordSyncQueue(models.Model):
 
     @api.model
     def systray_get_failed_count(self):
-        return self.sudo().search_count([
+        """Counts distinct visible owners, not raw failed entries — an MO
+        whose own entry, moves, and a workorder all failed together is one
+        problem, not three (see _nord_sync_visible_owner)."""
+        failed = self.sudo().search([
             ('status', '=', 'failed'), ('company_id', 'in', self.env.companies.ids),
         ])
+        owners = {entry._nord_sync_visible_owner() for entry in failed}
+        owners.discard(None)
+        return len(owners)
 
     def action_retry_now(self):
         """Manual resend — same one-ping-per-company mechanism as the
@@ -65,3 +71,74 @@ class NordSyncQueue(models.Model):
         ])
         for config in configs:
             config._retry_failed_webhooks()
+
+    # ── user-facing failure surfaces ─────────────────────────────────────────────
+    # The wake webhook is one best-effort ping per company (see
+    # _send_wake_webhook), not one per entry — a single outage marks every
+    # entry created in that window as failed, with the same transport error
+    # repeated. A source whose model has "child" models describing the same
+    # real-world thing (nord_sync_mrp: an MO's own entry, its moves, one of
+    # its workorders) would otherwise show up as several independent
+    # failures for what is one problem. _nord_sync_visible_owner lets a
+    # source addon collapse/hide that — every entry is its own owner by
+    # default (unchanged, current behaviour), only narrowed by a source that
+    # actually has this child-model shape (see nord_sync_mrp's override).
+
+    def _nord_sync_visible_owner(self):
+        """Extension point: (res_model, res_id) of the record this entry's
+        failure should surface as, on the failure-count/activity/wizard
+        surfaces — itself by default. A source addon narrows this per
+        res_model: None to hide entirely (a child model with no independent
+        meaning of its own, e.g. nord_sync_mrp's mrp.bom/mrp.workcenter/
+        hr.employee — still retried normally, still visible in the
+        technical Sync Failures list below), or another record's
+        (res_model, res_id) to redirect (e.g. mrp.production.moves/
+        mrp.workorder onto their owning MO).
+        """
+        self.ensure_one()
+        return (self.res_model, self.res_id)
+
+    def _nord_sync_friendly_error(self):
+        """Best-effort translation of last_error (a raw Python exception
+        string — see _send_wake_webhook) into something a non-technical user
+        can read. Pattern-matched on the known shapes `requests` raises for
+        this one webhook call — connection failure, timeout, or an HTTPError
+        from raise_for_status() (always starts with the numeric status
+        code) — not a parse of a structured error type, since none is
+        persisted (last_error is just str(exc)). Never shown instead of
+        last_error, only alongside it, on the user-facing surfaces only —
+        the technical Sync Failures list keeps the raw text.
+        """
+        self.ensure_one()
+        error = (self.last_error or '').lower()
+        if not error:
+            return ''
+        if 'timed out' in error or 'timeout' in error:
+            return _('Nord Sync: the Nord Cloud took too long to respond.')
+        if 'server error' in error:
+            return _('Nord Sync: the Nord Cloud reported a server error.')
+        if 'client error' in error:
+            return _('Nord Sync: the Nord Cloud rejected the request.')
+        if 'connection' in error or 'refused' in error or 'resolve' in error or 'name or service not known' in error:
+            return _('Nord Sync: could not reach the Nord Cloud — check the network connection.')
+        return _('Nord Sync: synchronization failed for an unknown reason.')
+
+    def action_open_failure_wizard(self):
+        """Bound to the technical Sync Failures form (any res_model,
+        including the ones _nord_sync_visible_owner hides from the
+        count/activity) — a Nord Sync Manager investigating one specific
+        entry gets the same action wizard (create an activity for whoever,
+        or jump to the related record) as the systray's own, just scoped to
+        this one entry instead of the current visible failures.
+        """
+        self.ensure_one()
+        record = self.env[self.res_model].sudo().browse(self.res_id)
+        wizard = self.env['nord_sync.failure.wizard'].create({
+            'line_ids': [(0, 0, {
+                'res_model': self.res_model,
+                'res_id': self.res_id,
+                'record_name': record.exists() and record.display_name or f'{self.res_model} #{self.res_id}',
+                'message': self._nord_sync_friendly_error(),
+            })],
+        })
+        return wizard._action_open()

@@ -71,6 +71,15 @@ class NordSyncInstallWizard(models.TransientModel):
         default=lambda self: self.env.company,
     )
     company_uid = fields.Char(string='Nord Company UID')
+    cloud_base_url = fields.Char(
+        string='Nord Cloud URL',
+        help='Same value as the nord_sync.cloud_base_url system parameter — editable '
+             'from either place. Set here too (not just in Settings > Technical > '
+             'System Parameters) because every push this wizard makes from Job Stages '
+             'onward needs it already in place: without it, the wake webhook is '
+             "silently skipped (nord.sync.queue entries land 'pending') and, once "
+             'the pull cursor moves past them, nothing retries them automatically.',
+    )
 
     available_source_ids = fields.One2many(
         'nord_sync.install.wizard.source.line', 'wizard_id', string='Nord Sync Sources',
@@ -191,6 +200,7 @@ class NordSyncInstallWizard(models.TransientModel):
             vals.setdefault('company_uid', config_rec.company_uid)
             vals.setdefault('job_naming_mode', config_rec.job_naming_mode)
             vals.setdefault('job_naming_custom_prefix', config_rec.job_naming_custom_prefix)
+        vals.setdefault('cloud_base_url', self.env['nord_sync.config']._get_cloud_base_url())
         vals.update(self._run_preflight())
         # Computed once here (not re-triggered on every step re-entry) so a
         # user who deliberately empties the list and navigates back/forward
@@ -299,6 +309,15 @@ class NordSyncInstallWizard(models.TransientModel):
     def run_after_step_connection(self):
         if not self.company_uid:
             raise UserError('Fill in the company UID before continuing.')
+        if not self.cloud_base_url:
+            raise UserError('Fill in the Nord Cloud URL before continuing.')
+        # Written immediately (not deferred to Finish, like company_uid/job_naming
+        # are) — every push from Job Stages onward needs this system parameter to
+        # already exist, or the wake webhook is silently skipped and that entry is
+        # never retried once the pull cursor moves past it (real incident,
+        # 2026-08-17: a fresh install's own Job Stage/Mapping bootstrap landed
+        # 'pending' forever because this was set by hand only after Finish).
+        self.env['nord_sync.config']._set_cloud_base_url(self.cloud_base_url)
         return True
 
     def run_before_step_job_stages(self):

@@ -50,6 +50,7 @@
                         <group>
                             <field name="company_id" readonly="1"/>
                             <field name="company_uid"/>
+                            <field name="cloud_base_url"/>
                         </group>
                     </div>
 
@@ -125,6 +126,7 @@
                         <group>
                             <field name="company_id" readonly="1"/>
                             <field name="company_uid" readonly="1"/>
+                            <field name="cloud_base_url" readonly="1"/>
                         </group>
                         <p>Confirming activates Nord Sync for this company.</p>
                     </div>

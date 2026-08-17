@@ -59,6 +59,7 @@ Rules stay reserved to the real Odoo administrator, on purpose.
         # button resolves %(action_nord_sync_install_wizard)d at load time (not
         # lazily at render time), so the action must already be defined.
         'wizard/nord_sync_install_wizard_views.xml',
+        'wizard/nord_sync_failure_wizard_views.xml',
         'views/nord_sync_queue_views.xml',
         'views/nord_sync_failures_views.xml',
         'views/nord_sync_state_mapping_views.xml',
