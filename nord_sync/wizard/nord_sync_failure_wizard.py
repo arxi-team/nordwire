@@ -67,3 +67,24 @@ class NordSyncFailureWizard(models.TransientModel):
             }))
         wizard = self.create({'line_ids': line_vals})
         return wizard._action_open()
+
+    def action_retry_now(self):
+        """Same manual resend as the technical Sync Failures list's own
+        Retry Now (nord.sync.queue.action_retry_now) — one wake ping per
+        company in self.env.companies, matching how this wizard's own
+        lines were scoped when opened (action_open_for_current_failures).
+        Footer-level, not per-line: the underlying retry is already a
+        single per-company ping regardless of how many entries/owners are
+        failing (see _retry_failed_webhooks), so a per-line button would
+        just do the exact same company-wide sweep as this one, repeatedly.
+        """
+        self.ensure_one()
+        configs = self.env['nord_sync.config'].sudo().search([
+            ('company_id', 'in', self.env.companies.ids),
+        ])
+        for config in configs:
+            config._retry_failed_webhooks()
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {'message': _('Retry requested.'), 'type': 'success'},
+        }

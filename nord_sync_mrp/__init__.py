@@ -29,8 +29,7 @@ def post_init_hook(env):
         config = env['nord_sync.config'].sudo()._get_for_company(company)
         if config:
             config._push_source_installed_signal('nord_sync_mrp')
-        env['mrp.workcenter'].sudo().search([('company_id', '=', company.id)])._nord_sync_notify('create')
-        env['hr.employee'].sudo().search([('company_id', '=', company.id)])._nord_sync_notify('create')
+            config._nord_sync_backfill_existing_records()
     manufacturing_admins = env.ref('mrp.group_mrp_manager').sudo().all_user_ids
     manufacturing_admins.write({'group_ids': [(4, env.ref('nord_sync.group_nord_sync_manager').id)]})
     manufacturing_users = env.ref('mrp.group_mrp_user').sudo().all_user_ids - manufacturing_admins

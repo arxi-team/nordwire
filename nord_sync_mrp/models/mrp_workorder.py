@@ -50,11 +50,27 @@ class MrpWorkorder(models.Model):
         return {
             'production_source_res_id': self.production_id.id,
             'workcenter_source_res_id': self.workcenter_id.id,
+            # Snapshot of the work center itself (same shape as
+            # mrp.workcenter's own payload) — lets the Core get-or-create the
+            # edge.resource on the spot if the Resource Bridge's own eager
+            # push hasn't reached it yet for any reason, instead of just
+            # dropping the task silently (real gap found 2026-08-18: a
+            # pre-existing work center's first push can miss the window
+            # between the install wizard's Sources and Finish steps).
+            'workcenter': {
+                'name': self.workcenter_id.name,
+                'resource_kind': self.workcenter_id.resource_kind,
+            },
             # duration_expected is in minutes; nord.timesheet.expected_duration is hours.
             'expected_duration': self.duration_expected / 60.0,
             # employee_assigned_ids (Shop Floor) can hold several people —
             # only the first is carried over, one operator per task on the
             # Core side today.
             'employee_source_res_id': self.employee_assigned_ids[:1].id or False,
+            # Same lazy-resolution safety net as 'workcenter' above, for the
+            # same reason — only sent when someone is actually assigned,
+            # since an unresolved operator is optional and never blocks the
+            # task (unlike the work center).
+            'employee': {'name': self.employee_assigned_ids[0].name} if self.employee_assigned_ids else False,
         }
 

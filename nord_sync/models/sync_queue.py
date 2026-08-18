@@ -130,14 +130,28 @@ class NordSyncQueue(models.Model):
         entry gets the same action wizard (create an activity for whoever,
         or jump to the related record) as the systray's own, just scoped to
         this one entry instead of the current visible failures.
+
+        Real bug: res_model isn't always a real, browsable Odoo model — a
+        source addon can use a synthetic one for a payload-only channel
+        (e.g. nord_sync_mrp's 'mrp.production.moves', the MO's move
+        snapshot, never a model of its own). self.env[res_model] raises
+        KeyError for those. _nord_sync_visible_owner() already knows how to
+        redirect a synthetic/child res_model onto its real owning record
+        (same mapping the systray/friendly surfaces already rely on) — used
+        here too instead of trusting the raw res_model. A "hidden" owner
+        (None — a catalog entry with no owning MO, e.g. mrp.bom) still
+        falls back to the raw res_model, which is always a real model in
+        that case, just not one _nord_sync_visible_owner chooses to
+        surface elsewhere.
         """
         self.ensure_one()
-        record = self.env[self.res_model].sudo().browse(self.res_id)
+        owner_model, owner_res_id = self._nord_sync_visible_owner() or (self.res_model, self.res_id)
+        record = self.env[owner_model].sudo().browse(owner_res_id)
         wizard = self.env['nord_sync.failure.wizard'].create({
             'line_ids': [(0, 0, {
-                'res_model': self.res_model,
-                'res_id': self.res_id,
-                'record_name': record.exists() and record.display_name or f'{self.res_model} #{self.res_id}',
+                'res_model': owner_model,
+                'res_id': owner_res_id,
+                'record_name': record.exists() and record.display_name or f'{owner_model} #{owner_res_id}',
                 'message': self._nord_sync_friendly_error(),
             })],
         })

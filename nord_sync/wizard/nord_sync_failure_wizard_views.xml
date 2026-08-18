@@ -39,6 +39,8 @@
                         </form>
                     </field>
                     <footer>
+                        <button name="action_retry_now" type="object"
+                                string="Retry Now" class="btn-primary"/>
                         <button string="Close" class="btn-secondary" special="cancel"/>
                     </footer>
                 </form>

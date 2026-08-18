@@ -65,11 +65,38 @@ class NordSyncConfig(models.Model):
 
     def write(self, vals):
         changed = JOB_NAMING_FIELDS & set(vals)
+        # Captured before super().write() — self.enabled below still reads
+        # the pre-write value at this point. 'enabled' is editable any time
+        # from Settings (not just install-time), and every Nord Sync Source
+        # model's own create/write guard on it is otherwise completely
+        # silent (real gap found 2026-08-18, Docs/NordSyncAuditoriaErros.md
+        # finding #6) — logged here once per toggle instead of once per
+        # skipped record everywhere that guard is duplicated.
+        was_enabled_by_id = {config.id: config.enabled for config in self} if 'enabled' in vals else {}
         result = super().write(vals)
         if changed:
             for config in self:
                 if config.enabled:
                     config._push_job_naming_signal()
+        if 'enabled' in vals:
+            for config in self:
+                was_enabled = was_enabled_by_id.get(config.id, False)
+                if config.enabled and not was_enabled:
+                    _logger.info(
+                        'nord_sync: enabled for company_id=%s — backfilling pre-existing records',
+                        config.company_id.id,
+                    )
+                    # Re-enabling outside the install wizard (its own Finish
+                    # step already does this) had no equivalent catch-up —
+                    # a record created/edited entirely during a disabled
+                    # window would otherwise never reach the Core.
+                    config._nord_sync_backfill_existing_records()
+                elif was_enabled and not config.enabled:
+                    _logger.info(
+                        'nord_sync: disabled for company_id=%s — every create/write on a '
+                        'Nord Sync Source model is silently skipped until re-enabled',
+                        config.company_id.id,
+                    )
         return result
 
     def _push_job_naming_signal(self):
@@ -197,6 +224,25 @@ class NordSyncConfig(models.Model):
             return
         self._enqueue_and_notify('ir.module.module', module.id, 'write', {'name': module_name})
 
+    def _nord_sync_backfill_existing_records(self):
+        """Notify the Core about every pre-existing record a source's own
+        create/write hooks would otherwise never catch — those only fire on
+        an edit *after* the bridge exists. Base is a no-op (nothing to
+        backfill without a source installed); each Nord Sync Source addon
+        overrides via _inherit and calls super(), same pattern as
+        _apply_nord_sync_entry.
+
+        Called from two places, covering the two different timings a source
+        can start existing for a company: the install wizard's Finish step
+        (config only becomes enabled here — a source installed earlier in
+        the same wizard's Sources step had nothing to notify yet, since
+        _nord_sync_notify itself no-ops without an enabled config) and
+        nord_sync_mrp's own post_init_hook (covers adding a source to a
+        client that's already configured and enabled, where the wizard
+        never runs again).
+        """
+        self.ensure_one()
+
     def _send_wake_webhook(self):
         """Returns (status, error): status is None if skipped (not configured
         yet), True/False if attempted; error is the exception text on failure,
@@ -206,6 +252,14 @@ class NordSyncConfig(models.Model):
         self.ensure_one()
         webhook_url = self._get_cloud_webhook_url()
         if not webhook_url or not self.company_uid:
+            # Entry itself still landed in nord.sync.queue (status stays
+            # 'pending', visible/retried normally) — this only skips the
+            # best-effort accelerator. Logged because a missing
+            # cloud_base_url/company_uid at this point is always a
+            # configuration gap worth noticing, not routine.
+            _logger.info(
+                'nord_sync: wake webhook skipped — not configured yet (cloud_base_url or company_uid unset)',
+            )
             return None, None
         _logger.info(
             'nord_sync: sending wake webhook to Nord Cloud (url=%s, company_uid=%s)',

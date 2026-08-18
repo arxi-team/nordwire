@@ -57,5 +57,39 @@
             <field name="groups" eval="[(4, ref('group_nord_sync_manager'))]"/>
             <field name="domain_force" eval="['|', ('name', 'like', 'Nord Sync'), ('id', '=', ref('base_automation.ir_cron_data_base_automation_check_ir_actions_server'))]"/>
         </record>
+
+        <!-- Real bug, found 2026-08-18: none of this addon's 4 own
+             company-owned models had a multi-company ir.rule at all — Odoo
+             never generates one automatically just from a company_id field
+             existing, each addon has to ship its own (see resource/nordos_core
+             for the same pattern already used elsewhere in this codebase).
+             Without this, a user in company A could read every other
+             company's sync queue/config/job stages/state mappings just by
+             having the model access group, regardless of which company was
+             selected in the switcher. No groups field — applies to every
+             group with read access to these models (User, Manager,
+             Integration alike), never just a subset. company_id is
+             required=True on all 4 models, so no '+ [False]' fallback
+             needed (nothing here is ever company-less). -->
+        <record id="rule_nord_sync_config_multi_company" model="ir.rule">
+            <field name="name">nord_sync.config: multi-company</field>
+            <field name="model_id" ref="model_nord_sync_config"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="rule_nord_sync_job_stage_multi_company" model="ir.rule">
+            <field name="name">nord_sync.job.stage: multi-company</field>
+            <field name="model_id" ref="model_nord_sync_job_stage"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="rule_nord_sync_state_mapping_multi_company" model="ir.rule">
+            <field name="name">nord_sync.state.mapping: multi-company</field>
+            <field name="model_id" ref="model_nord_sync_state_mapping"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="rule_nord_sync_queue_multi_company" model="ir.rule">
+            <field name="name">nord.sync.queue: multi-company</field>
+            <field name="model_id" ref="model_nord_sync_queue"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
     </data>
 </odoo>

@@ -486,6 +486,27 @@ class NordSyncInstallWizard(models.TransientModel):
             'job_naming_mode': self.job_naming_mode,
             'job_naming_custom_prefix': self.job_naming_custom_prefix,
         })
+        # A source picked in the Sources step installed its addon (and ran
+        # its post_init_hook) long before this config row existed — that
+        # hook's own _push_source_installed_signal call found no config to
+        # attach to and silently gave up (config_rec didn't exist until the
+        # line above), so the Core never learned this client picked e.g.
+        # mrp. _push_source_installed_signal is idempotent (own docstring),
+        # so re-pushing for every installed source here, now that a config
+        # row finally exists, is the same catch-up the 1.0.3 migration does
+        # for pre-existing installs (see nord_sync/migrations/1.0.3/post-
+        # backfill_source_signals.py) — safe even for a source that somehow
+        # did get signalled already.
+        installed_sources = self.env['ir.module.module'].sudo().search([
+            ('name', 'like', 'nord_sync_'), ('state', '=', 'installed'),
+        ])
+        for module in installed_sources:
+            config_rec._push_source_installed_signal(module.name)
+        # Same timing gap as the signal above, same fix: a work center/
+        # employee/BOM created or already existing before this moment had
+        # nothing to notify (config wasn't enabled yet), and only an edit
+        # *after* now would ever trigger its own create/write hook again.
+        config_rec._nord_sync_backfill_existing_records()
         # Real records (and their push to the Core) only happen here, once
         # config.enabled is actually True — matches _nord_sync_notify's own
         # guard, and means nothing pushes for a wizard that gets cancelled.
