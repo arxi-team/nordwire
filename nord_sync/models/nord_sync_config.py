@@ -59,6 +59,17 @@ class NordSyncConfig(models.Model):
              'prefix syntax, e.g. "ACME-JOB/%(year)s/".',
     )
 
+    enabled_source_ids = fields.Many2many(
+        'nord_sync.source', string='Enabled Sources',
+        default=lambda self: self.env['nord_sync.source'].search([]),
+        help='Which Nord Sync Sources actually produce jobs for this company '
+             '— every source is always installed together '
+             '(Docs/ADR/0014-nord-sync-reunify-single-addon.md), this is what '
+             "used to be a per-source addon install/uninstall. Defaults to "
+             'every known source, so an existing config from before this '
+             'field existed keeps behaving exactly as it did before.',
+    )
+
     _company_unique = models.Constraint(
         'UNIQUE(company_id)', 'Only one Nord Sync configuration per company is allowed.',
     )
@@ -109,6 +120,19 @@ class NordSyncConfig(models.Model):
     @api.model
     def _get_for_company(self, company):
         return self.search([('company_id', '=', company.id)], limit=1)
+
+    def _is_source_enabled(self, source_model):
+        """Gate every Nord Sync Source's create/write hook — this addon
+        always has every source's code installed, so `enabled` alone can no
+        longer say whether a specific source (e.g. sale.order) should
+        actually produce jobs for this company; enabled_source_ids is what
+        used to be a per-source addon install/uninstall. A source_model with
+        no matching nord_sync.source row (a support model like
+        mrp.workorder/mrp.bom, not a top-level source itself) is checked
+        against its own parent source's model by the caller, not here.
+        """
+        self.ensure_one()
+        return source_model in self.enabled_source_ids.mapped('model')
 
     @api.model
     def _nord_sync_available_native_sources(self):
@@ -197,32 +221,6 @@ class NordSyncConfig(models.Model):
         })
         self._retry_failed_webhooks()
         return entry
-
-    def _push_source_installed_signal(self, module_name):
-        """Tells the Core (via the same queue/pull channel as job stages and
-        state mappings) that this client has a Nord Sync Source addon
-        installed, so it can auto-install its own matching counterpart
-        (nordos_nord_sync_core_<x>) instead of requiring an operator to do
-        it by hand on every client onboarding. No dedicated model: the
-        signal rides nord.sync.queue with a synthetic res_model
-        ('ir.module.module') and just the addon's technical name as payload
-        — nobody edits this fact, it's derived from ir.module.module, so a
-        real table for it would just be another thing to keep in sync.
-        Idempotent — skipped if already signalled for this module, so a
-        reinstall/upgrade doesn't spam the queue with duplicates.
-        """
-        self.ensure_one()
-        module = self.env['ir.module.module'].sudo().search([('name', '=', module_name)], limit=1)
-        if not module:
-            return
-        already = self.env['nord.sync.queue'].sudo().search_count([
-            ('company_id', '=', self.company_id.id),
-            ('res_model', '=', 'ir.module.module'),
-            ('res_id', '=', module.id),
-        ])
-        if already:
-            return
-        self._enqueue_and_notify('ir.module.module', module.id, 'write', {'name': module_name})
 
     def _nord_sync_backfill_existing_records(self):
         """Notify the Core about every pre-existing record a source's own

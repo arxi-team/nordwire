@@ -27,10 +27,6 @@
                                             <label for="nord_sync_company_uid"/>
                                             <field name="nord_sync_company_uid"/>
                                         </div>
-                                        <div class="mt8">
-                                            <label for="nord_sync_cloud_webhook_url"/>
-                                            <field name="nord_sync_cloud_webhook_url"/>
-                                        </div>
                                     </div>
                                 </div>
                             </div>

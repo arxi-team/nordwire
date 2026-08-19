@@ -22,11 +22,14 @@ changes, exposes a queue for the Nord Core to pull, authenticated by API key.
   authenticated with an API key (technical user in the "Nord Sync
   Integration" group).
 
-This module is intentionally source-agnostic — by itself it has no business
-model that produces a `nord.job`. A **Nord Sync Source** addon (`nord_sync_mrp`,
-`nord_sync_maintenance`, ...) is what actually wires a client model
-(`mrp.production`, `maintenance.request`, ...) into the queue/webhook
-machinery here — install the ones a given client needs, never all of them.
+Nord Sync Sources (`mrp.production` + BOM/Resource/Employee/Workorder Bridge today,
+`sale.order`/`purchase.order`/`stock.picking`/`maintenance.request` planned) live
+directly in this module — merged back from separate per-source addons on
+2026-08-19 (Docs/ADR/0014-nord-sync-reunify-single-addon.md, reverses
+Docs/ADR/0006-nord-sync-pluggable-job-sources.md). Every client installing
+`nord_sync` gets every source's code/dependencies, whether they use it or not —
+an explicit trade-off for having one addon to install/maintain instead of one
+per source.
 
 Phase 2 in progress: queue entries now carry a business payload snapshot
 (name/qty/state and product name/UoM/internal reference, captured at
@@ -51,10 +54,11 @@ Rules stay reserved to the real Odoo administrator, on purpose.
     """,
     'author': 'NORD / Nordwire',
     'license': 'LGPL-3',
-    'depends': ['base_automation'],
+    'depends': ['base_automation', 'mrp', 'mrp_workorder', 'sale', 'purchase', 'stock', 'maintenance'],
     'data': [
         'security/nord_sync_security.xml',
         'security/ir.model.access.csv',
+        'data/nord_sync_sources.xml',
         # Wizard views first: nord_sync_config_views.xml's "Open Install Wizard"
         # button resolves %(action_nord_sync_install_wizard)d at load time (not
         # lazily at render time), so the action must already be defined.
@@ -66,8 +70,16 @@ Rules stay reserved to the real Odoo administrator, on purpose.
         'views/nord_sync_config_views.xml',
         'views/ir_actions_server_views.xml',
         'data/nord_sync_automation.xml',
+        'data/mrp/nord_sync_automation.xml',
+        'data/sale/nord_sync_automation.xml',
+        'data/purchase/nord_sync_automation.xml',
+        'data/inventory/nord_sync_automation.xml',
+        'data/maintenance/nord_sync_automation.xml',
         'data/nord_sync_cron.xml',
         'data/nord_sync_config_parameter.xml',
+        # After data/nord_sync_automation.xml: resolves
+        # %(nord_sync.action_nord_sync_automation_rules)d at load time.
+        'views/res_config_settings_views.xml',
     ],
     'assets': {
         'web.assets_backend': [
@@ -77,5 +89,6 @@ Rules stay reserved to the real Odoo administrator, on purpose.
     },
     'installable': True,
     'auto_install': False,
+    'post_init_hook': 'post_init_hook',
     'application': True,
 }

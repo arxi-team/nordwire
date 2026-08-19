@@ -28,21 +28,10 @@
                     <div invisible="state != 'step_sources'">
                         <h3>Step 2. What do you want to sync?</h3>
                         <p class="text-muted">
-                            Pick the parts of your business that should sync with Nord.
-                            Anything already active is checked and can't be changed here.
+                            Pick the parts of your business that should produce jobs on
+                            the Nord Core. Everything is checked by default.
                         </p>
-                        <p class="text-muted">
-                            Adding a new one takes a moment to set up — the page will
-                            refresh once and bring you straight back here.
-                        </p>
-                        <field name="available_source_ids">
-                            <list editable="bottom" create="0" delete="0">
-                                <field name="module_id" column_invisible="1"/>
-                                <field name="name" readonly="1" string="Area"/>
-                                <field name="installed" column_invisible="1"/>
-                                <field name="selected" readonly="installed" string="Sync this"/>
-                            </list>
-                        </field>
+                        <field name="source_ids" widget="many2many_tags" options="{'no_create': True}"/>
                     </div>
 
                     <div invisible="state != 'step_connection'">
@@ -74,12 +63,11 @@
                     <div invisible="state != 'step_mapping'">
                         <h3>Step 5. Mapping</h3>
                         <p class="text-muted">
-                            For each state a native value from an installed Nord Sync
-                            Source (Manufacturing Orders, and any other source addon you
-                            have installed) can be in, choose which Job Stage its job
-                            lands in on the Nord Core, or leave it blank to not map that
-                            value at all. You decide which values matter; nothing here
-                            is forced.
+                            For each native state value (Manufacturing Orders, and every
+                            other source Nord Sync bridges), choose which Job Stage its
+                            job lands in on the Nord Core, or leave it blank to not map
+                            that value at all. You decide which values matter; nothing
+                            here is forced.
                         </p>
                         <field name="mapping_line_ids">
                             <!-- create/delete disabled deliberately: one row per native
@@ -99,12 +87,6 @@
                                 <field name="target_job_stage_line_id" string="Job Stage"/>
                             </list>
                         </field>
-                        <p class="text-muted">
-                            Installing another Nord Sync Source addon later (from Apps,
-                            outside this wizard) won't retroactively add its rows here —
-                            reopen this wizard from Settings &gt; Nord Sync afterwards to
-                            configure its mapping too.
-                        </p>
                     </div>
 
                     <div invisible="state != 'step_job_naming'">
@@ -134,10 +116,8 @@
                     <footer>
                         <button name="action_previous_step" type="object"
                                 string="Previous" invisible="not show_previous"/>
-                        <button name="action_confirm_sources" type="object" string="Next"
-                                class="btn-primary" invisible="not show_next or state != 'step_sources'"/>
                         <button name="action_next_step" type="object" string="Next"
-                                class="btn-primary" invisible="not show_next or state == 'step_sources'"/>
+                                class="btn-primary" invisible="not show_next"/>
                         <button name="action_confirm" type="object" string="Confirm"
                                 class="btn-primary" invisible="not show_finish"/>
                         <button string="Cancel" class="btn-secondary" special="cancel"/>
@@ -163,25 +143,6 @@
             <field name="action_id" ref="action_nord_sync_install_wizard"/>
             <field name="sequence">10</field>
             <field name="state">open</field>
-        </record>
-
-        <!-- Dedicated resume action/todo for action_confirm_sources below —
-             never touched by the "Open Install Wizard" button (that one
-             always starts a fresh wizard via action_nord_sync_install_wizard
-             above). context/state get overwritten at runtime each time a
-             source install needs to hand the client back to this exact
-             wizard record after the reload ir.module.module.next() performs
-             — state starts 'done' so it's inert until then. -->
-        <record id="action_nord_sync_install_wizard_resume" model="ir.actions.act_window">
-            <field name="name">Nord Sync — Install</field>
-            <field name="res_model">nord_sync.install.wizard</field>
-            <field name="view_mode">form</field>
-            <field name="target">new</field>
-        </record>
-        <record id="todo_nord_sync_install_wizard_resume" model="ir.actions.todo">
-            <field name="action_id" ref="action_nord_sync_install_wizard_resume"/>
-            <field name="sequence">10</field>
-            <field name="state">done</field>
         </record>
     </data>
 </odoo>

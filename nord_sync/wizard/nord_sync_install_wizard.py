@@ -17,35 +17,25 @@ JOB_STAGE_SUGGESTED_NAMES = ['Queued', 'In Progress', 'Quality Check', 'Done']
 
 class NordSyncInstallWizard(models.TransientModel):
     """Install wizard, 7 steps — pre-flight, sources, connection, job
-    stages, mapping, job naming, finish. Job stages and mapping used to be one combined
-    step; split into two so the person configuring this only has to think
-    about one thing at a time (name the stages, then map states to them),
-    matching how the rest of the wizard already isolates one concern per step.
+    stages, mapping, job naming, finish. Job stages and mapping used to be
+    one combined step; split into two so the person configuring this only
+    has to think about one thing at a time (name the stages, then map
+    states to them), matching how the rest of the wizard already isolates
+    one concern per step.
 
     Multi-step shape (state + _steps + run_before_/run_after_ per-step
     hooks) is a small self-contained step machine — no reusable abstract
     base, since Nord Sync is the only wizard using it today.
 
-    The Sources step exists because the Mapping step can only show a
-    source's native states once that source's addon is installed —
-    choosing a Nord Sync Source *is* installing its addon (nord_sync_mrp,
-    nord_sync_maintenance, ...), there's no separate enable/disable toggle.
-    A wizard auto-opened right after installing just the base `nord_sync`
-    module, with no source addon selected alongside it, would otherwise land
-    on an empty mapping step with no way to know why.
-
-    Its "Next" (action_confirm_sources, not the generic action_next_step)
-    installs whatever got checked via button_immediate_install() — same call
-    the Apps screen's own Install button makes. Installing an app can add
-    menus/views/JS assets the already-loaded page doesn't know about, so a
-    reload has to happen — but rather than a blind full-page reload,
-    action_confirm_sources points a dedicated ir.actions.todo at this exact
-    record first, which is what Odoo's own post-install continuation
-    mechanism (ir.module.module.next(), called from inside
-    button_immediate_install() itself) picks up and reopens automatically:
-    the client lands back on this same wizard, continuing right where it
-    left off, now correctly seeing the newly installed source's native
-    states once it reaches Job Stages/Mapping.
+    The Sources step used to mean "install this Nord Sync Source's own
+    addon" (one addon per source). Every source's code is now always
+    installed together (Docs/ADR/0014-nord-sync-reunify-single-addon.md),
+    so this step no longer installs anything — it's a plain selection,
+    writing nord_sync.config.enabled_source_ids: only a selected source's
+    create/write hook actually enqueues anything, the rest stay installed
+    but inert for this company. No more install-then-resume dance either —
+    action_confirm_sources is gone, this step's "Next" is the same generic
+    action_next_step every other step uses.
     """
     _name = 'nord_sync.install.wizard'
     _description = 'Nord Sync Installation Wizard'
@@ -81,8 +71,12 @@ class NordSyncInstallWizard(models.TransientModel):
              'the pull cursor moves past them, nothing retries them automatically.',
     )
 
-    available_source_ids = fields.One2many(
-        'nord_sync.install.wizard.source.line', 'wizard_id', string='Nord Sync Sources',
+    source_ids = fields.Many2many(
+        'nord_sync.source', string='Sources',
+        default=lambda self: self.env['nord_sync.source'].search([]),
+        help='Which parts of your business should produce jobs on the Nord '
+             'Core. Everything is checked by default — uncheck what this '
+             "company doesn't use.",
     )
 
     job_stage_mode = fields.Selection([
@@ -172,23 +166,19 @@ class NordSyncInstallWizard(models.TransientModel):
     def create(self, vals_list):
         records = super().create(vals_list)
         Line = self.env['nord_sync.install.wizard.mapping.line']
-        SourceLine = self.env['nord_sync.install.wizard.source.line']
         for wiz in records:
             # Created directly server-side, not via an X2M command in
-            # vals_list/default_get — real bug found live (2026-08-10 for
-            # mapping_line_ids, 2026-08-11 for available_source_ids):
+            # vals_list/default_get — real bug found live 2026-08-10:
             # Odoo's web client omits readonly fields from an X2M row's
             # create payload (treated as "not user-editable, nothing to
-            # send back"), which silently dropped source_value/module_id on
-            # every row despite default_get/onchange setting it correctly
-            # server-side (module_id NULL violates its own not-null
-            # constraint). Creating the lines here sidesteps the client's
-            # round-trip entirely, so a readonly field here can't recur.
+            # send back"), which silently dropped source_value on every row
+            # despite default_get/onchange setting it correctly server-side
+            # (required=True field NULL on the row). Creating the lines here
+            # sidesteps the client's round-trip entirely, so a readonly
+            # field here can't recur.
             if not wiz.mapping_line_ids:
                 Line.create([dict(vals, wizard_id=wiz.id) for vals in wiz._mapping_line_vals()])
             wiz._default_mapping_targets()
-            if not wiz.available_source_ids:
-                SourceLine.create([dict(vals, wizard_id=wiz.id) for vals in wiz._available_source_line_vals()])
         return records
 
     @api.model
@@ -200,6 +190,14 @@ class NordSyncInstallWizard(models.TransientModel):
             vals.setdefault('company_uid', config_rec.company_uid)
             vals.setdefault('job_naming_mode', config_rec.job_naming_mode)
             vals.setdefault('job_naming_custom_prefix', config_rec.job_naming_custom_prefix)
+            # Plain assignment, not setdefault — source_ids' own field-level
+            # default (every known source) already ran inside
+            # super().default_get() above, so the key already exists in
+            # vals by this point. Re-editing an existing config's picks, not
+            # the "everything checked" default — a company that already
+            # unchecked something shouldn't see it come back just from
+            # reopening this wizard.
+            vals['source_ids'] = [(6, 0, config_rec.enabled_source_ids.ids)]
         vals.setdefault('cloud_base_url', self.env['nord_sync.config']._get_cloud_base_url())
         vals.update(self._run_preflight())
         # Computed once here (not re-triggered on every step re-entry) so a
@@ -209,8 +207,6 @@ class NordSyncInstallWizard(models.TransientModel):
         # docstring comment for why it's created server-side instead.
         if 'job_stage_line_ids' in fields_list:
             vals['job_stage_line_ids'] = self._job_stage_line_commands(vals.get('job_stage_mode', 'native'))
-        # available_source_ids is deliberately NOT populated here either —
-        # same reason as mapping_line_ids above, see create()'s comment.
         return vals
 
     # ── Step 1: Pre-flight ───────────────────────────────────────────────────────
@@ -247,64 +243,7 @@ class NordSyncInstallWizard(models.TransientModel):
             raise UserError('Fix the environment issues before continuing (see pre-flight message).')
         return True
 
-    # ── Step 2: Sources ──────────────────────────────────────────────────────────
-
-    @api.model
-    def _discover_source_modules(self):
-        """Any `ir.module.module` named `nord_sync_*` (never `nord_sync`
-        itself) — naming convention, not a hardcoded list, so a future
-        source addon shows up here without touching this wizard."""
-        candidates = self.env['ir.module.module'].sudo().search([('name', 'like', 'nord_sync')])
-        return candidates.filtered(lambda m: m.name.startswith('nord_sync_'))
-
-    @api.model
-    def _available_source_line_vals(self):
-        return [
-            {'module_id': m.id, 'selected': m.state == 'installed'}
-            for m in self._discover_source_modules()
-        ]
-
-    def action_confirm_sources(self):
-        """Sources step's own "Next" — a dedicated button, not the generic
-        action_next_step, because installing something here has to go
-        through Odoo's own install-then-continue mechanism instead of just
-        reopening this wizard by hand.
-
-        button_immediate_install() reloads the registry — installing a real
-        app (sale, stock, ...) can add menus/views/JS assets the
-        already-loaded page has no way to know about. A first attempt
-        manually rebuilt an Environment and kept editing this same wizard
-        in place to avoid a reload entirely — broke live: the Job Stages &
-        Mapping step's dropdowns crashed (OwlError) right after installing
-        nord_sync_sale mid-session, the browser's view/asset cache was still
-        the pre-install one and none of the hand-rolled bookkeeping made
-        that consistent again.
-
-        button_immediate_install() already has a built-in, proven way to
-        chain a wizard after an install without a blind full-page reload:
-        it calls ir.module.module.next(), which looks for an open
-        ir.actions.todo and opens whatever action it points to directly
-        (the same mechanism every Odoo app's own post-install setup wizard
-        uses). Pointing our own dedicated resume todo's action at this exact
-        record (context.res_id) before installing is what makes the client
-        land back on this same wizard, continuing right where it left off,
-        through a path Odoo's own client already knows how to handle
-        consistently — not a bespoke one.
-        """
-        self.ensure_one()
-        to_install = self.available_source_ids.filtered(
-            lambda line: line.selected and not line.installed
-        ).module_id
-        if not to_install:
-            return self.action_next_step()
-        steps = self.get_steps()
-        self.state = steps[self.state_index + 1][0]
-        resume_action = self.env.ref('nord_sync.action_nord_sync_install_wizard_resume')
-        resume_action.sudo().write({'context': repr({'res_id': self.id})})
-        self.env.ref('nord_sync.todo_nord_sync_install_wizard_resume').sudo().write({'state': 'open'})
-        return to_install.sudo().button_immediate_install()
-
-    # ── Step 3: Connection ───────────────────────────────────────────────────────
+    # ── Step 2: Connection ───────────────────────────────────────────────────────
 
     def run_after_step_connection(self):
         if not self.company_uid:
@@ -320,36 +259,7 @@ class NordSyncInstallWizard(models.TransientModel):
         self.env['nord_sync.config']._set_cloud_base_url(self.cloud_base_url)
         return True
 
-    def run_before_step_job_stages(self):
-        """Recomputes job_stage_line_ids/mapping_line_ids, but only if the
-        set of registered source models actually changed since they were
-        last generated — covers a source installed via the Sources step
-        earlier in this same wizard (that record's own lines were generated
-        once, at create() time, which predates any install the Sources step
-        itself triggered — the resume after that install lands back on
-        Connection, not here, so create()'s snapshot is never touched again
-        on its own) without wiping manual edits (job stage renames, job
-        stage picks) on the common case of just going back to this step
-        from Finish and forward again with nothing installed meanwhile.
-
-        Fires on the way into the Job Stages step (not Mapping, even though
-        it also refreshes mapping_line_ids) — both need to be ready before
-        either step is shown, and Job Stages always comes first, so doing it
-        once here means the Mapping step needs no refresh hook of its own.
-        """
-        self.ensure_one()
-        registered_models = {s['source_model'] for s in self._nord_sync_available_native_sources()}
-        current_models = set(self.mapping_line_ids.mapped('source_model'))
-        if registered_models == current_models:
-            return True
-        self.job_stage_line_ids = self._job_stage_line_commands(self.job_stage_mode)
-        self.mapping_line_ids.unlink()
-        Line = self.env['nord_sync.install.wizard.mapping.line']
-        Line.create([dict(vals, wizard_id=self.id) for vals in self._mapping_line_vals()])
-        self._default_mapping_targets()
-        return True
-
-    # ── Steps 4-5: Job Stages & Mapping ──────────────────────────────────────────
+    # ── Steps 3-4: Job Stages & Mapping ──────────────────────────────────────────
 
     @api.model
     def _nord_sync_available_native_sources(self):
@@ -485,27 +395,12 @@ class NordSyncInstallWizard(models.TransientModel):
             'enabled': True, 'company_uid': self.company_uid,
             'job_naming_mode': self.job_naming_mode,
             'job_naming_custom_prefix': self.job_naming_custom_prefix,
+            'enabled_source_ids': [(6, 0, self.source_ids.ids)],
         })
-        # A source picked in the Sources step installed its addon (and ran
-        # its post_init_hook) long before this config row existed — that
-        # hook's own _push_source_installed_signal call found no config to
-        # attach to and silently gave up (config_rec didn't exist until the
-        # line above), so the Core never learned this client picked e.g.
-        # mrp. _push_source_installed_signal is idempotent (own docstring),
-        # so re-pushing for every installed source here, now that a config
-        # row finally exists, is the same catch-up the 1.0.3 migration does
-        # for pre-existing installs (see nord_sync/migrations/1.0.3/post-
-        # backfill_source_signals.py) — safe even for a source that somehow
-        # did get signalled already.
-        installed_sources = self.env['ir.module.module'].sudo().search([
-            ('name', 'like', 'nord_sync_'), ('state', '=', 'installed'),
-        ])
-        for module in installed_sources:
-            config_rec._push_source_installed_signal(module.name)
-        # Same timing gap as the signal above, same fix: a work center/
-        # employee/BOM created or already existing before this moment had
-        # nothing to notify (config wasn't enabled yet), and only an edit
-        # *after* now would ever trigger its own create/write hook again.
+        # A work center/employee/BOM created or already existing before this
+        # moment had nothing to notify (config wasn't enabled yet), and only
+        # an edit *after* now would ever trigger its own create/write hook
+        # again — this is the catch-up for that timing gap.
         config_rec._nord_sync_backfill_existing_records()
         # Real records (and their push to the Core) only happen here, once
         # config.enabled is actually True — matches _nord_sync_notify's own

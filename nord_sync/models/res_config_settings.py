@@ -16,9 +16,6 @@ class ResConfigSettings(models.TransientModel):
     )
     nord_sync_enabled = fields.Boolean(related='nord_sync_config_id.enabled', readonly=False)
     nord_sync_company_uid = fields.Char(related='nord_sync_config_id.company_uid', readonly=False)
-    nord_sync_cloud_webhook_url = fields.Char(
-        related='nord_sync_config_id.cloud_webhook_url', readonly=False,
-    )
 
     @api.depends('company_id')
     def _compute_nord_sync_config_id(self):
