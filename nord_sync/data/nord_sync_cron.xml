@@ -17,5 +17,19 @@
             <field name="active">True</field>
         </record>
 
+        <!-- Garbage-collects nord.sync.queue rows the Core has confirmed
+             (core_applied_seq) it applied — never by age, see
+             _cleanup_synced_queue_entries. Daily is plenty; this is
+             disk-hygiene, not anything time-sensitive. -->
+        <record id="ir_cron_cleanup_synced_queue_entries" model="ir.cron">
+            <field name="name">Nord Sync: Cleanup Confirmed Queue Entries</field>
+            <field name="model_id" ref="model_nord_sync_config"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_cleanup_synced_queue_entries()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+        </record>
+
     </data>
 </odoo>

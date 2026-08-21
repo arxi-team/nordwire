@@ -70,6 +70,14 @@ class NordSyncConfig(models.Model):
              'field existed keeps behaving exactly as it did before.',
     )
 
+    core_applied_seq = fields.Integer(
+        string='Core Applied Seq', default=0,
+        help='Highest nord.sync.queue id the Core has confirmed it actually applied, '
+             'as reported on its own next pull request. Used only to know which "sent" '
+             'queue entries are safe to garbage-collect — the Core still pulls by '
+             'last_seq regardless of this value.',
+    )
+
     _company_unique = models.Constraint(
         'UNIQUE(company_id)', 'Only one Nord Sync configuration per company is allowed.',
     )
@@ -313,3 +321,26 @@ class NordSyncConfig(models.Model):
     def _cron_retry_failed_webhooks(self):
         for config in self.search([('enabled', '=', True)]):
             config._retry_failed_webhooks()
+
+    def _cleanup_synced_queue_entries(self):
+        """Deletes nord.sync.queue rows the Core has confirmed it applied —
+        never by age, since a Core offline for days/weeks must still find
+        every entry on its next reconciliation pull. Only 'sent' entries
+        (wake webhook delivered) are touched; 'pending' (webhook never
+        attempted) and 'failed' stay untouched regardless of
+        core_applied_seq — a webhook-delivery problem must never hide a row
+        the Core hasn't actually confirmed.
+        """
+        self.ensure_one()
+        if not self.core_applied_seq:
+            return
+        self.env['nord.sync.queue'].sudo().search([
+            ('company_id', '=', self.company_id.id),
+            ('status', '=', 'sent'),
+            ('id', '<=', self.core_applied_seq),
+        ]).unlink()
+
+    @api.model
+    def _cron_cleanup_synced_queue_entries(self):
+        for config in self.search([('enabled', '=', True)]):
+            config._cleanup_synced_queue_entries()

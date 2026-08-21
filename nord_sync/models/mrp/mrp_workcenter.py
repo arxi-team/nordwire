@@ -22,6 +22,32 @@ class MrpWorkcenter(models.Model):
              'not native to mrp.workcenter, added for the Resource Bridge.',
     )
 
+    # ── Nord Sync Autonomous Resource Policies ───────────────────────────────
+    # Authored here, same as resource_kind above — mirrored onto the Core's
+    # edge.resource by the Resource Bridge, never enforced client-side.
+
+    nord_sync_autonomous_close = fields.Boolean(
+        string='Autonomous Close',
+        default=False,
+        help='Let a port-driven Nord Alert on the Core close the job on this resource without '
+             'a human clicking "Mark Done". Off by default — the Core keeps requiring a human action.',
+    )
+    nord_sync_granular_push = fields.Boolean(
+        string='Granular Push to Client',
+        default=False,
+        help='Push work-session start/stop and job cancellation from the Core back to this '
+             'work order in real time, not just the final result. Off by default — only the '
+             'final result (Mark Done) reaches this workcenter, as today.',
+    )
+    nord_sync_contention_policy = fields.Selection([
+        ('block', 'Block'),
+        ('auto_close_previous', 'Auto-close Previous'),
+    ], string='Resource Contention Policy', default='block', required=True,
+        help='What the Core does when a new work session starts on this resource while another '
+             'is still open: "Block" refuses the new session (current behavior); "Auto-close '
+             'Previous" closes the open one first.',
+    )
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
@@ -50,6 +76,9 @@ class MrpWorkcenter(models.Model):
         return {
             'name': self.name,
             'resource_kind': self.resource_kind,
+            'autonomous_close': self.nord_sync_autonomous_close,
+            'granular_push': self.nord_sync_granular_push,
+            'contention_policy': self.nord_sync_contention_policy,
             'resource_calendar_attendances': [
                 {
                     'dayofweek': att.dayofweek,

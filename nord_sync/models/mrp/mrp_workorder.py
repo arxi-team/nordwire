@@ -45,6 +45,56 @@ class MrpWorkorder(models.Model):
                 continue
             config._enqueue_and_notify('mrp.workorder', record.id, operation, record._nord_sync_payload())
 
+    def _nord_sync_apply_granular_event(self, event_type, payload):
+        """Applies one of the 3 real-time work events a granular-push-opted
+        resource sends back. session_start moves the workorder to
+        'progress'; session_stop only ends its running timer
+        (end_previous), it does NOT change state — mrp.workorder has no
+        distinct "paused" value, _compute_state only ever toggles between
+        'blocked'/'ready' and otherwise leaves 'progress' alone, so a
+        workorder legitimately stays 'progress' between sessions, same as
+        it would with a human clocking in and out via the Shop Floor app.
+        Neither event ever reaches 'done': completion is still exclusively
+        the deliberate Result Push on the finished job
+        (mrp.production._nord_sync_apply_result above), same as before this
+        existed. Never raises — same best-effort posture as the result push
+        controller, caller turns the (bool, message) into the HTTP response.
+        """
+        self.ensure_one()
+        if self.state in ('done', 'cancel'):
+            return False, f'Workorder already {self.state}, event ignored.'
+        try:
+            if event_type == 'session_start':
+                self._nord_sync_button_start_bypassing_employee_check()
+            elif event_type == 'session_stop':
+                # Not button_pending(): its end_previous(doall=False) only
+                # closes a timer started by the *calling* user, and the Nord
+                # Core technical user (bypass=True above) is never the one
+                # tracked as having started it. doall=True closes whichever
+                # timer is actually open on this workorder, regardless of
+                # who/what started it — the right primitive for a
+                # machine-driven event.
+                self.end_previous(doall=True)
+            else:
+                return False, f'Unknown event_type: {event_type}'
+        except Exception as exc:
+            return False, str(exc)
+        return True, 'ok'
+
+    def _nord_sync_button_start_bypassing_employee_check(self):
+        """button_start(bypass=True) skips the Shop Floor "link this user to
+        an employee" guard the mrp_workorder enterprise app adds — this call
+        is a machine-to-machine Nord Core event, never an interactive
+        session, exactly the case that parameter exists for. Falls back to
+        the plain call when that app isn't installed (base button_start
+        takes no such argument, and has no employee concept to skip).
+        """
+        self.ensure_one()
+        try:
+            self.button_start(bypass=True)
+        except TypeError:
+            self.button_start()
+
     def _nord_sync_payload(self):
         self.ensure_one()
         return {
@@ -60,6 +110,9 @@ class MrpWorkorder(models.Model):
             'workcenter': {
                 'name': self.workcenter_id.name,
                 'resource_kind': self.workcenter_id.resource_kind,
+                'autonomous_close': self.workcenter_id.nord_sync_autonomous_close,
+                'granular_push': self.workcenter_id.nord_sync_granular_push,
+                'contention_policy': self.workcenter_id.nord_sync_contention_policy,
             },
             # duration_expected is in minutes; nord.timesheet.expected_duration is hours.
             'expected_duration': self.duration_expected / 60.0,

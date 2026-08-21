@@ -12,7 +12,7 @@ QUEUE_PAGE_SIZE = 500
 class NordSyncQueueController(http.Controller):
 
     @http.route('/nord_sync/api/v1/queue', type='http', auth='nord_sync_api_key', methods=['GET'], csrf=False)
-    def nord_sync_queue(self, last_seq=0, **kwargs):
+    def nord_sync_queue(self, last_seq=0, applied_seq=None, **kwargs):
         """Entries carry the full business payload captured at enqueue time
         (nord.sync.queue.data) — the Core never needs a follow-up request per
         entry to know what changed.
@@ -22,6 +22,13 @@ class NordSyncQueueController(http.Controller):
         rather than from a client-supplied company_uid — that field is the
         Nord-side tenant identity, not something this endpoint needs to
         cross-check to know who's asking.
+
+        applied_seq is the Core reporting back what it actually finished
+        applying as of its *previous* completed pull (it can only ever know
+        that after this response was already sent, so it rides on the next
+        request instead) — stored so the retention cron never deletes a row
+        the Core hasn't confirmed. max()'d against the stored value so an
+        out-of-order/retried request can never move it backwards.
         """
         try:
             last_seq = int(last_seq or 0)
@@ -31,6 +38,14 @@ class NordSyncQueueController(http.Controller):
         config = request.env['nord_sync.config'].sudo()._get_for_company(request.env.company)
         if not config:
             return request.make_json_response({'error': 'Nord Sync not configured for this company'}, status=403)
+
+        if applied_seq is not None:
+            try:
+                applied_seq = int(applied_seq)
+            except (TypeError, ValueError):
+                applied_seq = None
+            if applied_seq is not None and applied_seq > config.core_applied_seq:
+                config.core_applied_seq = applied_seq
 
         entries = request.env['nord.sync.queue'].sudo().search([
             ('id', '>', last_seq),
@@ -82,5 +97,40 @@ class NordSyncQueueController(http.Controller):
         subclasses this controller and overrides this method, checking its
         own res_model(s) first and calling super() otherwise. Base has none
         — unsupported is the correct answer when no source addon claims it.
+        """
+        return request.make_json_response({'error': f'Unsupported res_model: {res_model}'}, status=400)
+
+    @http.route(
+        '/nord_sync/api/v1/workorder_event', type='http', auth='nord_sync_api_key',
+        methods=['POST'], csrf=False,
+    )
+    def nord_sync_workorder_event(self, **kwargs):
+        """Granular Core->client push (session start/stop, job cancellation)
+        — opt-in per resource (nord_sync_granular_push on the client's
+        mrp.workcenter), unlike the always-on result push above. Same
+        res_model-keyed extension-point dispatch as _nord_sync_apply_result.
+        """
+        try:
+            body = request.get_json_data()
+        except ValueError:
+            body = None
+        if not isinstance(body, dict):
+            return request.make_json_response({'error': 'Invalid JSON body'}, status=400)
+
+        res_model = body.get('res_model')
+        event_type = body.get('event_type')
+        if not res_model or not event_type:
+            return request.make_json_response({'error': 'Missing res_model/event_type'}, status=400)
+
+        config = request.env['nord_sync.config'].sudo()._get_for_company(request.env.company)
+        if not config:
+            return request.make_json_response({'error': 'Nord Sync not configured for this company'}, status=403)
+
+        return self._nord_sync_apply_workorder_event(config, body, res_model, event_type)
+
+    def _nord_sync_apply_workorder_event(self, config, body, res_model, event_type):
+        """Extension point, same shape as _nord_sync_apply_result — base has
+        no handler, each Nord Sync Source addon that opts into granular
+        push overrides this and checks its own res_model(s) first.
         """
         return request.make_json_response({'error': f'Unsupported res_model: {res_model}'}, status=400)

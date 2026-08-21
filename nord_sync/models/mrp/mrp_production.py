@@ -179,6 +179,24 @@ class MrpProduction(models.Model):
         )
         return True, 'ok'
 
+    def _nord_sync_apply_granular_event(self, event_type, payload):
+        """The only granular event routed to the MO itself (not one of its
+        workorders): a job cancelled on the Core, mirrored here as the
+        standard MO cancellation — same as a human cancelling it by hand,
+        no shortcut. Never raises, same best-effort posture as
+        _nord_sync_apply_result above.
+        """
+        self.ensure_one()
+        if event_type != 'job_cancel':
+            return False, f'Unknown event_type: {event_type}'
+        if self.state in ('done', 'cancel'):
+            return False, f'Production already {self.state}, event ignored.'
+        try:
+            self.action_cancel()
+        except Exception as exc:
+            return False, str(exc)
+        return True, 'ok'
+
     def _nord_sync_log_work_sessions(self, work_sessions):
         """Creates one real mrp.workcenter.productivity entry per Core
         session, on the matching workorder (found by source reference) —
@@ -226,6 +244,19 @@ class MrpProduction(models.Model):
         Consumption Warning — mirrors what that wizard's own "Set
         Quantities & Confirm" button does, except using the Core's real
         number instead of always re-deriving the BOM's expected one.
+
+        A raw move whose product isn't in materials at all means the Core's
+        final_product_ids genuinely has nothing to say about it — same
+        "consume exactly this, don't re-derive from the BOM" contract
+        _push_nord_sync_result's own docstring promises, so that's 0
+        consumed, never a re-derived guess (real bug, caught live
+        2026-08-20: this used to fall back to the move's full *reserved*
+        quantity, so an operator removing a component's line on the Core
+        because it genuinely wasn't used still got it fully consumed here
+        instead). Under-consuming (a move stuck open, reservation freed) is
+        the safe direction to fail in either case this fallback fires for —
+        a real operator can notice and fix an unconsumed line; silent
+        over-consumption corrupts the stock count with nothing to notice.
         """
         self.ensure_one()
         by_code = {m['product']['default_code']: m['quantity'] for m in materials if m['product'].get('default_code')}
@@ -237,7 +268,7 @@ class MrpProduction(models.Model):
             elif product.name in by_name:
                 quantity = by_name[product.name]
             else:
-                quantity = move.product_uom_qty
+                quantity = 0.0
             move.quantity = quantity
             move.picked = True
 

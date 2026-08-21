@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Fixed catalog, one row per Nord Sync Source — noupdate so a client
+         who renames a label here doesn't get it silently reset on upgrade.
+         nord_sync.config.enabled_source_ids defaults to all of these (see
+         that field's own default), so an upgrade from before this feature
+         existed keeps every source producing jobs exactly as before. -->
+    <data noupdate="1">
+
+        <record id="source_mrp_production" model="nord_sync.source">
+            <field name="name">Manufacturing</field>
+            <field name="model">mrp.production</field>
+        </record>
+        <record id="source_sale_order" model="nord_sync.source">
+            <field name="name">Sales</field>
+            <field name="model">sale.order</field>
+        </record>
+        <record id="source_purchase_order" model="nord_sync.source">
+            <field name="name">Purchase</field>
+            <field name="model">purchase.order</field>
+        </record>
+        <record id="source_stock_picking" model="nord_sync.source">
+            <field name="name">Inventory</field>
+            <field name="model">stock.picking</field>
+        </record>
+        <record id="source_maintenance_request" model="nord_sync.source">
+            <field name="name">Maintenance</field>
+            <field name="model">maintenance.request</field>
+        </record>
+
+    </data>
+</odoo>
