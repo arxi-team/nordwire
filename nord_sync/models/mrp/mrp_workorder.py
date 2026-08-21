@@ -59,6 +59,12 @@ class MrpWorkorder(models.Model):
         (mrp.production._nord_sync_apply_result above), same as before this
         existed. Never raises — same best-effort posture as the result push
         controller, caller turns the (bool, message) into the HTTP response.
+
+        Keys:
+            event_type (str): 'session_start' or 'session_stop', any other
+                value is rejected.
+            payload (dict): unused today, always {} — no fields are
+                currently read from it for either event_type.
         """
         self.ensure_one()
         if self.state in ('done', 'cancel'):
@@ -96,6 +102,29 @@ class MrpWorkorder(models.Model):
             self.button_start()
 
     def _nord_sync_payload(self):
+        """Payload sent to the Core for this real workorder.
+
+        Keys:
+            production_source_res_id (int): the client's own mrp.production
+                id this workorder belongs to.
+            workcenter_source_res_id (int): the client's own mrp.workcenter id.
+            workcenter (dict): snapshot of the work center itself
+                ({name, autonomous_close, granular_push,
+                contention_policy}) — lets the Core get-or-create the
+                edge.resource on the spot if the Resource Bridge hasn't
+                reached it yet. No resource_kind key, same as
+                mrp.workcenter's own payload — the Core defaults it to
+                'machine' on its own.
+            expected_duration (float): expected duration in hours (converted
+                from duration_expected, which is in minutes).
+            employee_source_res_id (int or False): the client's own
+                hr.employee id of the first assigned operator, False if none
+                assigned (only the first of employee_assigned_ids is carried).
+            employee (dict or False): {name} snapshot of that same employee,
+                only present (non-False) when someone is actually assigned —
+                same lazy-resolution safety net as 'workcenter' above, but
+                optional since an unresolved operator never blocks the task.
+        """
         self.ensure_one()
         return {
             'production_source_res_id': self.production_id.id,
@@ -109,7 +138,6 @@ class MrpWorkorder(models.Model):
             # between the install wizard's Sources and Finish steps).
             'workcenter': {
                 'name': self.workcenter_id.name,
-                'resource_kind': self.workcenter_id.resource_kind,
                 'autonomous_close': self.workcenter_id.nord_sync_autonomous_close,
                 'granular_push': self.workcenter_id.nord_sync_granular_push,
                 'contention_policy': self.workcenter_id.nord_sync_contention_policy,

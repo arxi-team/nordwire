@@ -51,5 +51,11 @@ class NordSyncJobStage(models.Model):
             config._enqueue_and_notify('nord_sync.job.stage', record.id, operation, record._nord_sync_payload())
 
     def _nord_sync_payload(self):
+        """Payload sent to the Core for this client-authored job stage.
+
+        Keys:
+            name (str): the job stage's display name.
+            sequence (int): ordering among this company's job stages.
+        """
         self.ensure_one()
         return {'name': self.name, 'sequence': self.sequence}

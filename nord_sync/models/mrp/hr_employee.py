@@ -35,5 +35,11 @@ class HrEmployee(models.Model):
             config._enqueue_and_notify('hr.employee', record.id, operation, record._nord_sync_payload())
 
     def _nord_sync_payload(self):
+        """Payload sent to the Core to keep this employee's edge.resource
+        up to date.
+
+        Keys:
+            name (str): the employee's display name.
+        """
         self.ensure_one()
         return {'name': self.name}

@@ -30,6 +30,14 @@ class MaintenanceRequest(models.Model):
             )
 
     def _nord_sync_payload(self):
+        """Payload sent to the Core when this maintenance request is created.
+
+        Keys:
+            name (str): the maintenance request's display name.
+            equipment (str or False): the linked equipment's name, False if none.
+            operation_type (str): always 'maintenance' — tells the Core which
+                nord.job.type to use.
+        """
         self.ensure_one()
         return {
             'name': self.name,

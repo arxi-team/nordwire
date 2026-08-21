@@ -43,6 +43,22 @@ class QualityCheck(models.Model):
             config._enqueue_and_notify('quality.check', record.id, operation, record._nord_sync_payload())
 
     def _nord_sync_payload(self):
+        """Payload sent to the Core for this checklist item.
+
+        Keys:
+            production_source_res_id (int): the client's own mrp.production
+                id this check belongs to — resolved to a nord.job on the Core.
+            name (str or False): the check's title, falling back to its own
+                name, False if neither is set.
+            sequence (int): the check's ordering among the job's checklist,
+                falling back to 10 when the quality point has none.
+            test_type (str): the check's quality.check test_type
+                (e.g. 'passfail', 'measure', ...).
+            is_done (bool): whether the check has been performed
+                (quality_state is not 'none').
+            value (str or False): the passfail result, only meaningful
+                (and only sent as non-False) when test_type is 'passfail'.
+        """
         self.ensure_one()
         return {
             'production_source_res_id': self.production_id.id,

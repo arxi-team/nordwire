@@ -18,6 +18,13 @@ class SaleOrder(models.Model):
             config._enqueue_and_notify('sale.order', record.id, operation, record._nord_sync_payload())
 
     def _nord_sync_payload(self):
+        """Payload sent to the Core when this sale order is created.
+
+        Keys:
+            name (str): the sale order's display name.
+            operation_type (str): always 'sale' — tells the Core which
+                nord.job.type to use.
+        """
         self.ensure_one()
         return {
             'name': self.name,

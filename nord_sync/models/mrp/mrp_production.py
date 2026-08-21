@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
+from datetime import timedelta
 
-from odoo import models
+from odoo import fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -35,6 +36,18 @@ class MrpProduction(models.Model):
         actually used for this MO, not its contents — the Core resolves the already-synced
         nord.bom by source reference and loads it, same distinction as
         nord_sync_source_res_id everywhere else in this bridge.
+
+        Keys:
+            name (str): the MO's display name.
+            product_qty (float): the quantity to produce.
+            state (str): the MO's own mrp.production state.
+            operation_type (str): always 'production' — tells the Core which
+                nord.job.type to use.
+            bom_source_res_id (int or False): the client's own mrp.bom id
+                actually used, False if none.
+            log_note (str or False): the MO's own log note, False if unset.
+            product (dict): {name, default_code, uom} snapshot of the
+                product being produced.
         """
         self.ensure_one()
         product = self.product_id
@@ -65,6 +78,15 @@ class MrpProduction(models.Model):
         header fields. move_finished_ids covers the main product and any
         byproducts alike, no distinction — same "just a flat list of
         outputs" shape as mrp_bom.py's own product_lines.
+
+        Keys:
+            materials (list[dict]): [{product: <product payload>, quantity,
+                workcenter_source_res_id}], one per move_raw_ids — the
+                workcenter reference is False when the move isn't tied to
+                any operation.
+            finished_products (list[dict]): [{product: <product payload>,
+                quantity}], one per move_finished_ids (main product and any
+                byproducts alike).
         """
         self.ensure_one()
         return {
@@ -88,6 +110,16 @@ class MrpProduction(models.Model):
         }
 
     def _nord_sync_product_payload(self, product):
+        """Snapshot of a product, embedded wherever this bridge references
+        one, so the Core can lazily get-or-create the matching
+        nord.product itself instead of requiring it to already exist.
+
+        Keys:
+            name (str): the product's display name.
+            default_code (str or False): the product's internal reference,
+                False if unset.
+            uom (str): the product's unit of measure name.
+        """
         return {
             'name': product.name,
             'default_code': product.default_code or False,
@@ -108,7 +140,16 @@ class MrpProduction(models.Model):
         (Odoo's own native quantity-loss ledger) left in draft, not
         auto-validated — a human confirms the actual scrap before it moves
         real stock, same caution as every other integration that touches
-        inventory this way.
+        inventory this way. They also count toward qty_producing (see
+        below) — Odoo's button_mark_done() only completes on its own when
+        the quantity being marked as produced covers the full plan;
+        production+scrap+not_pass is what was actually processed, even
+        though only the production share ends up as usable output.
+        not_pass_qty additionally logs a mrp.workcenter.productivity time
+        entry (loss_type='quality') — see _nord_sync_log_quality_loss —
+        because Odoo's own OEE is computed purely from those time logs,
+        never from stock.scrap quantities; scrap_qty gets no such entry,
+        physical waste isn't a quality-inspection stoppage.
 
         materials is the Core's real per-product consumed quantity
         (job.final_product_ids as it stood at close) — can differ from
@@ -126,6 +167,29 @@ class MrpProduction(models.Model):
         without this, a workorder with no time log gets one auto-invented
         by Odoo itself using "now minus duration_expected" as a guess,
         wrong whenever the real session was shorter/longer than planned.
+
+        Keys:
+            qty_produced (float): quantity to record as good, usable
+                output.
+            scrap_qty (float, optional): quantity to scrap, default 0.0 —
+                counted into qty_producing so button_mark_done() sees the
+                full plan as accounted for, then becomes its own draft
+                stock.scrap record when non-zero.
+            not_pass_qty (float, optional): quantity rejected on quality
+                check, default 0.0 — same treatment as scrap_qty, its own
+                draft stock.scrap record when non-zero, plus a
+                mrp.workcenter.productivity 'quality' time entry (see
+                _nord_sync_log_quality_loss) so it counts toward Odoo's
+                own OEE.
+            materials (list[dict], optional): the Core's real per-product
+                consumed quantity, default None (treated as empty) —
+                [{product: {name, default_code}, quantity}], only read when
+                the standard flow hits the Consumption Warning.
+            work_sessions (list[dict], optional): every real work session
+                the Core recorded for this job, default None (treated as
+                empty) — [{workorder_source_res_id, employee_source_res_id,
+                start_date, end_date}], logged as real
+                mrp.workcenter.productivity entries.
         """
         self.ensure_one()
         if self.state in ('done', 'cancel'):
@@ -141,7 +205,20 @@ class MrpProduction(models.Model):
         self._nord_sync_log_work_sessions(work_sessions or [])
 
         try:
-            self.qty_producing = qty_produced
+            # The planned quantity (product_qty) is what Odoo checks
+            # button_mark_done() against to decide whether to block on its
+            # own backorder wizard — qty_produced alone under-reports how
+            # much was actually processed whenever scrap/not_pass is
+            # nonzero (a declaration ledger where production+scrap+not_pass
+            # sums to what was planned, real bug found live: 2 good + 0.7
+            # not_pass + 0.3 scrap out of 3 planned left qty_producing=2,
+            # Odoo saw 1 unit "missing" against the plan, and silently
+            # blocked on a backorder decision no one was there to answer).
+            # scrap_qty/not_pass_qty aren't separately reserved/produced
+            # moves of their own — they're a breakdown of the same
+            # qty_producing, backed out again right after via the draft
+            # stock.scrap records below.
+            self.qty_producing = qty_produced + scrap_qty + not_pass_qty
             result = self.button_mark_done()
             if isinstance(result, dict) and result.get('res_model') == 'mrp.consumption.warning':
                 # Odoo's own "consumed qty differs from the BOM's expected
@@ -173,6 +250,7 @@ class MrpProduction(models.Model):
 
         self._nord_sync_create_scrap(scrap_qty, 'Nord Sync: scrap')
         self._nord_sync_create_scrap(not_pass_qty, 'Nord Sync: quality reject (not pass)')
+        self._nord_sync_log_quality_loss(not_pass_qty)
 
         self.message_post(
             body=f'Nord Sync: result applied — {qty_produced} {self.product_uom_id.name} produced.',
@@ -185,6 +263,11 @@ class MrpProduction(models.Model):
         standard MO cancellation — same as a human cancelling it by hand,
         no shortcut. Never raises, same best-effort posture as
         _nord_sync_apply_result above.
+
+        Keys:
+            event_type (str): only 'job_cancel' is recognized today, any
+                other value is rejected.
+            payload (dict): unused today, always {} for 'job_cancel'.
         """
         self.ensure_one()
         if event_type != 'job_cancel':
@@ -282,6 +365,52 @@ class MrpProduction(models.Model):
             'scrap_qty': quantity,
             'company_id': self.company_id.id,
             'origin': reason,
+        })
+
+    def _nord_sync_log_quality_loss(self, not_pass_qty):
+        """Logs not_pass_qty as a real mrp.workcenter.productivity time
+        entry with loss_type='quality', so it counts in Odoo's own native
+        OEE (mrp.workcenter.oee, computed purely from productivity time
+        logs — a stock.scrap record alone, see _nord_sync_create_scrap
+        above, is invisible to it). scrap_qty gets no equivalent entry:
+        physical waste isn't a quality-inspection stoppage, only
+        not_pass is.
+
+        The "time lost" is estimated from the workorder's own planned
+        cycle time (duration_expected / product_qty), same time-per-unit
+        the BOM operation itself is built from — not an arbitrary number.
+
+        ponytail: attributed to the MO's LAST real workorder only — a
+        job-level not_pass_qty carries no per-workorder breakdown in the
+        Result Push payload today, correct for the common single-operation
+        case, an approximation for a multi-operation MO. Upgrade path: a
+        per-workorder not_pass breakdown in the payload, if that's ever
+        needed.
+        """
+        self.ensure_one()
+        if not not_pass_qty or not self.product_qty:
+            return
+        workorder = self.workorder_ids[-1:]
+        if not workorder:
+            return
+        loss = self.env['mrp.workcenter.productivity.loss'].sudo().search(
+            [('loss_type', '=', 'quality')], limit=1,
+        )
+        if not loss:
+            return
+        duration_minutes = not_pass_qty * (workorder.duration_expected / self.product_qty)
+        if duration_minutes <= 0:
+            return
+        date_end = fields.Datetime.now()
+        self.env['mrp.workcenter.productivity'].sudo().create({
+            'workorder_id': workorder.id,
+            'workcenter_id': workorder.workcenter_id.id,
+            'description': f'Nord Sync: quality reject ({not_pass_qty} {self.product_uom_id.name})',
+            'loss_id': loss.id,
+            'date_start': date_end - timedelta(minutes=duration_minutes),
+            'date_end': date_end,
+            'user_id': self.env.user.id,
+            'company_id': workorder.company_id.id,
         })
 
     def _nord_sync_result_blocked_message(self):

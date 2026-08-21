@@ -115,6 +115,15 @@ class NordSyncStateMapping(models.Model):
             config._enqueue_and_notify('nord_sync.state.mapping', record.id, operation, record._nord_sync_payload())
 
     def _nord_sync_payload(self):
+        """Payload sent to the Core for this client-authored state mapping.
+
+        Keys:
+            source_model (str): the source model this mapping applies to
+                (e.g. 'mrp.production').
+            source_value (str): the raw state value on that source model.
+            target_job_stage_source_res_id (int or False): the client's own
+                id of the nord_sync.job.stage this value maps to, False if unset.
+        """
         self.ensure_one()
         return {
             'source_model': self.source_model,

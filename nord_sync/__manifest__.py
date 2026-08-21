@@ -68,6 +68,7 @@ Rules stay reserved to the real Odoo administrator, on purpose.
         'views/nord_sync_failures_views.xml',
         'views/nord_sync_state_mapping_views.xml',
         'views/nord_sync_config_views.xml',
+        'views/mrp_workcenter_views.xml',
         'views/ir_actions_server_views.xml',
         'data/nord_sync_automation.xml',
         'data/mrp/nord_sync_automation.xml',

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="mrp_workcenter_view_nord_sync" model="ir.ui.view">
+        <field name="name">mrp.workcenter.form.nord.sync</field>
+        <field name="model">mrp.workcenter</field>
+        <field name="inherit_id" ref="mrp.mrp_workcenter_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='general_info']" position="after">
+                <page string="Nord Sync" name="nord_sync">
+                    <group>
+                        <field name="nord_sync_autonomous_close"/>
+                        <field name="nord_sync_granular_push"/>
+                        <field name="nord_sync_contention_policy"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

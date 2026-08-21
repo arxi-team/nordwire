@@ -13,18 +13,9 @@ class MrpWorkcenter(models.Model):
     """
     _inherit = 'mrp.workcenter'
 
-    resource_kind = fields.Selection([
-        ('human', 'Human'),
-        ('machine', 'Machine'),
-        ('tool', 'Tool'),
-    ], string='Nord Resource Kind', default='machine',
-        help='What this work center represents on the Nord Core (edge.resource.resource_kind) — '
-             'not native to mrp.workcenter, added for the Resource Bridge.',
-    )
-
     # ── Nord Sync Autonomous Resource Policies ───────────────────────────────
-    # Authored here, same as resource_kind above — mirrored onto the Core's
-    # edge.resource by the Resource Bridge, never enforced client-side.
+    # Authored here — mirrored onto the Core's edge.resource by the Resource
+    # Bridge, never enforced client-side.
 
     nord_sync_autonomous_close = fields.Boolean(
         string='Autonomous Close',
@@ -72,10 +63,31 @@ class MrpWorkcenter(models.Model):
             config._enqueue_and_notify('mrp.workcenter', record.id, operation, record._nord_sync_payload())
 
     def _nord_sync_payload(self):
+        """Payload sent to the Core to keep this work center's edge.resource
+        up to date.
+
+        No resource_kind key: the Core defaults a work center's
+        edge.resource to 'machine' on its own when the key is absent
+        (mirrors how hr.employee's own payload never sends one either,
+        always resolved to 'human' Core-side) — 'tool' is a real, accepted
+        value on the Core, just not something the stock client UI exposes
+        a way to choose yet.
+
+        Keys:
+            name (str): the work center's display name.
+            autonomous_close (bool): let a port-driven Nord Alert close jobs
+                on this resource without a human clicking "Mark Done".
+            granular_push (bool): push work-session start/stop and job
+                cancellation back to this work order in real time.
+            contention_policy (str): 'block' or 'auto_close_previous' — what
+                the Core does on a new session while one is already open.
+            resource_calendar_attendances (list[dict]): [{dayofweek,
+                hour_from, hour_to, day_period}], one per attendance line on
+                this work center's resource.calendar, empty list if none set.
+        """
         self.ensure_one()
         return {
             'name': self.name,
-            'resource_kind': self.resource_kind,
             'autonomous_close': self.nord_sync_autonomous_close,
             'granular_push': self.nord_sync_granular_push,
             'contention_policy': self.nord_sync_contention_policy,

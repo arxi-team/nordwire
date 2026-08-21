@@ -36,6 +36,22 @@ class MrpBom(models.Model):
             config._enqueue_and_notify('mrp.bom', record.id, operation, record._nord_sync_payload())
 
     def _nord_sync_payload(self):
+        """Full snapshot of this BOM, sent to the Core on every change.
+
+        Keys:
+            name (str): the BOM's display name, falling back to its code
+                or 'BOM' if neither is set.
+            lines (list[dict]): [{product: <product payload>, quantity,
+                workcenter_source_res_id}], one per bom_line_ids — the
+                workcenter reference is False when the line isn't tied to
+                any operation.
+            product_lines (list[dict]): [{product: <product payload>,
+                quantity}] — the main output product (if any) followed by
+                every byproduct.
+            operations (list[dict]): [{name, workcenter_source_res_id,
+                expected_duration}], one per operation_ids — expected_duration
+                is in hours (converted from time_cycle_manual, in minutes).
+        """
         self.ensure_one()
         main_product = self.product_id or self.product_tmpl_id.product_variant_id
         product_lines = []
@@ -76,6 +92,16 @@ class MrpBom(models.Model):
         }
 
     def _nord_sync_product_payload(self, product):
+        """Snapshot of a product, embedded wherever this bridge references
+        one, so the Core can lazily get-or-create the matching
+        nord.product itself instead of requiring it to already exist.
+
+        Keys:
+            name (str): the product's display name.
+            default_code (str or False): the product's internal reference,
+                False if unset.
+            uom (str): the product's unit of measure name.
+        """
         return {
             'name': product.name,
             'default_code': product.default_code or False,
