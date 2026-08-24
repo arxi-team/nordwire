@@ -70,8 +70,16 @@ class MrpWorkcenter(models.Model):
         value on the Core, just not something the stock client UI exposes
         a way to choose yet.
 
+        autonomous_close/granular_push/contention_policy stay hardcoded
+        here, can't move to _nord_sync_configurable_payload() — the wire key
+        is a renamed shorthand of the real field
+        (nord_sync_autonomous_close, etc.), and that mechanism only ever
+        sends a field under its own real name. name is the one key here
+        that's genuinely "read this field off self" — per-company
+        selectable via that mechanism instead (default: on, unchanged
+        behavior).
+
         Keys:
-            name (str): the work center's display name.
             autonomous_close (bool): let a port-driven Nord Alert close jobs
                 on this resource without a human clicking "Mark Done".
             granular_push (bool): push work-session start/stop and job
@@ -84,7 +92,7 @@ class MrpWorkcenter(models.Model):
         """
         self.ensure_one()
         return {
-            'name': self.name,
+            **self._nord_sync_configurable_payload(),
             'autonomous_close': self.nord_sync_autonomous_close,
             'granular_push': self.nord_sync_granular_push,
             'contention_policy': self.nord_sync_contention_policy,

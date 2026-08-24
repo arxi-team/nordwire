@@ -45,6 +45,12 @@ class QualityCheck(models.Model):
     def _nord_sync_payload(self):
         """Payload sent to the Core for this checklist item.
 
+        test_type is the one key here that's genuinely "read this field off
+        self" — per-company selectable via _nord_sync_configurable_payload()
+        instead (default: on, unchanged behavior). name/sequence are
+        fallback expressions across other fields/related records, is_done/
+        value are derived from quality_state — none of those three can move.
+
         Keys:
             production_source_res_id (int): the client's own mrp.production
                 id this check belongs to — resolved to a nord.job on the Core.
@@ -52,8 +58,6 @@ class QualityCheck(models.Model):
                 name, False if neither is set.
             sequence (int): the check's ordering among the job's checklist,
                 falling back to 10 when the quality point has none.
-            test_type (str): the check's quality.check test_type
-                (e.g. 'passfail', 'measure', ...).
             is_done (bool): whether the check has been performed
                 (quality_state is not 'none').
             value (str or False): the passfail result, only meaningful
@@ -61,10 +65,10 @@ class QualityCheck(models.Model):
         """
         self.ensure_one()
         return {
+            **self._nord_sync_configurable_payload(),
             'production_source_res_id': self.production_id.id,
             'name': self.title or self.name or False,
             'sequence': self.point_id.sequence or 10,
-            'test_type': self.test_type,
             'is_done': self.quality_state != 'none',
             'value': self.quality_state if self.test_type == 'passfail' else False,
         }

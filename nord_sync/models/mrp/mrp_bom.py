@@ -34,6 +34,11 @@ class MrpBom(models.Model):
     def _nord_sync_payload(self):
         """Full snapshot of this BOM, sent to the Core on every change.
 
+        name stays hardcoded, can't move to _nord_sync_configurable_payload()
+        — it's a fallback expression across three different fields, not a
+        single "read this field off self". Any real field a company still
+        wants to add is merged in under its own name alongside this.
+
         Keys:
             name (str): the BOM's display name, falling back to its code
                 or 'BOM' if neither is set.
@@ -62,6 +67,7 @@ class MrpBom(models.Model):
                 'quantity': byproduct.product_qty,
             })
         return {
+            **self._nord_sync_configurable_payload(),
             'name': self.display_name or self.code or 'BOM',
             'lines': [
                 {

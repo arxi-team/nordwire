@@ -41,3 +41,21 @@ class NordSyncNotifyMixin(models.AbstractModel):
         """
         self.ensure_one()
         return self._name
+
+    def _nord_sync_configurable_payload(self):
+        """The scalar-field slice of this record's payload, per
+        nord_sync.payload.field.config (company + model).
+        Each concrete model's own _nord_sync_payload() merges this in
+        alongside whatever it still builds by hand (constants, relational
+        references, nested snapshots — none of that fits here, see that
+        config model's own docstring). Empty dict when nothing's configured
+        for this (company, model) yet — never raises, missing config just
+        means no scalar fields go out, same resilience posture as the rest
+        of this bridge.
+        """
+        self.ensure_one()
+        company = self.company_id if 'company_id' in self._fields and self.company_id else self.env.company
+        config = self.env['nord_sync.payload.field.config'].sudo().search([
+            ('company_id', '=', company.id), ('res_model', '=', self._name),
+        ], limit=1)
+        return {field.name: self[field.name] for field in config.field_ids}

@@ -15,13 +15,16 @@ class StockPicking(models.Model):
     def _nord_sync_payload(self):
         """Payload sent to the Core when this picking is created.
 
+        name comes from _nord_sync_configurable_payload(), per-company
+        selectable (default: on, unchanged behavior). operation_type stays
+        hardcoded — it's a constant, not a field read.
+
         Keys:
-            name (str): the picking's display name.
             operation_type (str): always 'inventory' — tells the Core which
                 nord.job.type to use.
         """
         self.ensure_one()
         return {
-            'name': self.name,
+            **self._nord_sync_configurable_payload(),
             'operation_type': 'inventory',
         }

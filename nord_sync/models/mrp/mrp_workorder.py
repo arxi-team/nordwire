@@ -102,6 +102,12 @@ class MrpWorkorder(models.Model):
     def _nord_sync_payload(self):
         """Payload sent to the Core for this real workorder.
 
+        Every key below is relational, nested, or unit-converted — none of
+        it is "read this field off self", so none of it can move to
+        _nord_sync_configurable_payload(). Merged in anyway (empty by
+        default) so a company can still add a genuinely scalar field of its
+        own later without touching this method.
+
         Keys:
             production_source_res_id (int): the client's own mrp.production
                 id this workorder belongs to.
@@ -125,6 +131,7 @@ class MrpWorkorder(models.Model):
         """
         self.ensure_one()
         return {
+            **self._nord_sync_configurable_payload(),
             'production_source_res_id': self.production_id.id,
             'workcenter_source_res_id': self.workcenter_id.id,
             # Snapshot of the work center itself (same shape as

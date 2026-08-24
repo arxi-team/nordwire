@@ -15,13 +15,16 @@ class SaleOrder(models.Model):
     def _nord_sync_payload(self):
         """Payload sent to the Core when this sale order is created.
 
+        name comes from _nord_sync_configurable_payload(), per-company
+        selectable (default: on, unchanged behavior). operation_type stays
+        hardcoded — it's a constant, not a field read.
+
         Keys:
-            name (str): the sale order's display name.
             operation_type (str): always 'sale' — tells the Core which
                 nord.job.type to use.
         """
         self.ensure_one()
         return {
-            'name': self.name,
+            **self._nord_sync_configurable_payload(),
             'operation_type': 'sale',
         }

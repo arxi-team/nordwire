@@ -32,10 +32,9 @@ class HrEmployee(models.Model):
 
     def _nord_sync_payload(self):
         """Payload sent to the Core to keep this employee's edge.resource
-        up to date.
-
-        Keys:
-            name (str): the employee's display name.
+        up to date. Every key here is "read this field off self" — the
+        whole thing comes from _nord_sync_configurable_payload(), per-company
+        selectable (default: name, unchanged behavior).
         """
         self.ensure_one()
-        return {'name': self.name}
+        return self._nord_sync_configurable_payload()

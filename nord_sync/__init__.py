@@ -37,6 +37,7 @@ def post_init_hook(env):
         config = env['nord_sync.config'].sudo()._get_for_company(company)
         if config:
             config._nord_sync_backfill_existing_records()
+        env['nord_sync.payload.field.config']._nord_sync_seed_defaults_for_company(company)
     manufacturing_admins = env.ref('mrp.group_mrp_manager').sudo().all_user_ids
     manufacturing_admins.write({'group_ids': [(4, env.ref('nord_sync.group_nord_sync_manager').id)]})
     manufacturing_users = env.ref('mrp.group_mrp_user').sudo().all_user_ids - manufacturing_admins

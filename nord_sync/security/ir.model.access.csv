@@ -21,5 +21,7 @@ access_nord_sync_job_stage_system,nord_sync.job.stage.system,model_nord_sync_job
 access_nord_sync_job_stage_manager,nord_sync.job.stage.manager,model_nord_sync_job_stage,group_nord_sync_manager,1,1,1,1
 access_nord_sync_state_mapping_system,nord_sync.state.mapping.system,model_nord_sync_state_mapping,base.group_system,1,1,1,1
 access_nord_sync_state_mapping_manager,nord_sync.state.mapping.manager,model_nord_sync_state_mapping,group_nord_sync_manager,1,1,1,1
+access_nord_sync_payload_field_config_system,nord_sync.payload.field.config.system,model_nord_sync_payload_field_config,base.group_system,1,1,1,1
+access_nord_sync_payload_field_config_manager,nord_sync.payload.field.config.manager,model_nord_sync_payload_field_config,group_nord_sync_manager,1,1,1,1
 access_nord_sync_failure_wizard_user,nord_sync.failure.wizard.user,model_nord_sync_failure_wizard,group_nord_sync_user,1,1,1,1
 access_nord_sync_failure_wizard_line_user,nord_sync.failure.wizard.line.user,model_nord_sync_failure_wizard_line,group_nord_sync_user,1,1,1,1

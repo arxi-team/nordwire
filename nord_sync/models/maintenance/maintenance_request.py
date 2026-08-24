@@ -23,15 +23,19 @@ class MaintenanceRequest(models.Model):
     def _nord_sync_payload(self):
         """Payload sent to the Core when this maintenance request is created.
 
+        name comes from _nord_sync_configurable_payload(), per-company
+        selectable (default: on, unchanged behavior). equipment is a
+        related record's name, not a field on self, and operation_type is a
+        constant — neither can move there.
+
         Keys:
-            name (str): the maintenance request's display name.
             equipment (str or False): the linked equipment's name, False if none.
             operation_type (str): always 'maintenance' — tells the Core which
                 nord.job.type to use.
         """
         self.ensure_one()
         return {
-            'name': self.name,
+            **self._nord_sync_configurable_payload(),
             'equipment': self.equipment_id.name or False,
             'operation_type': 'maintenance',
         }

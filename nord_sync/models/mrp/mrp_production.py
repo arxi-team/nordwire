@@ -31,27 +31,28 @@ class MrpProduction(models.Model):
         nord.bom by source reference and loads it, same distinction as
         nord_sync_source_res_id everywhere else in this bridge.
 
+        name/product_qty/state/log_note are no longer hardcoded here — they
+        come from _nord_sync_configurable_payload(), per-company selectable
+        (default: all four, unchanged behavior). operation_type/
+        bom_source_res_id/product below can't move there: operation_type is
+        a constant (not a field read at all), bom_source_res_id and product
+        are a relational reference and a snapshot of a *different* record
+        (self.product_id, not self) — neither is "read this field off self".
+
         Keys:
-            name (str): the MO's display name.
-            product_qty (float): the quantity to produce.
-            state (str): the MO's own mrp.production state.
             operation_type (str): always 'production' — tells the Core which
                 nord.job.type to use.
             bom_source_res_id (int or False): the client's own mrp.bom id
                 actually used, False if none.
-            log_note (str or False): the MO's own log note, False if unset.
             product (dict): {name, default_code, uom} snapshot of the
                 product being produced.
         """
         self.ensure_one()
         product = self.product_id
         return {
-            'name': self.name,
-            'product_qty': self.product_qty,
-            'state': self.state,
+            **self._nord_sync_configurable_payload(),
             'operation_type': 'production',
             'bom_source_res_id': self.bom_id.id or False,
-            'log_note': self.log_note or False,
             'product': {
                 'name': product.name,
                 'default_code': product.default_code or False,
