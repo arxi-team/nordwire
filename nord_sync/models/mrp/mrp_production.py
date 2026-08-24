@@ -131,14 +131,14 @@ class MrpProduction(models.Model):
         silent, chatter + an activity for the MO's responsible user.
 
         scrap_qty/not_pass_qty each become their own stock.scrap record
-        (Odoo's own native quantity-loss ledger) left in draft, not
-        auto-validated — a human confirms the actual scrap before it moves
-        real stock, same caution as every other integration that touches
-        inventory this way. They also count toward qty_producing (see
-        below) — Odoo's button_mark_done() only completes on its own when
-        the quantity being marked as produced covers the full plan;
-        production+scrap+not_pass is what was actually processed, even
-        though only the production share ends up as usable output.
+        (Odoo's own native quantity-loss ledger), auto-validated right
+        away — no human in this loop to confirm it by hand, same posture
+        as the rest of this autonomous flow. Neither counts toward
+        qty_producing (only qty_produced does — real bug found live: summing
+        them in let a plan of 10 close as "fully produced" on 6 good + 4
+        scrap, moving 10 units of usable stock for only 6 real ones).
+        Whatever's short of product_qty becomes a real backorder MO
+        instead (skip_backorder + mo_ids_to_backorder, see below).
         not_pass_qty additionally logs a mrp.workcenter.productivity time
         entry (loss_type='quality') — see _nord_sync_log_quality_loss —
         because Odoo's own OEE is computed purely from those time logs,
@@ -166,12 +166,11 @@ class MrpProduction(models.Model):
             qty_produced (float): quantity to record as good, usable
                 output.
             scrap_qty (float, optional): quantity to scrap, default 0.0 —
-                counted into qty_producing so button_mark_done() sees the
-                full plan as accounted for, then becomes its own draft
-                stock.scrap record when non-zero.
+                never counted into qty_producing, becomes its own
+                auto-validated stock.scrap record when non-zero.
             not_pass_qty (float, optional): quantity rejected on quality
                 check, default 0.0 — same treatment as scrap_qty, its own
-                draft stock.scrap record when non-zero, plus a
+                auto-validated stock.scrap record when non-zero, plus a
                 mrp.workcenter.productivity 'quality' time entry (see
                 _nord_sync_log_quality_loss) so it counts toward Odoo's
                 own OEE.
@@ -199,21 +198,30 @@ class MrpProduction(models.Model):
         self._nord_sync_log_work_sessions(work_sessions or [])
 
         try:
-            # The planned quantity (product_qty) is what Odoo checks
-            # button_mark_done() against to decide whether to block on its
-            # own backorder wizard — qty_produced alone under-reports how
-            # much was actually processed whenever scrap/not_pass is
-            # nonzero (a declaration ledger where production+scrap+not_pass
-            # sums to what was planned, real bug found live: 2 good + 0.7
-            # not_pass + 0.3 scrap out of 3 planned left qty_producing=2,
-            # Odoo saw 1 unit "missing" against the plan, and silently
-            # blocked on a backorder decision no one was there to answer).
-            # scrap_qty/not_pass_qty aren't separately reserved/produced
-            # moves of their own — they're a breakdown of the same
-            # qty_producing, backed out again right after via the draft
-            # stock.scrap records below.
-            self.qty_producing = qty_produced + scrap_qty + not_pass_qty
-            result = self.button_mark_done()
+            # qty_producing is only the good/usable output — scrap and
+            # not_pass never counted as "produced" (real bug found live:
+            # summing them in here let 6 good + 4 scrap satisfy a plan of
+            # 10, moving 10 units of the finished product into stock when
+            # only 6 were actually good). Whatever's short of product_qty
+            # becomes a real backorder MO instead, via skip_backorder +
+            # mo_ids_to_backorder=self.ids — same as ticking "to backorder"
+            # on the wizard's own Confirm button, except no human is there
+            # to click it. The backorder MO is created already
+            # state='confirmed', which nord_sync_automation.xml's
+            # on_create_or_write rule still notifies Cloud for, same as a
+            # human-confirmed MO would.
+            #
+            # mo_ids_to_backorder is only added when there's an actual
+            # shortfall (real bug, found live: passing it unconditionally
+            # made _split_productions() try to create a backorder even when
+            # qty_produced == product_qty, with product_qty=0 — hit the
+            # mrp_production_qty_positive DB constraint and 500'd the whole
+            # request, silently dropping the Result Push).
+            self.qty_producing = qty_produced
+            mo = self.with_context(skip_backorder=True)
+            if not self.product_uom_id.is_zero(self._get_quantity_to_backorder()):
+                mo = mo.with_context(mo_ids_to_backorder=self.ids)
+            result = mo.button_mark_done()
             if isinstance(result, dict) and result.get('res_model') == 'mrp.consumption.warning':
                 # Odoo's own "consumed qty differs from the BOM's expected
                 # qty, are you sure?" warning — this flow already knows the
@@ -227,10 +235,22 @@ class MrpProduction(models.Model):
                 # cancelled them instead of consuming anything — real bug,
                 # caught by checking the MO's Components tab after a close).
                 # Any *other* wizard button_mark_done() might still return
-                # (backorder, lot/serial) is a real business decision, left
-                # for a human — falls through to the generic blocked message.
+                # (lot/serial) is a real business decision, left for a
+                # human — falls through to the generic blocked message.
                 self._nord_sync_set_raw_move_quantities(materials or [])
-                result = self.with_context(skip_consumption=True).button_mark_done()
+                result = mo.with_context(skip_consumption=True).button_mark_done()
+            if isinstance(result, dict) and result.get('res_model') == 'mrp.production':
+                # button_mark_done() already wrote state='done' on this MO and
+                # split the backorder off (both happen unconditionally once
+                # pre_button_mark_done() clears, before this return) — this
+                # dict is only its own "go look at the new backorder" form
+                # navigation for a human, not a block. Real bug, found live:
+                # every backorder case was falling through to the generic
+                # blocked message below despite having actually finished,
+                # silently skipping scrap creation. mrp.action_assign_serial_numbers
+                # (the one real lot/serial block button_mark_done() can still
+                # return) is a different res_model, so this stays specific.
+                result = True
         except Exception as exc:
             message = f'Nord Sync: failed to apply the result ({exc}).'
             _logger.warning('nord_sync: failed to apply result to MO %s: %s', self.id, exc)
@@ -350,16 +370,29 @@ class MrpProduction(models.Model):
             move.picked = True
 
     def _nord_sync_create_scrap(self, quantity, reason):
+        """Creates and immediately validates the scrap — no human in this
+        autonomous loop to confirm it by hand. action_validate() itself
+        never raises; when the scrap location doesn't have enough on hand
+        to validate straight away it returns a forecast-wizard action
+        instead, left in draft for manual follow-up (logged, not alarmed —
+        same resilience posture as the rest of this bridge).
+        """
         self.ensure_one()
         if not quantity:
             return
-        self.env['stock.scrap'].sudo().create({
+        scrap = self.env['stock.scrap'].sudo().create({
             'product_id': self.product_id.id,
             'production_id': self.id,
             'scrap_qty': quantity,
             'company_id': self.company_id.id,
             'origin': reason,
         })
+        if scrap.action_validate() is not True:
+            _logger.warning(
+                'nord_sync: scrap %s for MO %s could not be auto-validated (not enough '
+                'on hand at the scrap location) — left in draft for manual confirmation.',
+                scrap.id, self.id,
+            )
 
     def _nord_sync_log_quality_loss(self, not_pass_qty):
         """Logs not_pass_qty as a real mrp.workcenter.productivity time
