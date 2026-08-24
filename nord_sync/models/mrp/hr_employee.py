@@ -7,9 +7,10 @@ class HrEmployee(models.Model):
     mrp_workcenter.py's own Resource Bridge (edge.resource on the Core),
     just sourced from hr.employee instead of mrp.workcenter, and always
     resource_kind='human' there since hr.employee has no equivalent field
-    to read it from.
+    to read it from. A support model of the mrp.production source, not a
+    toggle-able source of its own — see _nord_sync_source_key below.
     """
-    _inherit = 'hr.employee'
+    _inherit = ['hr.employee', 'nord_sync.notify.mixin']
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -26,13 +27,8 @@ class HrEmployee(models.Model):
         self._nord_sync_notify('unlink')
         return super().unlink()
 
-    def _nord_sync_notify(self, operation):
-        for record in self:
-            company = record.company_id or self.env.company
-            config = self.env['nord_sync.config'].sudo()._get_for_company(company)
-            if not config or not config.enabled or not config._is_source_enabled('mrp.production'):
-                continue
-            config._enqueue_and_notify('hr.employee', record.id, operation, record._nord_sync_payload())
+    def _nord_sync_source_key(self):
+        return 'mrp.production'
 
     def _nord_sync_payload(self):
         """Payload sent to the Core to keep this employee's edge.resource

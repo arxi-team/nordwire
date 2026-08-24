@@ -9,9 +9,11 @@ class MrpWorkcenter(models.Model):
     lazily via BOM/MO association — see _get_or_create_nord_sync_product,
     to avoid flooding the Core with products never actually used in a job),
     the set of work centers is small and bounded, so syncing all of them
-    eagerly doesn't risk flooding the Core DB.
+    eagerly doesn't risk flooding the Core DB. A support model of the
+    mrp.production source, not a toggle-able source of its own — see
+    _nord_sync_source_key below.
     """
-    _inherit = 'mrp.workcenter'
+    _inherit = ['mrp.workcenter', 'nord_sync.notify.mixin']
 
     # ── Nord Sync Autonomous Resource Policies ───────────────────────────────
     # Authored here — mirrored onto the Core's edge.resource by the Resource
@@ -54,13 +56,8 @@ class MrpWorkcenter(models.Model):
         self._nord_sync_notify('unlink')
         return super().unlink()
 
-    def _nord_sync_notify(self, operation):
-        for record in self:
-            company = record.company_id or self.env.company
-            config = self.env['nord_sync.config'].sudo()._get_for_company(company)
-            if not config or not config.enabled or not config._is_source_enabled('mrp.production'):
-                continue
-            config._enqueue_and_notify('mrp.workcenter', record.id, operation, record._nord_sync_payload())
+    def _nord_sync_source_key(self):
+        return 'mrp.production'
 
     def _nord_sync_payload(self):
         """Payload sent to the Core to keep this work center's edge.resource

@@ -5,17 +5,12 @@ from odoo import models
 class StockPicking(models.Model):
     """Nord Sync Source for stock.picking — same minimal shape as
     maintenance.request (nord_sync_maintenance): create-only Automation Rule, no product/
-    declaration/result push. `operation_type` in the payload is what tells
-    the Core which nord.job.type to use — never hardcoded Core-side.
+    declaration/result push, own _nord_sync_payload only (the create/enqueue
+    plumbing is nord_sync.notify.mixin, shared by every source). `operation_type`
+    in the payload is what tells the Core which nord.job.type to use — never
+    hardcoded Core-side.
     """
-    _inherit = 'stock.picking'
-
-    def _nord_sync_notify(self, operation):
-        for record in self:
-            config = self.env['nord_sync.config'].sudo()._get_for_company(record.company_id)
-            if not config or not config.enabled or not config._is_source_enabled('stock.picking'):
-                continue
-            config._enqueue_and_notify('stock.picking', record.id, operation, record._nord_sync_payload())
+    _inherit = ['stock.picking', 'nord_sync.notify.mixin']
 
     def _nord_sync_payload(self):
         """Payload sent to the Core when this picking is created.

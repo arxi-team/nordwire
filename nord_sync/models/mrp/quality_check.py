@@ -14,9 +14,11 @@ class QualityCheck(models.Model):
     stock.picking's own quality point (no production_id at all) has no
     nord.job to attach to, so it's silently out of scope, same resilience
     posture as any other unrecognized/irrelevant record everywhere else in
-    this bridge.
+    this bridge (see _nord_sync_should_notify below). A support model of
+    the mrp.production source, not a toggle-able source of its own — see
+    _nord_sync_source_key below.
     """
-    _inherit = 'quality.check'
+    _inherit = ['quality.check', 'nord_sync.notify.mixin']
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -33,14 +35,12 @@ class QualityCheck(models.Model):
         self._nord_sync_notify('unlink')
         return super().unlink()
 
-    def _nord_sync_notify(self, operation):
-        for record in self:
-            if not record.production_id:
-                continue
-            config = self.env['nord_sync.config'].sudo()._get_for_company(record.company_id)
-            if not config or not config.enabled or not config._is_source_enabled('mrp.production'):
-                continue
-            config._enqueue_and_notify('quality.check', record.id, operation, record._nord_sync_payload())
+    def _nord_sync_should_notify(self):
+        self.ensure_one()
+        return bool(self.production_id)
+
+    def _nord_sync_source_key(self):
+        return 'mrp.production'
 
     def _nord_sync_payload(self):
         """Payload sent to the Core for this checklist item.

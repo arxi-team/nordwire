@@ -22,6 +22,7 @@ class NordSyncStateMapping(models.Model):
     authoring surface.
     """
     _name = 'nord_sync.state.mapping'
+    _inherit = ['nord_sync.notify.mixin']
     _description = 'Nord Sync Job Stage Mapping'
 
     company_id = fields.Many2one(
@@ -106,13 +107,10 @@ class NordSyncStateMapping(models.Model):
         self._nord_sync_notify('unlink')
         return super().unlink()
 
-    def _nord_sync_notify(self, operation):
-        for record in self:
-            company = record.company_id or self.env.company
-            config = self.env['nord_sync.config'].sudo()._get_for_company(company)
-            if not config or not config.enabled:
-                continue
-            config._enqueue_and_notify('nord_sync.state.mapping', record.id, operation, record._nord_sync_payload())
+    def _nord_sync_source_key(self):
+        # A client-authored meta model, not a toggle-able Nord Sync Source —
+        # only config.enabled gates it, no per-source check.
+        return False
 
     def _nord_sync_payload(self):
         """Payload sent to the Core for this client-authored state mapping.

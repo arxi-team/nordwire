@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from . import nord_sync_source
 from . import nord_sync_config
+from . import nord_sync_notify_mixin
 from . import sync_queue
 from . import sync_queue_line
 from . import nord_sync_job_stage

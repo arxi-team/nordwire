@@ -8,9 +8,10 @@ class MrpBom(models.Model):
     changes to bom_line_ids/operation_ids, which are child records that
     never call write() on this parent (see mrp_bom_line.py/
     mrp_routing_workcenter.py, which notify via bom_id instead of
-    themselves).
+    themselves). A support model of the mrp.production source, not a
+    toggle-able source of its own — see _nord_sync_source_key below.
     """
-    _inherit = 'mrp.bom'
+    _inherit = ['mrp.bom', 'nord_sync.notify.mixin']
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -27,13 +28,8 @@ class MrpBom(models.Model):
         self._nord_sync_notify('unlink')
         return super().unlink()
 
-    def _nord_sync_notify(self, operation):
-        for record in self:
-            company = record.company_id or self.env.company
-            config = self.env['nord_sync.config'].sudo()._get_for_company(company)
-            if not config or not config.enabled or not config._is_source_enabled('mrp.production'):
-                continue
-            config._enqueue_and_notify('mrp.bom', record.id, operation, record._nord_sync_payload())
+    def _nord_sync_source_key(self):
+        return 'mrp.production'
 
     def _nord_sync_payload(self):
         """Full snapshot of this BOM, sent to the Core on every change.

@@ -16,16 +16,10 @@ class MrpProduction(models.Model):
     state-transition rule + an unconditional "MO deleted" rule),
     editable/duplicable by the client afterwards (Settings > Technical >
     Automation Rules) without touching code, e.g. narrowing "Apply on" to a
-    tag/warehouse/category.
+    tag/warehouse/category. The create/enqueue plumbing itself is
+    nord_sync.notify.mixin, shared by every source.
     """
-    _inherit = 'mrp.production'
-
-    def _nord_sync_notify(self, operation):
-        for record in self:
-            config = self.env['nord_sync.config'].sudo()._get_for_company(record.company_id)
-            if not config or not config.enabled or not config._is_source_enabled('mrp.production'):
-                continue
-            config._enqueue_and_notify('mrp.production', record.id, operation, record._nord_sync_payload())
+    _inherit = ['mrp.production', 'nord_sync.notify.mixin']
 
     def _nord_sync_payload(self):
         """Business payload for this MO, captured at enqueue time.

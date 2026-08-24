@@ -20,8 +20,10 @@ class MrpWorkorder(models.Model):
     start, duration — pushes back here mid-flight. The only thing the
     Core ever writes back to the client is the finished job's result
     (mrp.production._nord_sync_apply_result), on a deliberate 'Mark Done'.
+    A support model of the mrp.production source, not a toggle-able source
+    of its own — see _nord_sync_source_key below.
     """
-    _inherit = 'mrp.workorder'
+    _inherit = ['mrp.workorder', 'nord_sync.notify.mixin']
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -38,12 +40,8 @@ class MrpWorkorder(models.Model):
         self._nord_sync_notify('unlink')
         return super().unlink()
 
-    def _nord_sync_notify(self, operation):
-        for record in self:
-            config = self.env['nord_sync.config'].sudo()._get_for_company(record.company_id)
-            if not config or not config.enabled or not config._is_source_enabled('mrp.production'):
-                continue
-            config._enqueue_and_notify('mrp.workorder', record.id, operation, record._nord_sync_payload())
+    def _nord_sync_source_key(self):
+        return 'mrp.production'
 
     def _nord_sync_apply_granular_event(self, event_type, payload):
         """Applies one of the 3 real-time work events a granular-push-opted
