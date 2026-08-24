@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo.http import request
 
-from ..main import NordSyncQueueController as BaseNordSyncQueueController
+from odoo.addons.nord_sync.controllers.main import NordSyncQueueController as BaseNordSyncQueueController
 
 
 class NordSyncQueueController(BaseNordSyncQueueController):

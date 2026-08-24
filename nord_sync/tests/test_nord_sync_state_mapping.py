@@ -16,7 +16,7 @@ class TestNordSyncJobStage(TransactionCase):
         with patch(POST_TARGET) as mocked_post:
             stage = self.env['nord_sync.job.stage'].create({'name': 'No Config Stage'})
         self.assertFalse(self.env['nord.sync.queue'].search([
-            ('res_id', '=', stage.id), ('res_model', '=', 'nord_sync.job.stage'),
+            ('owner_res_id', '=', stage.id), ('owner_res_model', '=', 'nord_sync.job.stage'),
         ]))
         mocked_post.assert_not_called()
 
@@ -25,12 +25,12 @@ class TestNordSyncJobStage(TransactionCase):
         with patch(POST_TARGET):
             stage = self.env['nord_sync.job.stage'].create({'name': 'Cutting', 'sequence': 5})
         entry = self.env['nord.sync.queue'].search([
-            ('res_id', '=', stage.id), ('res_model', '=', 'nord_sync.job.stage'),
+            ('owner_res_id', '=', stage.id), ('owner_res_model', '=', 'nord_sync.job.stage'),
         ])
         self.assertEqual(len(entry), 1)
-        self.assertEqual(entry.operation, 'create')
-        self.assertEqual(entry.data['name'], 'Cutting')
-        self.assertEqual(entry.data['sequence'], 5)
+        self.assertEqual(entry.line_ids.operation, 'create')
+        self.assertEqual(entry.payload['name'], 'Cutting')
+        self.assertEqual(entry.payload['sequence'], 5)
 
     def test_write_enqueues_with_current_payload(self):
         self._configure()
@@ -38,10 +38,11 @@ class TestNordSyncJobStage(TransactionCase):
             stage = self.env['nord_sync.job.stage'].create({'name': 'Before Rename'})
             stage.write({'name': 'After Rename'})
         entries = self.env['nord.sync.queue'].search([
-            ('res_id', '=', stage.id), ('res_model', '=', 'nord_sync.job.stage'), ('operation', '=', 'write'),
+            ('owner_res_id', '=', stage.id), ('owner_res_model', '=', 'nord_sync.job.stage'),
+            ('line_ids.operation', '=', 'write'),
         ])
         self.assertEqual(len(entries), 1)
-        self.assertEqual(entries.data['name'], 'After Rename')
+        self.assertEqual(entries.payload['name'], 'After Rename')
 
     def test_unlink_enqueues_before_record_is_gone(self):
         self._configure()
@@ -50,10 +51,11 @@ class TestNordSyncJobStage(TransactionCase):
             stage_id = stage.id
             stage.unlink()
         entry = self.env['nord.sync.queue'].search([
-            ('res_id', '=', stage_id), ('res_model', '=', 'nord_sync.job.stage'), ('operation', '=', 'unlink'),
+            ('owner_res_id', '=', stage_id), ('owner_res_model', '=', 'nord_sync.job.stage'),
+            ('line_ids.operation', '=', 'unlink'),
         ])
         self.assertEqual(len(entry), 1)
-        self.assertEqual(entry.data['name'], 'Removed Stage')
+        self.assertEqual(entry.payload['name'], 'Removed Stage')
 
 
 @tagged('post_install', '-at_install')

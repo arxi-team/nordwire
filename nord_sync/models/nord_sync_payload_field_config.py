@@ -110,14 +110,19 @@ class NordSyncPayloadFieldConfig(models.Model):
         so calling this again after a company has customized its selection
         never resets it). Called both from post_init_hook (a fresh install)
         and the 1.0.5 migration (an existing install) — the only two moments
-        a company can reach this module without any config rows yet.
+        a company can reach this module without any config rows yet. Since
+        the source addons split back apart (nord_sync_mrp/_sale/_purchase/
+        _inventory/_maintenance), most of these 10 models won't be
+        registered at all for a client that only installed a subset —
+        skipped rather than seeding an inert row for a model that doesn't
+        exist yet.
         """
         existing_models = set(self.sudo().search([
             ('company_id', '=', company.id),
         ]).mapped('res_model'))
         Fields = self.env['ir.model.fields'].sudo()
         for res_model, field_names in NORD_SYNC_PAYLOAD_DEFAULT_FIELDS.items():
-            if res_model in existing_models:
+            if res_model in existing_models or res_model not in self.env:
                 continue
             field_ids = Fields.search([('model', '=', res_model), ('name', 'in', field_names)]).ids
             self.sudo().create({
