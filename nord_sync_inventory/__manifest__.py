@@ -22,6 +22,6 @@ client that never installs `stock` never sees this addon exist at all.
         'data/nord_sync_automation.xml',
     ],
     'installable': True,
-    'auto_install': True,
+    'auto_install': False,  # installed by the Sources step's action_confirm_sources, never auto
     'application': False,
 }

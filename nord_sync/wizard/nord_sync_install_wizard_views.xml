@@ -116,8 +116,12 @@
                     <footer>
                         <button name="action_previous_step" type="object"
                                 string="Previous" invisible="not show_previous"/>
+                        <button name="action_confirm_sources" type="object" string="Next"
+                                class="btn-primary"
+                                invisible="not show_next or state != 'step_sources'"/>
                         <button name="action_next_step" type="object" string="Next"
-                                class="btn-primary" invisible="not show_next"/>
+                                class="btn-primary"
+                                invisible="not show_next or state == 'step_sources'"/>
                         <button name="action_confirm" type="object" string="Confirm"
                                 class="btn-primary" invisible="not show_finish"/>
                         <button string="Cancel" class="btn-secondary" special="cancel"/>

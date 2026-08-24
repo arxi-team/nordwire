@@ -31,7 +31,7 @@ on the Apps screen (`application: False`). A client that never installs
         'views/mrp_workcenter_views.xml',
     ],
     'installable': True,
-    'auto_install': True,
+    'auto_install': False,  # installed by the Sources step's action_confirm_sources, never auto
     'application': False,
     'post_init_hook': 'post_init_hook',
 }

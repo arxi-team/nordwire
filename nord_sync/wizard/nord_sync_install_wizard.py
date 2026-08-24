@@ -14,6 +14,18 @@ RUN_AFTER_PREFIX = 'run_after_'
 # edit, not a forced vocabulary.
 JOB_STAGE_SUGGESTED_NAMES = ['Queued', 'In Progress', 'Quality Check', 'Done']
 
+# nord_sync.source.model -> the thin addon that bridges it, one of the 5
+# split back out from the base nord_sync addon. Deliberately explicit here
+# rather than derived from the model name — an addon name is a code fact,
+# not something to guess/pattern-match from user-editable catalog data.
+NORD_SYNC_SOURCE_ADDON_BY_MODEL = {
+    'mrp.production': 'nord_sync_mrp',
+    'sale.order': 'nord_sync_sale',
+    'purchase.order': 'nord_sync_purchase',
+    'stock.picking': 'nord_sync_inventory',
+    'maintenance.request': 'nord_sync_maintenance',
+}
+
 
 class NordSyncInstallWizard(models.TransientModel):
     """Install wizard, 7 steps — pre-flight, sources, connection, job
@@ -27,15 +39,18 @@ class NordSyncInstallWizard(models.TransientModel):
     hooks) is a small self-contained step machine — no reusable abstract
     base, since Nord Sync is the only wizard using it today.
 
-    The Sources step used to mean "install this Nord Sync Source's own
-    addon" (one addon per source). Every source's code is now always
-    installed together, all in this one addon, so this step no longer
-    installs anything — it's a plain selection,
-    writing nord_sync.config.enabled_source_ids: only a selected source's
-    create/write hook actually enqueues anything, the rest stay installed
-    but inert for this company. No more install-then-resume dance either —
-    action_confirm_sources is gone, this step's "Next" is the same generic
-    action_next_step every other step uses.
+    The Sources step means "install this Nord Sync Source's own addon"
+    again — each source (mrp/sale/purchase/inventory/maintenance) split
+    back out into its own thin addon (2026-08-24), so this step's own
+    action_confirm_sources installs whichever selected source isn't
+    installed yet before writing nord_sync.config.enabled_source_ids and
+    advancing, instead of the generic action_next_step every other step
+    uses. A source's own business app being present for an unrelated
+    reason (mrp always pulls in stock, but that alone must never install
+    nord_sync_inventory) is never enough on its own — only a source picked
+    here gets its addon installed. A selected-but-already-installed source
+    is a no-op; a source unchecked here later just goes inert
+    (enabled_source_ids), never auto-uninstalled — same posture as before.
     """
     _name = 'nord_sync.install.wizard'
     _description = 'Nord Sync Installation Wizard'
@@ -154,6 +169,65 @@ class NordSyncInstallWizard(models.TransientModel):
             self.state = steps[self.state_index + 1][0]
             self.run_step_action(RUN_BEFORE_PREFIX)
         return self._reopen()
+
+    def action_confirm_sources(self):
+        """The Sources step's own "Next" (view swaps in this button instead
+        of the generic one, only on this step) — installs whichever
+        selected source's addon isn't installed yet, then reopens this same
+        wizard fresh.
+
+        Deliberately does NOT try to advance to the next step in this same
+        call when an install happened. button_immediate_install() commits
+        the current transaction and rebuilds the whole Odoo registry
+        synchronously — every recordset bound to the environment from
+        before that point (self included) risks going stale in ways this
+        one call can't safely reason about, exactly the fragility ADR 0014
+        called out when it removed the previous version of this same
+        install-then-resume dance. A plain reopen forces a genuinely fresh
+        request instead, no risk carried over. The user clicks Next once
+        more to actually advance — that second click is a plain no-op
+        install-check (everything it needed is already installed) followed
+        by the ordinary action_next_step, no different from any other step.
+        """
+        self.ensure_one()
+        addon_names = {
+            NORD_SYNC_SOURCE_ADDON_BY_MODEL[source.model]
+            for source in self.source_ids
+            if source.model in NORD_SYNC_SOURCE_ADDON_BY_MODEL
+        }
+        Module = self.env['ir.module.module'].sudo()
+        to_install = Module.search([
+            ('name', 'in', list(addon_names)), ('state', 'not in', ('installed', 'to upgrade')),
+        ])
+        if to_install:
+            to_install.button_immediate_install()
+            return self._reopen()
+        self._sync_available_sources()
+        return self.action_next_step()
+
+    def _sync_available_sources(self):
+        """Regenerate Job Stages/Mapping rows against whichever source
+        addons are actually installed now.
+
+        Real bug found live, 2026-08-24: create()'s mapping_line_ids/
+        job_stage_line_ids are generated once, from
+        _nord_sync_available_native_sources(), at the wizard's very first
+        save — which (with the Sources step now installing addons itself,
+        see action_confirm_sources) happens before the user has picked
+        anything to install. A source's addon installed a moment later
+        never got its rows added, so Job Stages/Mapping stayed permanently
+        short (or empty on a fresh DB) for the rest of that wizard's life.
+        Safe to unlink-and-recreate outright: this always runs right after
+        the Sources step, before the user has ever seen either of these two
+        later steps, so there's nothing of theirs to lose yet.
+        """
+        self.ensure_one()
+        self.mapping_line_ids.unlink()
+        self.env['nord_sync.install.wizard.mapping.line'].create(
+            [dict(vals, wizard_id=self.id) for vals in self._mapping_line_vals()]
+        )
+        self.job_stage_line_ids = self._job_stage_line_commands(self.job_stage_mode)
+        self._default_mapping_targets()
 
     def action_previous_step(self):
         self.ensure_one()
