@@ -3,12 +3,12 @@ from odoo import _, api, fields, models
 
 
 class NordSyncFailureWizard(models.TransientModel):
-    """Action wizard for Sync Failures — one line per failure the user is
-    meant to see (see nord.sync.queue._nord_sync_visible_owner), each with
-    its own "create an activity for whoever" / "open the related record"
+    """Action wizard for Sync Failures — one line per failing owner (see
+    nord.sync.queue.owner_res_model/owner_res_id), each with its
+    own "create an activity for whoever" / "open the related record"
     actions. Two entry points build this: the systray (current visible
     failures, action_open_for_current_failures below) and a button on the
-    technical Sync Failures form (one specific entry, any res_model —
+    technical Sync Failures form (one specific header —
     nord.sync.queue.action_open_failure_wizard).
     """
     _name = 'nord_sync.failure.wizard'
@@ -42,18 +42,25 @@ class NordSyncFailureWizard(models.TransientModel):
 
     @api.model
     def action_open_for_current_failures(self):
-        """Systray entry point — one line per distinct visible owner among
+        """Systray entry point — one line per distinct failing owner among
         this company's current failures, friendly message taken from
-        whichever failed entry names that owner first.
+        whichever failed header names that owner first. Each header is
+        already exactly one owner, but a sealed header that failed and a
+        fresh one opened for the same owner afterward can both be 'failed'
+        at once, so this still dedups by owner.
         """
-        failed = self.env['nord.sync.queue'].sudo().search([
+        Queue = self.env['nord.sync.queue']
+        hidden = Queue._nord_sync_hidden_owner_models()
+        failed = Queue.sudo().search([
             ('status', '=', 'failed'), ('company_id', 'in', self.env.companies.ids),
         ])
         owners = {}
-        for entry in failed:
-            owner = entry._nord_sync_visible_owner()
-            if owner and owner not in owners:
-                owners[owner] = entry._nord_sync_friendly_error()
+        for header in failed:
+            if header.owner_res_model in hidden:
+                continue
+            owner = (header.owner_res_model, header.owner_res_id)
+            if owner not in owners:
+                owners[owner] = header._nord_sync_friendly_error()
         line_vals = []
         for (res_model, res_id), message in owners.items():
             record = self.env[res_model].sudo().browse(res_id)

@@ -25,10 +25,10 @@ class NordSyncConfig(models.Model):
             [('company_id', '=', self.company_id.id)])._nord_sync_notify('create')
         self.env['hr.employee'].sudo().search(
             [('company_id', '=', self.company_id.id)])._nord_sync_notify('create')
-        # Real gap found 2026-08-18 (Docs/NordSyncAuditoriaErros.md, finding
-        # #2): missed here same as the two above — a pre-existing BOM never
-        # got backfilled, so an MO referencing it just warned and created a
-        # BOM-less job, forever. company_id 'in' (False, ...) because BOMs
+        # Real gap found live, 2026-08-18: missed here same as the two
+        # above — a pre-existing BOM never got backfilled, so an MO
+        # referencing it just warned and created a BOM-less job, forever.
+        # company_id 'in' (False, ...) because BOMs
         # can be shared across companies (mrp.bom.company_id is optional),
         # unlike workcenter/employee above which are always company-owned.
         self.env['mrp.bom'].sudo().search(

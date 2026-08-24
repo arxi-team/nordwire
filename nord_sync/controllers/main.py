@@ -14,8 +14,17 @@ class NordSyncQueueController(http.Controller):
     @http.route('/nord_sync/api/v1/queue', type='http', auth='nord_sync_api_key', methods=['GET'], csrf=False)
     def nord_sync_queue(self, last_seq=0, applied_seq=None, **kwargs):
         """Entries carry the full business payload captured at enqueue time
-        (nord.sync.queue.data) — the Core never needs a follow-up request per
-        entry to know what changed.
+        (nord.sync.queue.line.data, merged) — the Core never needs a
+        follow-up request per entry to know what changed.
+
+        One entry per nord.sync.queue header — a related change
+        folded under one (e.g. a workorder under its MO) never appears as
+        its own top-level entry: it rides inside its header's own payload
+        instead, under a key named after its res_model (see
+        nord.sync.queue._nord_sync_aggregate_payload). Every returned header
+        is sealed (is_sealed=True) right here, in this same request — the
+        next related change for that same owner opens a fresh header rather
+        than reopening this one.
 
         Company is derived from the authenticated technical user (the Bearer
         API key already resolved request.env in ir_http._auth_method_nord_sync_api_key)
@@ -53,15 +62,10 @@ class NordSyncQueueController(http.Controller):
         ], order='id asc', limit=QUEUE_PAGE_SIZE)
 
         body = {
-            'entries': [{
-                'seq': entry.id,
-                'model': entry.res_model,
-                'operation': entry.operation,
-                'res_id': entry.res_id,
-                'payload': entry.data or {},
-            } for entry in entries],
+            'entries': [{'seq': entry.id, **entry._nord_sync_build_entry()} for entry in entries],
             'last_seq': entries[-1].id if entries else last_seq,
         }
+        entries.write({'is_sealed': True})
         return request.make_json_response(body)
 
     @http.route('/nord_sync/api/v1/result', type='http', auth='nord_sync_api_key', methods=['POST'], csrf=False)

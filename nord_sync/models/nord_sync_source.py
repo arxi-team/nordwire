@@ -7,7 +7,8 @@ class NordSyncSource(models.Model):
     sale.order, purchase.order, stock.picking, maintenance.request) — a
     small fixed catalog (data/nord_sync_sources.xml), not something a client
     creates. Every source's model/view/automation code is always installed
-    together (Docs/ADR/0014-nord-sync-reunify-single-addon.md); this table
+    together — they all live in this one addon now, rather than one addon
+    per source; this table
     only exists so nord_sync.config.enabled_source_ids has something to
     Many2many against — the client picks which sources actually produce
     jobs (install wizard's Sources step), the rest stay installed but inert.

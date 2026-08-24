@@ -31,5 +31,18 @@
             <field name="active">True</field>
         </record>
 
+        <!-- Wake Mode Throttled companies only — separate cadence from the
+             retry cron above (5 min, a different concern) so a small
+             wake_throttle_minutes is actually honored, not rounded up. -->
+        <record id="ir_cron_send_throttled_wakes" model="ir.cron">
+            <field name="name">Nord Sync: Send Throttled Wakes</field>
+            <field name="model_id" ref="model_nord_sync_config"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_send_throttled_wakes()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">minutes</field>
+            <field name="active">True</field>
+        </record>
+
     </data>
 </odoo>

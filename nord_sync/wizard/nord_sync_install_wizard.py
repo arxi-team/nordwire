@@ -29,8 +29,8 @@ class NordSyncInstallWizard(models.TransientModel):
 
     The Sources step used to mean "install this Nord Sync Source's own
     addon" (one addon per source). Every source's code is now always
-    installed together (Docs/ADR/0014-nord-sync-reunify-single-addon.md),
-    so this step no longer installs anything — it's a plain selection,
+    installed together, all in this one addon, so this step no longer
+    installs anything — it's a plain selection,
     writing nord_sync.config.enabled_source_ids: only a selected source's
     create/write hook actually enqueues anything, the rest stay installed
     but inert for this company. No more install-then-resume dance either —

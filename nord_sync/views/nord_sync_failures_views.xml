@@ -3,7 +3,7 @@
     <data>
 
         <!-- Dedicated view, distinct from the generic Sync Queue (which
-             shows every entry regardless of status) — built on the same
+             shows every header regardless of status) — built on the same
              nord.sync.queue table (a failure log doesn't need its own
              model), just filtered to status='failed'. -->
         <record id="view_nord_sync_failures_list" model="ir.ui.view">
@@ -13,9 +13,8 @@
                 <list create="0" edit="0" delete="0">
                     <field name="id" string="Seq"/>
                     <field name="company_id"/>
-                    <field name="res_model"/>
-                    <field name="res_id"/>
-                    <field name="operation"/>
+                    <field name="owner_res_model" string="Model"/>
+                    <field name="owner_res_id" string="Record ID"/>
                     <field name="last_error"/>
                 </list>
             </field>
@@ -25,8 +24,10 @@
              blocked). Read-only, just the same fields as the list plus a
              button into the shared Failure Wizard (create an activity for
              whoever, or jump to the related record) — the technical
-             audience's route to it for any res_model, including the ones
-             _nord_sync_visible_owner hides from the systray/MO surfaces. -->
+             audience's route to it for any owner, including the ones
+             _nord_sync_hidden_owner_models hides from the systray/MO
+             surfaces. Changes: a header's own debug-only lines
+             are only reachable from here. -->
         <record id="view_nord_sync_failures_form" model="ir.ui.view">
             <field name="name">nord.sync.queue.failures.form</field>
             <field name="model">nord.sync.queue</field>
@@ -39,11 +40,25 @@
                     <sheet>
                         <group>
                             <field name="company_id"/>
-                            <field name="res_model"/>
-                            <field name="res_id"/>
-                            <field name="operation"/>
+                            <field name="owner_res_model" string="Model"/>
+                            <field name="owner_res_id" string="Record ID"/>
                             <field name="last_error"/>
                         </group>
+                        <notebook>
+                            <page string="Payload">
+                                <field name="payload"/>
+                            </page>
+                            <page string="Changes">
+                                <field name="line_ids">
+                                    <list create="0" edit="0" delete="0">
+                                        <field name="id" string="Seq"/>
+                                        <field name="res_model"/>
+                                        <field name="res_id"/>
+                                        <field name="operation"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
                     </sheet>
                 </form>
             </field>

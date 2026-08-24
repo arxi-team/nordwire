@@ -21,7 +21,15 @@ JOB_NAMING_MODES = [
     ('source_document', 'Source Document Name'),
     ('custom_prefix', 'Custom Prefix'),
 ]
-JOB_NAMING_FIELDS = {'job_naming_mode', 'job_naming_custom_prefix'}
+WAKE_MODES = [
+    ('immediate', 'Immediate'),
+    ('throttled', 'Throttled'),
+]
+# Fields pushed to the Core as company-wide preferences (same nord_sync.config
+# channel/entry as job naming already used) — wake_mode/wake_throttle_minutes/
+# last_wake_sent are NOT here on purpose: they only govern this client's own
+# outbound wake timing, the Core has no use for them.
+NORD_SYNC_CONFIG_SIGNAL_FIELDS = {'job_naming_mode', 'job_naming_custom_prefix', 'mirror_mode'}
 
 
 class NordSyncConfig(models.Model):
@@ -59,15 +67,45 @@ class NordSyncConfig(models.Model):
              'prefix syntax, e.g. "ACME-JOB/%(year)s/".',
     )
 
+    mirror_mode = fields.Boolean(
+        string='Mirror Mode',
+        help='Off (default): the Core only ever advances a job past a human/device action '
+             "on the Core itself (NordGo, a port-driven alert) — this MO's own state is "
+             "paperwork, not real production. On: this MO reaching Confirmed/In Progress/"
+             'Done on the client additionally drives the matching action on the Core job '
+             "(no result push back for a Done reached this way — the client's own qty is "
+             "already final by then). Cancelling always cancels the job either way, this "
+             'toggle only adds the other three.',
+    )
+
+    wake_mode = fields.Selection(
+        WAKE_MODES, default='immediate', required=True, string='Wake Mode',
+        help='Immediate (default): every change pings the Nord Cloud wake webhook right '
+             'away, same as today. Throttled: at most one wake ping every Wake Throttle '
+             'field below, however many changes happen in between — the changes themselves '
+             'still land in the queue immediately either way, this only paces how soon the '
+             "Core is nudged to come get them (its own periodic reconciliation is always "
+             'the upper bound regardless of this setting).',
+    )
+    wake_throttle_minutes = fields.Integer(
+        string='Wake Throttle (minutes)', default=5,
+        help='Only used when Wake Mode is Throttled.',
+    )
+    last_wake_sent = fields.Datetime(
+        string='Last Wake Attempt',
+        help='When the last wake webhook attempt (success or failure) happened — paces '
+             'Throttled mode only, never affects whether data actually syncs.',
+    )
+
     enabled_source_ids = fields.Many2many(
         'nord_sync.source', string='Enabled Sources',
         default=lambda self: self.env['nord_sync.source'].search([]),
         help='Which Nord Sync Sources actually produce jobs for this company '
-             '— every source is always installed together '
-             '(Docs/ADR/0014-nord-sync-reunify-single-addon.md), this is what '
-             "used to be a per-source addon install/uninstall. Defaults to "
-             'every known source, so an existing config from before this '
-             'field existed keeps behaving exactly as it did before.',
+             '— every source is always installed together now (they all live '
+             'in this one addon), this is what used to be a per-source addon '
+             'install/uninstall. Defaults to every known source, so an '
+             'existing config from before this field existed keeps behaving '
+             'exactly as it did before.',
     )
 
     core_applied_seq = fields.Integer(
@@ -83,20 +121,21 @@ class NordSyncConfig(models.Model):
     )
 
     def write(self, vals):
-        changed = JOB_NAMING_FIELDS & set(vals)
+        changed = NORD_SYNC_CONFIG_SIGNAL_FIELDS & set(vals)
         # Captured before super().write() — self.enabled below still reads
         # the pre-write value at this point. 'enabled' is editable any time
         # from Settings (not just install-time), and every Nord Sync Source
         # model's own create/write guard on it is otherwise completely
-        # silent (real gap found 2026-08-18, Docs/NordSyncAuditoriaErros.md
-        # finding #6) — logged here once per toggle instead of once per
-        # skipped record everywhere that guard is duplicated.
+        # silent — a company left disabled by mistake would just have every
+        # create/write quietly no-op with zero trace, nothing to notice by.
+        # Logged here once per toggle instead of once per skipped record
+        # everywhere that guard is duplicated.
         was_enabled_by_id = {config.id: config.enabled for config in self} if 'enabled' in vals else {}
         result = super().write(vals)
         if changed:
             for config in self:
                 if config.enabled:
-                    config._push_job_naming_signal()
+                    config._push_config_signal()
         if 'enabled' in vals:
             for config in self:
                 was_enabled = was_enabled_by_id.get(config.id, False)
@@ -118,11 +157,18 @@ class NordSyncConfig(models.Model):
                     )
         return result
 
-    def _push_job_naming_signal(self):
+    def _push_config_signal(self):
+        """Pushes every company-wide preference the Core needs to know about
+        together, regardless of which one actually changed — there's
+        exactly one of these per company on both sides, same "always
+        overwrite, no upsert-by-reference" reasoning as everywhere else in
+        this bridge that resolution applies to.
+        """
         self.ensure_one()
         self._enqueue_and_notify('nord_sync.config', self.company_id.id, 'write', {
             'job_naming_mode': self.job_naming_mode,
             'job_naming_custom_prefix': self.job_naming_custom_prefix or False,
+            'mirror_mode': self.mirror_mode,
         })
 
     @api.model
@@ -204,31 +250,63 @@ class NordSyncConfig(models.Model):
     def _enqueue_and_notify(self, res_model, res_id, operation, payload):
         """Shared by every Nord Sync Source's create/write/unlink override
         (mrp.production, maintenance.request, ...), plus nord_sync.job.stage/
-        nord_sync.state.mapping — one nord.sync.queue entry + one best-effort
+        nord_sync.state.mapping — one nord.sync.queue.line + one best-effort
         wake webhook per change, so each model only needs to supply its own
         payload.
 
+        The line always folds under a header — an already-open one for this
+        same owner (_nord_sync_resolve_owner) when one exists, else a fresh
+        header, which this line then becomes the first line of.
         Delegates the actual send to _retry_failed_webhooks rather than
         pinging on its own: that method already sweeps every pending/failed
-        entry for this company in one webhook call (the wake payload carries
-        no entry-specific data), so this new entry rides along with any
-        stragglers left behind by an earlier skipped/failed attempt (e.g. an
-        install wizard run that pushed stages/a state mapping before
-        cloud_base_url was configured) — they get resolved the moment any
-        new activity happens, not just every 5 minutes via the cron. One
-        webhook call either way, whether this is the only entry or there are
-        ten stale ones waiting.
+        header for this company in one webhook call (the wake payload
+        carries no header-specific data), so this new line rides along with
+        any stragglers left behind by an earlier skipped/failed attempt
+        (e.g. an install wizard run that pushed stages/a state mapping
+        before cloud_base_url was configured) — they get resolved the
+        moment any new activity happens, not just every 5 minutes via the
+        cron. One webhook call either way, whether this is the only header
+        or there are ten stale ones waiting.
+
+        The line itself always lands in nord.sync.queue.line immediately, no
+        matter what — _nord_sync_wake_due only gates whether the wake ping
+        happens right now (Wake Mode Immediate, the default) or waits for
+        _cron_send_throttled_wakes (Wake Mode Throttled).
         """
         self.ensure_one()
-        entry = self.env['nord.sync.queue'].sudo().create({
-            'res_model': res_model,
-            'res_id': res_id,
-            'operation': operation,
-            'company_id': self.company_id.id,
-            'data': payload,
+        Queue = self.env['nord.sync.queue'].sudo()
+        owner_model, owner_res_id = Queue._nord_sync_resolve_owner(res_model, res_id, payload)
+        header = Queue.search([
+            ('company_id', '=', self.company_id.id), ('is_sealed', '=', False),
+            ('owner_res_model', '=', owner_model), ('owner_res_id', '=', owner_res_id),
+        ], limit=1)
+        if not header:
+            header = Queue.create({
+                'company_id': self.company_id.id,
+                'owner_res_model': owner_model, 'owner_res_id': owner_res_id,
+            })
+        self.env['nord.sync.queue.line'].sudo().create({
+            'queue_id': header.id, 'res_model': res_model, 'res_id': res_id,
+            'operation': operation, 'data': payload,
         })
-        self._retry_failed_webhooks()
-        return entry
+        if self._nord_sync_wake_due():
+            self._retry_failed_webhooks()
+        return header
+
+    def _nord_sync_wake_due(self):
+        """True when a wake attempt should happen right now. Always true in
+        Immediate mode (today's behavior, unchanged). In Throttled mode,
+        true only once wake_throttle_minutes have actually passed since the
+        last attempt — a burst of writes inside that window shares a single
+        wake instead of pinging once per write.
+        """
+        self.ensure_one()
+        if self.wake_mode != 'throttled':
+            return True
+        if not self.last_wake_sent:
+            return True
+        elapsed = fields.Datetime.now() - self.last_wake_sent
+        return elapsed.total_seconds() >= (self.wake_throttle_minutes or 0) * 60
 
     def _nord_sync_backfill_existing_records(self):
         """Notify the Core about every pre-existing record a source's own
@@ -311,6 +389,12 @@ class NordSyncConfig(models.Model):
         if not stale_entries:
             return False
         sent, error = self._send_wake_webhook()
+        # Recorded for any real attempt (True or False), not a skip (None,
+        # e.g. cloud_base_url not configured yet) — a skip never happened as
+        # far as Throttled mode's pacing is concerned, so it shouldn't reset
+        # the window either.
+        if sent is not None:
+            self.last_wake_sent = fields.Datetime.now()
         if sent:
             stale_entries.write({'status': 'sent', 'last_error': False})
         elif error:
@@ -322,14 +406,29 @@ class NordSyncConfig(models.Model):
         for config in self.search([('enabled', '=', True)]):
             config._retry_failed_webhooks()
 
+    @api.model
+    def _cron_send_throttled_wakes(self):
+        """Dedicated, frequent cron (see data/nord_sync_cron.xml) for Wake
+        Mode Throttled companies only — separate from
+        _cron_retry_failed_webhooks (every 5 min, a different concern:
+        transport failures, not pacing) so a small wake_throttle_minutes
+        value (e.g. 2) is actually honored instead of silently rounding up
+        to that cron's own cadence.
+        """
+        for config in self.search([('enabled', '=', True), ('wake_mode', '=', 'throttled')]):
+            if config._nord_sync_wake_due():
+                config._retry_failed_webhooks()
+
     def _cleanup_synced_queue_entries(self):
-        """Deletes nord.sync.queue rows the Core has confirmed it applied —
+        """Deletes nord.sync.queue headers the Core has confirmed it applied —
         never by age, since a Core offline for days/weeks must still find
-        every entry on its next reconciliation pull. Only 'sent' entries
+        every header on its next reconciliation pull. Only 'sent' headers
         (wake webhook delivered) are touched; 'pending' (webhook never
         attempted) and 'failed' stay untouched regardless of
         core_applied_seq — a webhook-delivery problem must never hide a row
-        the Core hasn't actually confirmed.
+        the Core hasn't actually confirmed. Every line folded under a
+        deleted header cascades away with it — a line is never
+        independently confirmed/deleted.
         """
         self.ensure_one()
         if not self.core_applied_seq:

@@ -11,9 +11,9 @@ import { useService } from "@web/core/utils/hooks";
 const POLL_INTERVAL_MS = 30000;
 
 /**
- * Permanent failure-count indicator in the systray: a single number, scoped
- * to whatever nord.sync.queue._nord_sync_visible_owner resolves (an MO, for
- * nord_sync_mrp — see systray_get_failed_count), not a raw entry count.
+ * Permanent failure-count indicator in the systray: a single number, one per
+ * distinct failing owner (an MO, for nord_sync_mrp — see
+ * nord.sync.queue.systray_get_failed_count), not a raw header count.
  * Click opens the Failure Wizard (action_open_for_current_failures) instead
  * of the raw technical list — one actionable line per visible failure, not
  * an in-place dropdown panel.

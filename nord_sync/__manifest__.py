@@ -24,12 +24,12 @@ changes, exposes a queue for the Nord Core to pull, authenticated by API key.
 
 Nord Sync Sources (`mrp.production` + BOM/Resource/Employee/Workorder Bridge today,
 `sale.order`/`purchase.order`/`stock.picking`/`maintenance.request` planned) live
-directly in this module — merged back from separate per-source addons on
-2026-08-19 (Docs/ADR/0014-nord-sync-reunify-single-addon.md, reverses
-Docs/ADR/0006-nord-sync-pluggable-job-sources.md). Every client installing
-`nord_sync` gets every source's code/dependencies, whether they use it or not —
-an explicit trade-off for having one addon to install/maintain instead of one
-per source.
+directly in this module — merged back on 2026-08-19 from separate per-source
+addons, a structure that had made installing/upgrading one client's actual set
+of sources needlessly fiddly (N addons to keep in lockstep instead of one).
+Every client installing `nord_sync` gets every source's code/dependencies,
+whether they use it or not — an explicit trade-off for having one addon to
+install/maintain instead of one per source.
 
 Phase 2 in progress: queue entries now carry a business payload snapshot
 (name/qty/state and product name/UoM/internal reference, captured at

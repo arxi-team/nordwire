@@ -6,8 +6,9 @@ from . import wizard
 
 def post_init_hook(env):
     """MRP source backfill + access grant — merged in from nord_sync_mrp's
-    own post_init_hook (Docs/ADR/0014-nord-sync-reunify-single-addon.md).
-    The source-installed-signal push it used to also do is gone: that
+    own post_init_hook, back when MRP shipped as a separate addon instead
+    of a built-in source of this one. The source-installed-signal push it
+    used to also do is gone: that
     signal told the Core to auto-install its own nordos_nord_sync_core_mrp
     counterpart, which no longer exists as a separate addon to install —
     MRP is just part of nordos_nord_sync_core now, same as it's part of

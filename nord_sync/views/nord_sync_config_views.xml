@@ -32,6 +32,10 @@
                             <field name="job_naming_mode"/>
                             <field name="job_naming_custom_prefix"
                                    invisible="job_naming_mode != 'custom_prefix'"/>
+                            <field name="mirror_mode"/>
+                            <field name="wake_mode"/>
+                            <field name="wake_throttle_minutes" invisible="wake_mode != 'throttled'"/>
+                            <field name="last_wake_sent" readonly="1"/>
                         </group>
                     </sheet>
                 </form>
