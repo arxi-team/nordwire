@@ -35,6 +35,13 @@ class HrEmployee(models.Model):
         up to date. Every key here is "read this field off self" — the
         whole thing comes from _nord_sync_configurable_payload(), per-company
         selectable (default: name, unchanged behavior).
+
+        Keys:
+            (none hardcoded) — entirely per-company configurable, see
+                _nord_sync_configurable_payload(). resource_kind isn't sent
+                from here either: the Core fixes it to 'human' on its own for
+                every hr.employee payload, hr.employee has no field to read
+                it from.
         """
         self.ensure_one()
         return self._nord_sync_configurable_payload()

@@ -12,7 +12,7 @@ QUEUE_PAGE_SIZE = 500
 class NordSyncQueueController(http.Controller):
 
     @http.route('/nord_sync/api/v1/queue', type='http', auth='nord_sync_api_key', methods=['GET'], csrf=False)
-    def nord_sync_queue(self, last_seq=0, applied_seq=None, **kwargs):
+    def nord_sync_queue(self, last_seq=0, **kwargs):
         """Entries carry the full business payload captured at enqueue time
         (nord.sync.queue.line.data, merged) — the Core never needs a
         follow-up request per entry to know what changed.
@@ -31,13 +31,6 @@ class NordSyncQueueController(http.Controller):
         rather than from a client-supplied company_uid — that field is the
         Nord-side tenant identity, not something this endpoint needs to
         cross-check to know who's asking.
-
-        applied_seq is the Core reporting back what it actually finished
-        applying as of its *previous* completed pull (it can only ever know
-        that after this response was already sent, so it rides on the next
-        request instead) — stored so the retention cron never deletes a row
-        the Core hasn't confirmed. max()'d against the stored value so an
-        out-of-order/retried request can never move it backwards.
         """
         try:
             last_seq = int(last_seq or 0)
@@ -48,19 +41,17 @@ class NordSyncQueueController(http.Controller):
         if not config:
             return request.make_json_response({'error': 'Nord Sync not configured for this company'}, status=403)
 
-        if applied_seq is not None:
-            try:
-                applied_seq = int(applied_seq)
-            except (TypeError, ValueError):
-                applied_seq = None
-            if applied_seq is not None and applied_seq > config.core_applied_seq:
-                config.core_applied_seq = applied_seq
-
         entries = request.env['nord.sync.queue'].sudo().search([
             ('id', '>', last_seq),
             ('company_id', '=', config.company_id.id),
         ], order='id asc', limit=QUEUE_PAGE_SIZE)
 
+        # Locked before building the payload (not just before the seal write
+        # below) so a concurrent _enqueue_and_notify for the same still-open
+        # header blocks until this request's transaction commits, instead of
+        # slipping a new line in between the read and the seal — see
+        # nord.sync.queue._nord_sync_lock_for_update.
+        entries._nord_sync_lock_for_update()
         body = {
             'entries': [{'seq': entry.id, **entry._nord_sync_build_entry()} for entry in entries],
             'last_seq': entries[-1].id if entries else last_seq,

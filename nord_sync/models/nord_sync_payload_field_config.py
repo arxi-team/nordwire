@@ -42,17 +42,41 @@ NORD_SYNC_PAYLOAD_SCALAR_TTYPES = [
 # instead, permanently, not a matter of a missing default. Read by both
 # post_init_hook (fresh install) and the 1.0.5 migration (existing
 # companies) so a company's payload never silently goes empty.
+#
+# The 6 MRP-owned models (mrp.production/workcenter/bom/workorder,
+# hr.employee, quality.check) are deliberately NOT listed here anymore —
+# found live, 2026-08-27: this base addon has no business dependency at all
+# (depends on nothing but `base`), so its own post_init_hook can run before
+# `mrp`/`mrp_workorder` are even installed in the same batch, silently
+# seeding mrp.production with whichever of its 4 default fields happened to
+# already be loaded (state resolved, log_note — an mrp_workorder-owned field —
+# didn't, or nothing did at all if `mrp` itself wasn't loaded yet either).
+# Nord Sync State Mapping/job stage resolution reads mrp.production's
+# `state`, so a row missing it means every MO silently stops advancing its
+# job stage, with nothing in the UI pointing at why. nord_sync_mrp now ships
+# its own static XML data for these 6 models instead (data/
+# nord_sync_payload_field_config.xml) — loaded as part of its own dependency
+# graph (mrp, mrp_workorder), which guarantees every referenced field
+# actually exists by then. The other 4 (sale.order/purchase.order/
+# stock.picking/maintenance.request) still seed from here and carry the same
+# latent risk — not fixed here, no live report against them yet.
 NORD_SYNC_PAYLOAD_DEFAULT_FIELDS = {
-    'mrp.production': ['name', 'product_qty', 'state', 'log_note'],
-    'mrp.workcenter': ['name'],
-    'hr.employee': ['name'],
-    'mrp.bom': [],
-    'mrp.workorder': [],
-    'quality.check': ['test_type'],
     'sale.order': ['name'],
     'purchase.order': ['name'],
     'stock.picking': ['name'],
     'maintenance.request': ['name'],
+}
+
+# Fields that drive real Core-side behavior beyond just appearing in the
+# payload, restricted to fields actually reachable through field_ids — most
+# of the "required" keys a handler reads (production_source_res_id,
+# workcenter_source_res_id, ...) are relational/resolved values hardcoded in
+# that model's own _nord_sync_payload(), never routed through this
+# mechanism, so they can't be deselected here in the first place.
+# mrp.production.state is the only real, selectable field today that also
+# resolves Nord Sync State Mapping / advances job_stage_id on the Core.
+NORD_SYNC_PAYLOAD_BEHAVIORAL_FIELDS = {
+    'mrp.production': {'state'},
 }
 
 
@@ -68,10 +92,11 @@ class NordSyncPayloadFieldConfig(models.Model):
     (shouldn't happen — a wired key is never also a real field name on the
     same model — but never let a misconfiguration shadow one).
 
-    No protection against selecting a field the Core wires real behavior to
-    (e.g. mrp.production's own 'state', which drives Nord Sync State
-    Mapping) — deselecting it silently stops that behavior, on purpose: the
-    company configuring this decides, the system doesn't second-guess them.
+    No hard protection against selecting a field the Core wires real
+    behavior to (e.g. mrp.production's own 'state', which drives Nord Sync
+    State Mapping) — deselecting it still silently stops that behavior, on
+    purpose: the company configuring this decides, the system doesn't block
+    them. _onchange_field_ids_warn_behavioral below only warns, never blocks.
     """
     _name = 'nord_sync.payload.field.config'
     _description = 'Nord Sync Payload Field Config'
@@ -101,6 +126,21 @@ class NordSyncPayloadFieldConfig(models.Model):
         # there silently unused (the domain would just hide them, not clear
         # them, without this).
         self.field_ids = False
+
+    @api.onchange('field_ids', 'res_model')
+    def _onchange_field_ids_warn_behavioral(self):
+        behavioral = NORD_SYNC_PAYLOAD_BEHAVIORAL_FIELDS.get(self.res_model, set())
+        missing = behavioral - set(self.field_ids.mapped('name'))
+        if missing:
+            return {'warning': {
+                'title': 'Field controls Core behavior',
+                'message': (
+                    'Leaving %s unselected for %s stops the behavior it drives on the '
+                    'Core (state resolution / job stage advancement) — the rest of the '
+                    'payload still sends without it, silently.'
+                    % (', '.join(sorted(missing)), self.res_model)
+                ),
+            }}
 
     @api.model
     def _nord_sync_seed_defaults_for_company(self, company):

@@ -11,7 +11,7 @@
                     <field name="company_id"/>
                     <field name="owner_res_model" string="Model"/>
                     <field name="owner_res_id" string="Record ID"/>
-                    <field name="is_sealed" optional="hide"/>
+                    <field name="is_sealed" widget="boolean_toggle"/>
                     <field name="status" decoration-danger="status == 'failed'"
                            decoration-muted="status == 'pending'"/>
                     <field name="last_error" optional="hide"/>

@@ -442,24 +442,18 @@ class MrpProduction(models.Model):
         })
 
     def _nord_sync_result_blocked_message(self):
-        """Distinguishes *why* button_mark_done() didn't complete, checked
-        right after action_assign() already had its chance to reserve
-        whatever's now available — a raw material still short at this
-        point is a real, specific, actionable blocker (restock it, don't
-        just "confirm manually"); anything else (lot/serial, backorder,
-        an unrelated wizard) gets the same generic message as before.
+        """button_mark_done() returned instead of raising or fully closing —
+        traced every non-True return in Odoo 19's own pre_button_mark_done()/
+        button_mark_done() (mrp/models/mrp_production.py): the backorder-ask
+        wizard can't reach here (skip_backorder=True above already empties
+        _get_quantity_produced_issues()), the consumption-warning wizard is
+        already handled above, and the one path left (action_generate_serial(),
+        a finished good needing a lot/serial assigned) returns before any
+        component is even touched — a genuine raw-material shortage never
+        reaches this function at all, it raises instead (caught by the
+        except Exception above). No specific-cause branch to make here.
         """
         self.ensure_one()
-        short_moves = self.move_raw_ids.filtered(
-            lambda m: m.state not in ('done', 'cancel') and m.product_uom_qty > m.quantity
-        )
-        if short_moves:
-            names = ', '.join(short_moves.mapped('product_id.display_name'))
-            return (
-                f'Nord Sync: result received, but there is not enough stock to consume '
-                f'{names} — the MO could not close automatically. It will need to be '
-                'confirmed manually once stock is available.'
-            )
         return (
             'Nord Sync: result received, but the MO needs manual confirmation '
             '(lot/serial, consumed quantity, or backorder) before it can close on its own.'

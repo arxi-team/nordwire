@@ -33,3 +33,10 @@ class NordSyncConfig(models.Model):
         # unlike workcenter/employee above which are always company-owned.
         self.env['mrp.bom'].sudo().search(
             [('company_id', 'in', (False, self.company_id.id))])._nord_sync_notify('create')
+        # Second real gap, found the same way: mrp.production itself was
+        # never backfilled here, only its support models above — an MO
+        # created/finished entirely during a disabled window (or before a
+        # source addon was even installed) stayed invisible to the Core
+        # forever unless someone happened to edit it again afterwards.
+        self.env['mrp.production'].sudo().search(
+            [('company_id', '=', self.company_id.id)])._nord_sync_notify('create')

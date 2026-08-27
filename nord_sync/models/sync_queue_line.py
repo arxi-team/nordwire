@@ -2,12 +2,16 @@
 from odoo import fields, models
 
 
-class NordSyncQueueLine(models.Model):
+class NordSyncQueueLine(models.TransientModel):
     """One real change (create/write/unlink of one record) folded under a
     nord.sync.queue header — debug-only, never independently
     fetched by the Core, only inspectable from its header's own form. The
     header's own payload merges these back together, see
     nord.sync.queue._nord_sync_aggregate_payload.
+
+    TransientModel like its header (Odoo forbids a Many2one from a regular
+    Model to a TransientModel) — vacuumed on the same clock, no independent
+    retention of its own.
     """
     _name = 'nord.sync.queue.line'
     _description = 'Nord Sync Queue Line'

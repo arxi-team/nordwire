@@ -17,7 +17,7 @@ _DIRECT_MODELS = ('mrp.production', 'mrp.production.moves')
 _HIDDEN_MODELS = ('mrp.bom', 'mrp.workcenter', 'hr.employee')
 
 
-class NordSyncQueueMrp(models.Model):
+class NordSyncQueueMrp(models.TransientModel):
     _inherit = 'nord.sync.queue'
 
     def _nord_sync_resolve_owner(self, res_model, res_id, data):

@@ -2,7 +2,7 @@
 from odoo import _, api, fields, models
 
 
-class NordSyncQueue(models.Model):
+class NordSyncQueue(models.TransientModel):
     """Change log header the Nord Core pulls from (GET /nord_sync/api/v1/queue)
     — one row per owner (a manufacturing order, a work center, ...), never
     one row per raw change. `id` doubles as the pull cursor (`seq`) —
@@ -17,10 +17,17 @@ class NordSyncQueue(models.Model):
     further related change until it's served (`is_sealed`), so a burst of
     activity on the same owner (a workorder starting, stopping, a quality
     check) collapses into one served entry instead of one per change.
+
+    TransientModel: cleanup is Odoo's own periodic vacuum (age), not a
+    bespoke cron keyed off what the Core confirmed applying.
     """
     _name = 'nord.sync.queue'
     _description = 'Nord Sync Queue'
     _order = 'id asc'
+    # ponytail: 2h retention — a Core offline longer than that loses whatever
+    # was enqueued in the meantime, silently. Accepted tradeoff for letting
+    # Odoo own cleanup instead of a bespoke applied_seq cron.
+    _transient_max_hours = 2
 
     company_id = fields.Many2one(
         'res.company', required=True, default=lambda self: self.env.company,
@@ -48,10 +55,13 @@ class NordSyncQueue(models.Model):
              'without needing to call the API.',
     )
     is_sealed = fields.Boolean(
-        default=False, index=True,
-        help='Set the moment this header is served in a /queue response — a '
-             'sealed header never accepts a new line, the next related '
-             'change for the same owner opens a fresh header instead.',
+        string='Sent to Core', default=False, index=True,
+        help='True the moment this header is actually served in a /queue '
+             "response to the Core — not whether the wake webhook to the "
+             "Cloud succeeded (see status below), and not whether the Core "
+             'went on to apply it successfully (see the Core\'s own logs for '
+             'that). A sealed header never accepts a new line, the next '
+             'related change for the same owner opens a fresh header instead.',
     )
     status = fields.Selection([
         ('pending', 'Pending'),
@@ -73,6 +83,19 @@ class NordSyncQueue(models.Model):
     def _compute_payload(self):
         for header in self:
             header.payload = header._nord_sync_aggregate_payload()
+
+    def _nord_sync_lock_for_update(self):
+        """Row-locks these headers until the current transaction commits.
+        Closes the race between a /queue pull (read lines, build payload,
+        then is_sealed=True) and a concurrent _enqueue_and_notify folding a
+        new line under the same still-open header: whichever side reaches
+        this lock first blocks the other until it commits, so a line can
+        never be inserted under a header whose payload was already read and
+        served.
+        """
+        if not self:
+            return
+        self.env.cr.execute('SELECT id FROM nord_sync_queue WHERE id IN %s FOR UPDATE', (tuple(self.ids),))
 
     # ── owner resolution + payload aggregation ──────────────────────────────────
 

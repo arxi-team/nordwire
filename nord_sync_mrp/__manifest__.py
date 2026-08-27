@@ -28,6 +28,7 @@ on the Apps screen (`application: False`). A client that never installs
     'depends': ['nord_sync', 'mrp', 'mrp_workorder'],
     'data': [
         'data/nord_sync_automation.xml',
+        'data/nord_sync_payload_field_config.xml',
         'views/mrp_workcenter_views.xml',
     ],
     'installable': True,

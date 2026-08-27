@@ -108,14 +108,6 @@ class NordSyncConfig(models.Model):
              'exactly as it did before.',
     )
 
-    core_applied_seq = fields.Integer(
-        string='Core Applied Seq', default=0,
-        help='Highest nord.sync.queue id the Core has confirmed it actually applied, '
-             'as reported on its own next pull request. Used only to know which "sent" '
-             'queue entries are safe to garbage-collect — the Core still pulls by '
-             'last_seq regardless of this value.',
-    )
-
     _company_unique = models.Constraint(
         'UNIQUE(company_id)', 'Only one Nord Sync configuration per company is allowed.',
     )
@@ -280,6 +272,17 @@ class NordSyncConfig(models.Model):
             ('company_id', '=', self.company_id.id), ('is_sealed', '=', False),
             ('owner_res_model', '=', owner_model), ('owner_res_id', '=', owner_res_id),
         ], limit=1)
+        if header:
+            # Blocks here if a /queue pull is mid-flight for this same header
+            # (it takes the same lock right after its own search). Once
+            # unblocked, is_sealed may have flipped to True under us — that
+            # pull already built and served this header's payload without
+            # what we're about to add, so treat it as gone and open a fresh
+            # one instead of silently folding into an already-served header.
+            header._nord_sync_lock_for_update()
+            header.invalidate_recordset(['is_sealed'])
+            if header.is_sealed:
+                header = Queue.browse()
         if not header:
             header = Queue.create({
                 'company_id': self.company_id.id,
@@ -419,27 +422,3 @@ class NordSyncConfig(models.Model):
             if config._nord_sync_wake_due():
                 config._retry_failed_webhooks()
 
-    def _cleanup_synced_queue_entries(self):
-        """Deletes nord.sync.queue headers the Core has confirmed it applied —
-        never by age, since a Core offline for days/weeks must still find
-        every header on its next reconciliation pull. Only 'sent' headers
-        (wake webhook delivered) are touched; 'pending' (webhook never
-        attempted) and 'failed' stay untouched regardless of
-        core_applied_seq — a webhook-delivery problem must never hide a row
-        the Core hasn't actually confirmed. Every line folded under a
-        deleted header cascades away with it — a line is never
-        independently confirmed/deleted.
-        """
-        self.ensure_one()
-        if not self.core_applied_seq:
-            return
-        self.env['nord.sync.queue'].sudo().search([
-            ('company_id', '=', self.company_id.id),
-            ('status', '=', 'sent'),
-            ('id', '<=', self.core_applied_seq),
-        ]).unlink()
-
-    @api.model
-    def _cron_cleanup_synced_queue_entries(self):
-        for config in self.search([('enabled', '=', True)]):
-            config._cleanup_synced_queue_entries()
