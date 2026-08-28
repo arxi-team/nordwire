@@ -92,12 +92,27 @@ class MrpWorkorder(models.Model):
         session, exactly the case that parameter exists for. Falls back to
         the plain call when that app isn't installed (base button_start
         takes no such argument, and has no employee concept to skip).
+
+        bypass=True skips employee resolution entirely inside button_start,
+        which also skips its own call to start_employee() — the only thing
+        that opens the real mrp.workcenter.productivity timer the Shop
+        Floor "Today" counter reads. Without this, the workorder/MO state
+        still flips to 'progress' (button_start's base class writes that
+        directly), but no timer ever starts (real bug, caught live
+        2026-08-28). start_employee() is called here explicitly, using the
+        operator already assigned via the Workorder Bridge — a no-op when
+        that app isn't installed (plain button_start has no employee/timer
+        concept to open).
         """
         self.ensure_one()
         try:
             self.button_start(bypass=True)
         except TypeError:
             self.button_start()
+            return
+        employee = self.employee_assigned_ids[:1]
+        if employee:
+            self.start_employee(employee.id)
 
     def _nord_sync_payload(self):
         """Payload sent to the Core for this real workorder.
