@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import api, models
+from odoo import api, fields, models
 
 
 class MrpWorkorder(models.Model):
@@ -103,6 +103,22 @@ class MrpWorkorder(models.Model):
         operator already assigned via the Workorder Bridge — a no-op when
         that app isn't installed (plain button_start has no employee/timer
         concept to open).
+
+        No operator assigned is not the same as "no timer needed" -- a
+        machine-autonomous resource (no human ever assigned, the normal
+        case for a port-driven Nord Sync start) has nothing in
+        employee_assigned_ids by design. mrp_workorder's own
+        _should_start_timer() is hardcoded False (it defers ALL timer
+        creation to start_employee(), which requires a real employee_id),
+        so without the fallback below the state flip to 'progress' was the
+        only visible effect: no mrp.workcenter.productivity session ever
+        opened, so Shop Floor's "Today" counter and OEE availability
+        stayed at zero for the entire session despite the machine actually
+        running (real bug, caught live 2026-09-03). employee_id on
+        mrp.workcenter.productivity is a plain compute/store field, not
+        required, so creating one via the same _prepare_timeline_vals
+        start_employee() itself uses, just without an employee, is a
+        legitimate session -- only nobody to attribute the cost to.
         """
         self.ensure_one()
         try:
@@ -113,6 +129,10 @@ class MrpWorkorder(models.Model):
         employee = self.employee_assigned_ids[:1]
         if employee:
             self.start_employee(employee.id)
+        elif not self.time_ids.filtered(lambda t: not t.date_end):
+            self.env['mrp.workcenter.productivity'].create(
+                self._prepare_timeline_vals(self.duration, fields.Datetime.now())
+            )
 
     def _nord_sync_payload(self):
         """Payload sent to the Core for this real workorder.
