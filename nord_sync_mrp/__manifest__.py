@@ -12,7 +12,7 @@ Nord Sync: Manufacturing
 `mrp.production` as a Nord Sync Source (produces `nord.job` on the Core), and
 every model that only exists to support it — `mrp.workcenter`/`hr.employee`
 (Resource/Employee Bridge, `edge.resource`), `mrp.bom` (BOM Bridge,
-`nord.bom`), `mrp.workorder` (Workorder Bridge, `nord.job.resource`),
+`nord.bom`), `mrp.workorder` (Workorder Bridge, `nord.timesheet`),
 `quality.check` (Quality Check Bridge, `nord.tasks`). None of these support
 models are Nord Sync Sources of their own — they never produce a `nord.job`
 by themselves, only alongside the MO they belong to, so they live here
