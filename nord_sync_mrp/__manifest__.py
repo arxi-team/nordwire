@@ -30,6 +30,7 @@ on the Apps screen (`application: False`). A client that never installs
         'data/nord_sync_automation.xml',
         'data/nord_sync_payload_field_config.xml',
         'views/mrp_workcenter_views.xml',
+        'views/resource_resource_views.xml',
     ],
     'installable': True,
     'auto_install': False,  # installed by the Sources step's action_confirm_sources, never auto

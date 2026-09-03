@@ -2,6 +2,7 @@
 from . import nord_sync_config
 from . import sync_queue
 from . import mrp_production
+from . import resource_resource
 from . import mrp_workcenter
 from . import hr_employee
 from . import mrp_bom

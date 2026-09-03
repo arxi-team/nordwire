@@ -129,3 +129,29 @@ class NordSyncQueueController(http.Controller):
         push overrides this and checks its own res_model(s) first.
         """
         return request.make_json_response({'error': f'Unsupported res_model: {res_model}'}, status=400)
+
+    @http.route('/nord_sync/api/v1/resources', type='http', auth='nord_sync_api_key', methods=['POST'], csrf=False)
+    def nord_sync_resources(self, **kwargs):
+        """Nord Sync Resource Mapping (ADR 0026) — the Core pushes its full
+        edge.resource list here on every heartbeat tick (see
+        _push_nord_sync_resources), upserted wholesale into nord_sync.resource
+        by uid. Base-addon endpoint, not a source extension point: the
+        mapping is generic (resource.resource, not any one business model),
+        so unlike /result and /workorder_event above there's nothing here
+        for a source addon (nord_sync_mrp, ...) to override.
+        """
+        try:
+            body = request.get_json_data()
+        except ValueError:
+            body = None
+        if not isinstance(body, dict):
+            return request.make_json_response({'error': 'Invalid JSON body'}, status=400)
+
+        config = request.env['nord_sync.config'].sudo()._get_for_company(request.env.company)
+        if not config:
+            return request.make_json_response({'error': 'Nord Sync not configured for this company'}, status=403)
+
+        request.env['nord_sync.resource'].sudo()._nord_sync_upsert_from_core(
+            request.env.company, body.get('resources') or [],
+        )
+        return request.make_json_response({'success': True})

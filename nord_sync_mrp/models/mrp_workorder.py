@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import api, models
 
 
 class MrpWorkorder(models.Model):
@@ -110,15 +110,20 @@ class MrpWorkorder(models.Model):
         employee_assigned_ids by design. mrp_workorder's own
         _should_start_timer() is hardcoded False (it defers ALL timer
         creation to start_employee(), which requires a real employee_id),
-        so without the fallback below the state flip to 'progress' was the
+        so without a fallback here the state flip to 'progress' was the
         only visible effect: no mrp.workcenter.productivity session ever
         opened, so Shop Floor's "Today" counter and OEE availability
         stayed at zero for the entire session despite the machine actually
-        running (real bug, caught live 2026-09-03). employee_id on
-        mrp.workcenter.productivity is a plain compute/store field, not
-        required, so creating one via the same _prepare_timeline_vals
-        start_employee() itself uses, just without an employee, is a
-        legitimate session -- only nobody to attribute the cost to.
+        running (real bug, caught live 2026-09-03). Nord always attributes
+        the session to a real hr.employee now — the assigned operator when
+        there is one, otherwise the shared "Nordwire" placeholder employee
+        (get-or-created on demand, see
+        hr.employee._nord_sync_get_or_create_autonomous_employee) — rather
+        than an employee-less timer, so every session shows up the same
+        way in Shop Floor/OEE regardless of whether a human was involved.
+        start_employee() already no-ops if this exact employee already has
+        an open session on this workorder, so a retried granular push
+        never opens a second one.
         """
         self.ensure_one()
         try:
@@ -127,12 +132,9 @@ class MrpWorkorder(models.Model):
             self.button_start()
             return
         employee = self.employee_assigned_ids[:1]
-        if employee:
-            self.start_employee(employee.id)
-        elif not self.time_ids.filtered(lambda t: not t.date_end):
-            self.env['mrp.workcenter.productivity'].create(
-                self._prepare_timeline_vals(self.duration, fields.Datetime.now())
-            )
+        if not employee:
+            employee = self.env['hr.employee']._nord_sync_get_or_create_autonomous_employee(self.company_id)
+        self.start_employee(employee.id)
 
     def _nord_sync_payload(self):
         """Payload sent to the Core for this real workorder.
@@ -147,11 +149,11 @@ class MrpWorkorder(models.Model):
             production_source_res_id (int): the client's own mrp.production
                 id this workorder belongs to.
             workcenter_source_res_id (int): the client's own mrp.workcenter id.
-            workcenter (dict): snapshot of the work center itself
-                ({name, autonomous_close, granular_push,
-                contention_policy}) — lets the Core get-or-create the
-                edge.resource on the spot if the Resource Bridge hasn't
-                reached it yet. No resource_kind key, same as
+            workcenter (dict): snapshot of the work center itself ({name,
+                nord_resource_uid, autonomous_close, granular_push,
+                contention_policy}) — lets the Core lazily resolve/update the
+                edge.resource on the spot if the Resource Bridge's own push
+                hasn't reached it yet. No resource_kind key, same as
                 mrp.workcenter's own payload — the Core defaults it to
                 'machine' on its own.
             expected_duration (float): expected duration in hours (converted
@@ -159,10 +161,11 @@ class MrpWorkorder(models.Model):
             employee_source_res_id (int or False): the client's own
                 hr.employee id of the first assigned operator, False if none
                 assigned (only the first of employee_assigned_ids is carried).
-            employee (dict or False): {name} snapshot of that same employee,
-                only present (non-False) when someone is actually assigned —
-                same lazy-resolution safety net as 'workcenter' above, but
-                optional since an unresolved operator never blocks the task.
+            employee (dict or False): {name, nord_resource_uid} snapshot of
+                that same employee, only present (non-False) when someone is
+                actually assigned — same lazy-resolution safety net as
+                'workcenter' above, but optional since an unresolved
+                operator never blocks the task.
         """
         self.ensure_one()
         return {
@@ -170,14 +173,17 @@ class MrpWorkorder(models.Model):
             'production_source_res_id': self.production_id.id,
             'workcenter_source_res_id': self.workcenter_id.id,
             # Snapshot of the work center itself (same shape as
-            # mrp.workcenter's own payload) — lets the Core get-or-create the
-            # edge.resource on the spot if the Resource Bridge's own eager
-            # push hasn't reached it yet for any reason, instead of just
-            # dropping the task silently (real gap found 2026-08-18: a
+            # mrp.workcenter's own payload) — lets the Core lazily resolve
+            # the edge.resource on the spot if the Resource Bridge's own
+            # eager push hasn't reached it yet for any reason, instead of
+            # just dropping the task silently (real gap found 2026-08-18: a
             # pre-existing work center's first push can miss the window
-            # between the install wizard's Sources and Finish steps).
+            # between the install wizard's Sources and Finish steps). Same
+            # "no mapping yet" skip as the eager path applies either way —
+            # this only helps once nord_resource_uid is actually set.
             'workcenter': {
                 'name': self.workcenter_id.name,
+                'nord_resource_uid': self.workcenter_id.resource_id.nord_sync_resource_id.uid or False,
                 'autonomous_close': self.workcenter_id.nord_sync_autonomous_close,
                 'granular_push': self.workcenter_id.nord_sync_granular_push,
                 'contention_policy': self.workcenter_id.nord_sync_contention_policy,
@@ -192,6 +198,9 @@ class MrpWorkorder(models.Model):
             # same reason — only sent when someone is actually assigned,
             # since an unresolved operator is optional and never blocks the
             # task (unlike the work center).
-            'employee': {'name': self.employee_assigned_ids[0].name} if self.employee_assigned_ids else False,
+            'employee': {
+                'name': self.employee_assigned_ids[0].name,
+                'nord_resource_uid': self.employee_assigned_ids[0].resource_id.nord_sync_resource_id.uid or False,
+            } if self.employee_assigned_ids else False,
         }
 

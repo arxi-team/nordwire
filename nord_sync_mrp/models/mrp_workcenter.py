@@ -80,6 +80,13 @@ class MrpWorkcenter(models.Model):
         behavior).
 
         Keys:
+            nord_resource_uid (str or False): the Core's edge.resource this
+                work center is mapped to (Nord Sync Resource Mapping, ADR
+                0026) — self.resource_id.nord_sync_resource_id.uid, False
+                when unmapped. The Core never creates/guesses a resource
+                from this payload; without this key it just skips the
+                entry, so nothing syncs for this work center until a human
+                maps it (Configuration > Technical > Resources).
             autonomous_close (bool): let a port-driven Nord Alert close jobs
                 on this resource without a human clicking "Mark Done".
             granular_push (bool): push work-session start/stop and job
@@ -93,6 +100,7 @@ class MrpWorkcenter(models.Model):
         self.ensure_one()
         return {
             **self._nord_sync_configurable_payload(),
+            'nord_resource_uid': self.resource_id.nord_sync_resource_id.uid or False,
             'autonomous_close': self.nord_sync_autonomous_close,
             'granular_push': self.nord_sync_granular_push,
             'contention_policy': self.nord_sync_contention_policy,
