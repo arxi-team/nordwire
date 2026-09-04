@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Nord Sync: Manufacturing',
-    'version': '1.0.0',
+    'version': '1.0.1',
     'category': 'Manufacturing',
     'summary': 'Nord Sync source: mrp.production, plus the BOM/Resource/Employee/Workorder/Quality '
                'Check Bridges that support it.',
@@ -27,10 +27,14 @@ on the Apps screen (`application: False`). A client that never installs
     'license': 'LGPL-3',
     'depends': ['nord_sync', 'mrp', 'mrp_workorder'],
     'data': [
+        'security/ir.model.access.csv',
         'data/nord_sync_automation.xml',
         'data/nord_sync_payload_field_config.xml',
         'views/mrp_workcenter_views.xml',
         'views/resource_resource_views.xml',
+        'views/mrp_workorder_views.xml',
+        'views/res_config_settings_views.xml',
+        'wizard/nord_sync_workorder_wizards_views.xml',
     ],
     'installable': True,
     'auto_install': False,  # installed by the Sources step's action_confirm_sources, never auto

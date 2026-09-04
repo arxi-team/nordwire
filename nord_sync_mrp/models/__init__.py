@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from . import nord_sync_config
+from . import res_config_settings
 from . import res_company
 from . import sync_queue
 from . import mrp_workcenter_productivity

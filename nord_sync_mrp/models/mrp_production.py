@@ -23,6 +23,34 @@ class MrpProduction(models.Model):
     """
     _inherit = ['mrp.production', 'nord_sync.notify.mixin']
 
+    def action_start(self):
+        """Interrupts a human-clicked Start on the MO header the same way
+        mrp.workorder.button_start does (nord_sync.workorder.start.wizard,
+        see mrp_workorder.py) — reuses that same wizard, pointed at this
+        production's own next-up workorder, so confirming/changing its
+        work center behaves identically regardless of which Start button
+        the human actually clicked. A routing-less production (no open
+        workorder_ids) has no work center to confirm, so it always falls
+        through to super() untouched.
+        """
+        self.ensure_one()
+        if self.state == 'confirmed' and not self.env.context.get('nord_sync_skip_confirm'):
+            workorder = self.workorder_ids.filtered(lambda wo: wo.state not in ('done', 'cancel'))[:1]
+            if workorder and workorder.workcenter_id.nord_sync_control_mode != 'nord':
+                config = self.env['nord_sync.config'].sudo()._get_for_company(self.company_id)
+                if config and config.nord_sync_confirm_workcenter_on_start:
+                    return {
+                        'type': 'ir.actions.act_window',
+                        'res_model': 'nord_sync.workorder.start.wizard',
+                        'view_mode': 'form',
+                        'target': 'new',
+                        'context': {
+                            'default_workorder_id': workorder.id,
+                            'default_production_id': self.id,
+                        },
+                    }
+        return super().action_start()
+
     def _nord_sync_payload(self):
         """Business payload for this MO, captured at enqueue time.
 

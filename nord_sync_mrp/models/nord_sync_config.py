@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import api, models
+from odoo import api, fields, models
 
 
 class NordSyncConfig(models.Model):
@@ -9,6 +9,16 @@ class NordSyncConfig(models.Model):
     Core's _apply_nord_sync_entry override in nordos_nord_sync_core_mrp.
     """
     _inherit = 'nord_sync.config'
+
+    nord_sync_confirm_workcenter_on_start = fields.Boolean(
+        string='Confirm Work Center on Start',
+        default=False,
+        help='Off by default (today\'s behavior, unchanged): a workorder\'s "Start" button '
+             'starts it immediately. On: interrupts a human-clicked Start (never an '
+             'autonomous Nord Core one) with a lightweight wizard showing the work center '
+             'already assigned, so it can be confirmed or changed before work actually '
+             'begins.',
+    )
 
     @api.model
     def _nord_sync_available_native_sources(self):

@@ -64,6 +64,56 @@ class MrpWorkorder(models.Model):
         self._nord_sync_notify('unlink')
         return super().unlink()
 
+    def button_start(self, *args, **kwargs):
+        """Interrupts a human-clicked Start with
+        nord_sync.workorder.start.wizard when the company opted in
+        (nord_sync_confirm_workcenter_on_start) — never for bypass=True
+        (the Nord Core's own autonomous start, no human there to answer a
+        wizard), a re-entry from that same wizard's own Confirm/Change
+        actions (nord_sync_skip_confirm context, set by them once the human
+        already answered), or a work center already fully handed to Nord
+        (Control Mode == 'nord', see mrp_workcenter.py): confirming which
+        work center a resource the company has explicitly said the Core
+        owns is on would be backwards. Checked against the full four-field
+        preset, not just autonomous_close alone — a 'custom' work center
+        with autonomous_close on but the other three untouched still gets
+        the checkpoint. Mirror Mode plays no part in this check — it's
+        deliberately outside Control Mode (see mrp_workcenter.py).
+        """
+        self.ensure_one()
+        if (
+            not kwargs.get('bypass') and not self.env.context.get('nord_sync_skip_confirm')
+            and self.state not in ('done', 'cancel')
+            and self.workcenter_id.nord_sync_control_mode != 'nord'
+        ):
+            config = self.env['nord_sync.config'].sudo()._get_for_company(self.company_id)
+            if config and config.nord_sync_confirm_workcenter_on_start:
+                return {
+                    'type': 'ir.actions.act_window',
+                    'res_model': 'nord_sync.workorder.start.wizard',
+                    'view_mode': 'form',
+                    'target': 'new',
+                    'context': {'default_workorder_id': self.id},
+                }
+        return super().button_start(*args, **kwargs)
+
+    def action_nord_sync_change_workcenter(self):
+        """Standalone button, visible once this workorder is already
+        'progress' (Start's own button is gone by then, and workcenter_id
+        is read-only in the base views at that point) — the operator's own
+        way to correct which work center they're actually on, independent
+        of nord_sync_confirm_workcenter_on_start (that toggle only gates
+        the pre-Start checkpoint, this is a standing capability).
+        """
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'nord_sync.workorder.workcenter.change.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_workorder_id': self.id},
+        }
+
     def _nord_sync_source_key(self):
         return 'mrp.production'
 

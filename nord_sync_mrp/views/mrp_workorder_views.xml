@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Standalone "change work center" button, visible once a workorder
+         is already 'progress': Start's own button is gone by then, and
+         workcenter_id is read-only in the base list at that point
+         (readonly="state in ['cancel', 'done', 'progress']" on the field
+         itself), so this wizard-based action is the only way to correct it
+         without touching the base views' own readonly logic. -->
+    <record id="mrp_production_workorder_tree_editable_view_nord_sync" model="ir.ui.view">
+        <field name="name">mrp.production.work.order.list.editable.nord.sync</field>
+        <field name="model">mrp.workorder</field>
+        <field name="inherit_id" ref="mrp.mrp_production_workorder_tree_editable_view"/>
+        <field name="arch" type="xml">
+            <button name="button_finish" position="after">
+                <button name="action_nord_sync_change_workcenter" type="object"
+                        title="Change Work Center" class="btn-light px-2" icon="fa-exchange"
+                        invisible="state != 'progress'"/>
+            </button>
+        </field>
+    </record>
+
+</odoo>
