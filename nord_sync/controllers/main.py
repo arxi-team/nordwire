@@ -132,7 +132,7 @@ class NordSyncQueueController(http.Controller):
 
     @http.route('/nord_sync/api/v1/resources', type='http', auth='nord_sync_api_key', methods=['POST'], csrf=False)
     def nord_sync_resources(self, **kwargs):
-        """Nord Sync Resource Mapping (ADR 0026) — the Core pushes its full
+        """Nord Sync Resource Mapping — the Core pushes its full
         edge.resource list here on every heartbeat tick (see
         _push_nord_sync_resources), upserted wholesale into nord_sync.resource
         by uid. Base-addon endpoint, not a source extension point: the

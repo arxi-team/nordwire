@@ -3,7 +3,7 @@ from odoo import api, fields, models
 
 
 class NordSyncResource(models.Model):
-    """Nord Sync Resource Mapping (ADR 0026): a read-only local mirror of
+    """Nord Sync Resource Mapping: a read-only local mirror of
     the Core's edge.resource list, pushed down whole on every Core
     heartbeat (POST /nord_sync/api/v1/resources) — never a delta, so a
     missed tick self-heals on the next one. This is the pick list behind
@@ -19,6 +19,7 @@ class NordSyncResource(models.Model):
     """
     _name = 'nord_sync.resource'
     _description = 'Nord Sync Resource'
+    _rec_name = 'complete_name'
     _order = 'complete_name'
 
     uid = fields.Char(required=True, index=True, help='The edge.resource.uid on the Core — the join key.')

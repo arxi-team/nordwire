@@ -3,7 +3,7 @@ from odoo import fields, models
 
 
 class ResourceResource(models.Model):
-    """Nord Sync Resource Mapping (ADR 0026) lands here rather than on
+    """Nord Sync Resource Mapping lands here rather than on
     mrp.workcenter/hr.employee separately — both already carry their own
     resource_id (resource.mixin/hr native) pointing here, so one field
     covers every Odoo resource type at once, machine or human, with no
