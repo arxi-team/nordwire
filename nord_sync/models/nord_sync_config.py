@@ -29,7 +29,7 @@ WAKE_MODES = [
 # channel/entry as job naming already used) — wake_mode/wake_throttle_minutes/
 # last_wake_sent are NOT here on purpose: they only govern this client's own
 # outbound wake timing, the Core has no use for them.
-NORD_SYNC_CONFIG_SIGNAL_FIELDS = {'job_naming_mode', 'job_naming_custom_prefix', 'mirror_mode'}
+NORD_SYNC_CONFIG_SIGNAL_FIELDS = {'job_naming_mode', 'job_naming_custom_prefix'}
 
 
 class NordSyncConfig(models.Model):
@@ -65,17 +65,6 @@ class NordSyncConfig(models.Model):
         string='Custom Job Naming Prefix',
         help='Only used when Job Naming is Custom Prefix — Core ir.sequence '
              'prefix syntax, e.g. "ACME-JOB/%(year)s/".',
-    )
-
-    mirror_mode = fields.Boolean(
-        string='Mirror Mode',
-        help='Off (default): the Core only ever advances a job past a human/device action '
-             "on the Core itself (NordGo, a port-driven alert) — this MO's own state is "
-             "paperwork, not real production. On: this MO reaching Confirmed/In Progress/"
-             'Done on the client additionally drives the matching action on the Core job '
-             "(no result push back for a Done reached this way — the client's own qty is "
-             "already final by then). Cancelling always cancels the job either way, this "
-             'toggle only adds the other three.',
     )
 
     wake_mode = fields.Selection(
@@ -160,7 +149,6 @@ class NordSyncConfig(models.Model):
         self._enqueue_and_notify('nord_sync.config', self.company_id.id, 'write', {
             'job_naming_mode': self.job_naming_mode,
             'job_naming_custom_prefix': self.job_naming_custom_prefix or False,
-            'mirror_mode': self.mirror_mode,
         })
 
     @api.model

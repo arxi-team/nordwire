@@ -9,9 +9,38 @@
             <xpath expr="//page[@name='general_info']" position="after">
                 <page string="Nord Sync" name="nord_sync">
                     <group>
-                        <field name="nord_sync_autonomous_close"/>
-                        <field name="nord_sync_granular_push"/>
-                        <field name="nord_sync_contention_policy"/>
+                        <field name="nord_sync_resource_id" options="{'no_create': True}"/>
+                    </group>
+                    <div class="alert alert-warning" role="alert" invisible="nord_sync_resource_id">
+                        Not mapped to a Nord Core resource yet — nothing below is sent to the Core
+                        until this is set.
+                    </div>
+                    <separator string="Control Mode"/>
+                    <group>
+                        <group>
+                            <field name="nord_sync_control_mode"/>
+                        </group>
+                        <group string="Floor-Event Policies">
+                            <field name="nord_sync_autonomous_close"/>
+                            <field name="nord_sync_granular_push"/>
+                            <field name="nord_sync_contention_policy"/>
+                            <field name="nord_sync_chain_close"/>
+                        </group>
+                    </group>
+                    <separator string="Mirror Mode"/>
+                    <group>
+                        <field name="nord_sync_mirror_mode"/>
+                    </group>
+                    <separator string="Automatic OEE Segments"/>
+                    <group>
+                        <group>
+                            <field name="nord_sync_auto_idle_segments"/>
+                            <field name="nord_sync_idle_segment_reason_name" invisible="not nord_sync_auto_idle_segments"/>
+                        </group>
+                        <group>
+                            <field name="nord_sync_auto_tooling_segments"/>
+                            <field name="nord_sync_tooling_segment_reason_name" invisible="not nord_sync_auto_tooling_segments"/>
+                        </group>
                     </group>
                 </page>
             </xpath>

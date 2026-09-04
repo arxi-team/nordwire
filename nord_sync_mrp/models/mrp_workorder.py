@@ -221,13 +221,19 @@ class MrpWorkorder(models.Model):
             workcenter_source_res_id (int): the client's own mrp.workcenter id.
             workcenter (dict): snapshot of the work center itself ({name,
                 nord_resource_uid, autonomous_close, granular_push,
-                contention_policy}) — lets the Core lazily resolve/update the
+                contention_policy, chain_close, mirror_mode, auto_idle_segments,
+                idle_segment_reason, auto_tooling_segments, tooling_segment_reason})
+                — lets the Core lazily resolve/update the
                 edge.resource on the spot if the Resource Bridge's own push
                 hasn't reached it yet. No resource_kind key, same as
                 mrp.workcenter's own payload — the Core defaults it to
                 'machine' on its own.
             expected_duration (float): expected duration in hours (converted
                 from duration_expected, which is in minutes).
+            sequence (int): this workorder's own routing order within its
+                MO (self.sequence) — consulted by Nord Sync Chain Close to
+                find this job's earlier operations, not a display/list
+                ordering concern on the Core side.
             employee_source_res_id (int or False): the client's own
                 hr.employee id of the first assigned operator, False if none
                 assigned (only the first of employee_assigned_ids is carried).
@@ -257,9 +263,16 @@ class MrpWorkorder(models.Model):
                 'autonomous_close': self.workcenter_id.nord_sync_autonomous_close,
                 'granular_push': self.workcenter_id.nord_sync_granular_push,
                 'contention_policy': self.workcenter_id.nord_sync_contention_policy,
+                'chain_close': self.workcenter_id.nord_sync_chain_close,
+                'mirror_mode': self.workcenter_id.nord_sync_mirror_mode,
+                'auto_idle_segments': self.workcenter_id.nord_sync_auto_idle_segments,
+                'idle_segment_reason': self.workcenter_id.nord_sync_idle_segment_reason_name,
+                'auto_tooling_segments': self.workcenter_id.nord_sync_auto_tooling_segments,
+                'tooling_segment_reason': self.workcenter_id.nord_sync_tooling_segment_reason_name,
             },
             # duration_expected is in minutes; nord.timesheet.expected_duration is hours.
             'expected_duration': self.duration_expected / 60.0,
+            'sequence': self.sequence,
             # employee_assigned_ids (Shop Floor) can hold several people —
             # only the first is carried over, one operator per task on the
             # Core side today.
