@@ -4,6 +4,8 @@ from datetime import timedelta
 
 from odoo import fields, models
 
+from .mrp_workcenter_productivity import NORD_SYNC_LOSS_CATEGORY_MAP
+
 _logger = logging.getLogger(__name__)
 
 
@@ -302,15 +304,21 @@ class MrpProduction(models.Model):
         session whose workorder isn't found (ordering hazard, same
         resilience posture as the rest of this bridge) or whose dates are
         missing.
+
+        loss_id (required on mrp.workcenter.productivity) comes from the
+        session's own nord.timesheet when it already had one at push time
+        (loss_name/loss_category present) —
+        get-or-created by name, category always Nord's. Otherwise it's the
+        shared "Undefined" placeholder, not the old blanket 'productive'
+        default: an unclassified session shouldn't silently count as good
+        time. A later correction (session_loss_justified, found by
+        nord_sync_timesheet_id) rewrites this same row once a real
+        justification exists.
         """
         self.ensure_one()
         if not work_sessions:
             return
-        loss = self.env['mrp.workcenter.productivity.loss'].sudo().search(
-            [('loss_type', '=', 'productive')], limit=1,
-        )
-        if not loss:
-            return
+        Loss = self.env['mrp.workcenter.productivity.loss']
         for session in work_sessions:
             if not session.get('start_date') or not session.get('end_date'):
                 continue
@@ -324,6 +332,11 @@ class MrpProduction(models.Model):
                 employee = self.env['hr.employee'].sudo().browse(session['employee_source_res_id'])
                 if not employee.exists():
                     employee = False
+            odoo_loss_type = NORD_SYNC_LOSS_CATEGORY_MAP.get(session.get('loss_category'))
+            if session.get('loss_name') and odoo_loss_type:
+                loss = Loss._nord_sync_get_or_create(session['loss_name'], odoo_loss_type)
+            else:
+                loss = Loss._nord_sync_get_or_create_undefined()
             self.env['mrp.workcenter.productivity'].sudo().create({
                 'workorder_id': workorder.id,
                 'workcenter_id': workorder.workcenter_id.id,
@@ -334,6 +347,7 @@ class MrpProduction(models.Model):
                 'user_id': self.env.user.id,
                 'company_id': workorder.company_id.id,
                 'employee_id': employee.id if employee else False,
+                'nord_sync_timesheet_id': session.get('nord_timesheet_id') or False,
             })
 
     def _nord_sync_set_raw_move_quantities(self, materials):
