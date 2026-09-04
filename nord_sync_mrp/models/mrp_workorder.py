@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-from odoo import api, models
+from odoo import api, fields, models
+
+from .mrp_workcenter_productivity import NORD_SYNC_LOSS_CATEGORY_MAP
 
 
 class MrpWorkorder(models.Model):
@@ -25,6 +27,28 @@ class MrpWorkorder(models.Model):
     """
     _inherit = ['mrp.workorder', 'nord_sync.notify.mixin']
 
+    electric_consume = fields.Float(
+        string='Electric Consume (kWh)', compute='_compute_nord_sync_electric_consume', store=True,
+        help='Sum of this workorder\'s own real work sessions\' electric_consume -- same shape '
+             'as the Zerynth app\'s own mrp.workorder.zcloud_electric_consume.',
+    )
+    electric_consume_cost = fields.Float(
+        string='Electric Consume Cost', compute='_compute_nord_sync_electric_consume', store=True,
+        # Plain Float, not Monetary -- mrp.workorder has no currency_id of its own to hang a
+        # currency_field off, same reasoning mrp.workcenter.costs_hour already settled for.
+        help='electric_consume x this company\'s energy_tariff_eur_kwh (res.company, Nord '
+             'Sync-synced to the Core -- see res_company.py).',
+    )
+
+    @api.depends('time_ids.electric_consume', 'company_id.energy_tariff_eur_kwh')
+    def _compute_nord_sync_electric_consume(self):
+        for order in self:
+            order.electric_consume = sum(order.time_ids.mapped('electric_consume'))
+            order.electric_consume_cost = order.electric_consume * order.company_id.energy_tariff_eur_kwh
+
+    def _compute_current_operation_cost(self):
+        return super()._compute_current_operation_cost() + self.electric_consume_cost
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
@@ -44,7 +68,7 @@ class MrpWorkorder(models.Model):
         return 'mrp.production'
 
     def _nord_sync_apply_granular_event(self, event_type, payload):
-        """Applies one of the 3 real-time work events a granular-push-opted
+        """Applies one of the real-time work events a granular-push-opted
         resource sends back. session_start moves the workorder to
         'progress'; session_stop only ends its running timer
         (end_previous), it does NOT change state — mrp.workorder has no
@@ -58,13 +82,25 @@ class MrpWorkorder(models.Model):
         existed. Never raises — same best-effort posture as the result push
         controller, caller turns the (bool, message) into the HTTP response.
 
+        session_loss_justified is deliberately exempt from the done/cancel
+        guard below — it corrects a historical session, not a live work
+        event, and the whole reason it exists is to keep working after
+        this workorder's MO already reached 'done' (the Result Push itself
+        refuses to touch one).
+
         Keys:
-            event_type (str): 'session_start' or 'session_stop', any other
-                value is rejected.
-            payload (dict): unused today, always {} — no fields are
-                currently read from it for either event_type.
+            event_type (str): 'session_start', 'session_stop' or
+                'session_loss_justified', any other value is rejected.
+            payload (dict): unused for session_start/session_stop (always
+                {}). See _nord_sync_apply_session_loss_justified for that
+                event's own keys.
         """
         self.ensure_one()
+        if event_type == 'session_loss_justified':
+            try:
+                return self._nord_sync_apply_session_loss_justified(payload)
+            except Exception as exc:
+                return False, str(exc)
         if self.state in ('done', 'cancel'):
             return False, f'Workorder already {self.state}, event ignored.'
         try:
@@ -83,6 +119,40 @@ class MrpWorkorder(models.Model):
                 return False, f'Unknown event_type: {event_type}'
         except Exception as exc:
             return False, str(exc)
+        return True, 'ok'
+
+    def _nord_sync_apply_session_loss_justified(self, payload):
+        """Rewrites the loss reason on a session already logged by a past
+        Result Push — found by nord_sync_timesheet_id, the only stable
+        reference to that exact
+        mrp.workcenter.productivity row (this workorder can have several
+        sessions; pause/resume never reopens an old one). No match (session
+        never logged yet, or a stale id) is a no-op, same skip-and-log
+        posture as the rest of this bridge — never a hard failure.
+
+        Keys:
+            nord_timesheet_id (int, required): matched against
+                mrp.workcenter.productivity.nord_sync_timesheet_id.
+            loss_name (str, required): the Blocking Reason's display name,
+                get-or-created by name.
+            loss_category (str, required): 'production'/'speed_loss'/
+                'downtime' — mapped to the Odoo loss_type Nord always wins
+                on, even for an already-existing reason (see
+                mrp.workcenter.productivity.loss._nord_sync_get_or_create).
+        """
+        self.ensure_one()
+        nord_timesheet_id = payload.get('nord_timesheet_id')
+        loss_name = payload.get('loss_name')
+        odoo_loss_type = NORD_SYNC_LOSS_CATEGORY_MAP.get(payload.get('loss_category'))
+        if not nord_timesheet_id or not loss_name or not odoo_loss_type:
+            return False, 'Missing nord_timesheet_id/loss_name/loss_category'
+        line = self.env['mrp.workcenter.productivity'].sudo().search([
+            ('nord_sync_timesheet_id', '=', nord_timesheet_id),
+        ], limit=1)
+        if not line:
+            return False, f'No session found for nord_timesheet_id={nord_timesheet_id}'
+        loss = self.env['mrp.workcenter.productivity.loss']._nord_sync_get_or_create(loss_name, odoo_loss_type)
+        line.loss_id = loss.id
         return True, 'ok'
 
     def _nord_sync_button_start_bypassing_employee_check(self):
@@ -203,4 +273,3 @@ class MrpWorkorder(models.Model):
                 'nord_resource_uid': self.employee_assigned_ids[0].resource_id.nord_sync_resource_id.uid or False,
             } if self.employee_assigned_ids else False,
         }
-
