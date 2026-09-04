@@ -37,7 +37,7 @@
 
         <menuitem id="menu_nord_sync_payload_field_config" name="Payload Fields"
                   parent="menu_nord_sync_root" action="action_nord_sync_payload_field_config"
-                  groups="group_nord_sync_manager" sequence="45"/>
+                  groups="base.group_system" sequence="45"/>
 
     </data>
 </odoo>
