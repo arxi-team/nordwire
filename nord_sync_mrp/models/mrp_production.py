@@ -4,8 +4,6 @@ from datetime import timedelta
 
 from odoo import fields, models
 
-from .mrp_workcenter_productivity import NORD_SYNC_LOSS_CATEGORY_MAP
-
 _logger = logging.getLogger(__name__)
 
 
@@ -212,8 +210,9 @@ class MrpProduction(models.Model):
             work_sessions (list[dict], optional): every real work session
                 the Core recorded for this job, default None (treated as
                 empty) — [{workorder_source_res_id, employee_source_res_id,
-                start_date, end_date}], logged as real
-                mrp.workcenter.productivity entries.
+                start_date, end_date, nord_timesheet_id, energy_kwh_used,
+                reason_name, reason_loss_type_source_res_id}], logged as
+                real mrp.workcenter.productivity entries.
         """
         self.ensure_one()
         if self.state in ('done', 'cancel'):
@@ -334,14 +333,22 @@ class MrpProduction(models.Model):
         missing.
 
         loss_id (required on mrp.workcenter.productivity) comes from the
-        session's own nord.timesheet when it already had one at push time
-        (loss_name/loss_category present) —
-        get-or-created by name, category always Nord's. Otherwise it's the
-        shared "Undefined" placeholder, not the old blanket 'productive'
-        default: an unclassified session shouldn't silently count as good
-        time. A later correction (session_loss_justified, found by
+        session's own nord.timesheet.reason_id when it already had one at
+        push time (reason_name/reason_loss_type_source_res_id present) —
+        get-or-created by name, loss.type resolved from the Core's own
+        Nord Sync Reason Type Import (no category mapping — the Core just
+        points back at the exact mrp.workcenter.productivity.loss.type id
+        this bridge itself pushed). Otherwise it's the shared "Undefined"
+        placeholder, not the old blanket 'productive' default: an
+        unclassified session shouldn't silently count as good time. A
+        later correction (session_loss_justified, found by
         nord_sync_timesheet_id) rewrites this same row once a real
         justification exists.
+
+        electric_consume comes straight from the session's own
+        energy_kwh_used (nord.timesheet, Core-side B9 snapshot) —
+        electric_consume_cost (mrp.workorder) derives from it here, same
+        tariff already synced via res.company.
         """
         self.ensure_one()
         if not work_sessions:
@@ -360,9 +367,10 @@ class MrpProduction(models.Model):
                 employee = self.env['hr.employee'].sudo().browse(session['employee_source_res_id'])
                 if not employee.exists():
                     employee = False
-            odoo_loss_type = NORD_SYNC_LOSS_CATEGORY_MAP.get(session.get('loss_category'))
-            if session.get('loss_name') and odoo_loss_type:
-                loss = Loss._nord_sync_get_or_create(session['loss_name'], odoo_loss_type)
+            if session.get('reason_name'):
+                loss = Loss._nord_sync_get_or_create(
+                    session['reason_name'], session.get('reason_loss_type_source_res_id'),
+                )
             else:
                 loss = Loss._nord_sync_get_or_create_undefined()
             self.env['mrp.workcenter.productivity'].sudo().create({
@@ -376,6 +384,7 @@ class MrpProduction(models.Model):
                 'company_id': workorder.company_id.id,
                 'employee_id': employee.id if employee else False,
                 'nord_sync_timesheet_id': session.get('nord_timesheet_id') or False,
+                'electric_consume': session.get('energy_kwh_used') or 0.0,
             })
 
     def _nord_sync_set_raw_move_quantities(self, materials):

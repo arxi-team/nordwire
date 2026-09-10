@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
 
-from .mrp_workcenter_productivity import NORD_SYNC_LOSS_CATEGORY_MAP
-
 
 class MrpWorkorder(models.Model):
     """Source side of the Workorder Bridge: each real mrp.workorder
@@ -183,25 +181,28 @@ class MrpWorkorder(models.Model):
         Keys:
             nord_timesheet_id (int, required): matched against
                 mrp.workcenter.productivity.nord_sync_timesheet_id.
-            loss_name (str, required): the Blocking Reason's display name,
+            reason_name (str, required): the reason's display name,
                 get-or-created by name.
-            loss_category (str, required): 'production'/'speed_loss'/
-                'downtime' — mapped to the Odoo loss_type Nord always wins
-                on, even for an already-existing reason (see
+            reason_loss_type_source_res_id (int or False): the client's own
+                mrp.workcenter.productivity.loss.type id this reason's type
+                was imported from (Nord Sync Reason Type Import) — Nord
+                always wins on the loss.type it points to, even for an
+                already-existing reason (see
                 mrp.workcenter.productivity.loss._nord_sync_get_or_create).
         """
         self.ensure_one()
         nord_timesheet_id = payload.get('nord_timesheet_id')
-        loss_name = payload.get('loss_name')
-        odoo_loss_type = NORD_SYNC_LOSS_CATEGORY_MAP.get(payload.get('loss_category'))
-        if not nord_timesheet_id or not loss_name or not odoo_loss_type:
-            return False, 'Missing nord_timesheet_id/loss_name/loss_category'
+        reason_name = payload.get('reason_name')
+        if not nord_timesheet_id or not reason_name:
+            return False, 'Missing nord_timesheet_id/reason_name'
         line = self.env['mrp.workcenter.productivity'].sudo().search([
             ('nord_sync_timesheet_id', '=', nord_timesheet_id),
         ], limit=1)
         if not line:
             return False, f'No session found for nord_timesheet_id={nord_timesheet_id}'
-        loss = self.env['mrp.workcenter.productivity.loss']._nord_sync_get_or_create(loss_name, odoo_loss_type)
+        loss = self.env['mrp.workcenter.productivity.loss']._nord_sync_get_or_create(
+            reason_name, payload.get('reason_loss_type_source_res_id'),
+        )
         line.loss_id = loss.id
         return True, 'ok'
 
