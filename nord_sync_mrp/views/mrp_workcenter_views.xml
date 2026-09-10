@@ -17,30 +17,20 @@
                     </div>
                     <separator string="Control Mode"/>
                     <group>
-                        <group>
-                            <field name="nord_sync_control_mode"/>
-                        </group>
                         <group string="Floor-Event Policies">
                             <field name="nord_sync_autonomous_close"/>
                             <field name="nord_sync_granular_push"/>
                             <field name="nord_sync_contention_policy"/>
                             <field name="nord_sync_chain_close"/>
                         </group>
-                    </group>
-                    <separator string="Mirror Mode"/>
-                    <group>
-                        <field name="nord_sync_mirror_mode"/>
+                        <group string="Mode">
+                            <field name="nord_sync_control_mode"/>
+                            <field name="nord_sync_mirror_mode"/>
+                        </group>
                     </group>
                     <separator string="Automatic OEE Segments"/>
                     <group>
-                        <group>
-                            <field name="nord_sync_auto_idle_segments"/>
-                            <field name="nord_sync_idle_segment_reason_name" invisible="not nord_sync_auto_idle_segments"/>
-                        </group>
-                        <group>
-                            <field name="nord_sync_auto_tooling_segments"/>
-                            <field name="nord_sync_tooling_segment_reason_name" invisible="not nord_sync_auto_tooling_segments"/>
-                        </group>
+                        <field name="nord_sync_auto_idle_segments"/>
                     </group>
                 </page>
             </xpath>

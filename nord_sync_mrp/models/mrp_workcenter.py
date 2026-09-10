@@ -95,28 +95,24 @@ class MrpWorkcenter(models.Model):
     nord_sync_auto_idle_segments = fields.Boolean(
         string='Automatic Idle Segments',
         default=False,
-        help='Off (default): a gap between two closed sessions on this resource, for the same '
-             'job, stays unexplained on the Core. On: starting a new session backfills that '
-             'gap as an automatically-created Idle segment. Mirrors the Zerynth app\'s '
-             'automatic_idle_time.',
+        help='Off (default): a resource has no session at all between two jobs. On: stopping '
+             'work opens an unclassified downtime session on the Core, closed by the next '
+             'start — no gap ever goes unexplained, and it\'s excluded from worked time.',
     )
     nord_sync_idle_segment_reason_name = fields.Char(
         string='Idle Segment Reason',
         default='Idle',
-        help='Loss reason name used for segments Automatic Idle Segments creates on the Core.',
+        help='Unused for now — downtime segments open without a reason.',
     )
     nord_sync_auto_tooling_segments = fields.Boolean(
         string='Automatic Tooling Segments',
         default=False,
-        help='Off (default): the gap between a job\'s first session on this resource being '
-             'queued and work actually starting stays unexplained on the Core. On: it '
-             'backfills that gap as an automatically-created Tooling segment. Mirrors the '
-             'Zerynth app\'s automatic_tooling_time.',
+        help='Unused for now.',
     )
     nord_sync_tooling_segment_reason_name = fields.Char(
         string='Tooling Segment Reason',
         default='Tooling',
-        help='Loss reason name used for segments Automatic Tooling Segments creates on the Core.',
+        help='Unused for now.',
     )
 
     NORD_SYNC_CONTROL_MODE_PRESETS = {
