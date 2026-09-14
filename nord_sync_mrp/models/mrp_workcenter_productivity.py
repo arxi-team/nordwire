@@ -109,16 +109,30 @@ class MrpWorkcenterProductivityLoss(models.Model):
         return {'name': self.name, 'loss_type_source_res_id': self.loss_id.id or False}
 
     @api.model
-    def _nord_sync_get_or_create(self, name, loss_type_source_res_id):
-        """loss_type_source_res_id is the client's own
-        mrp.workcenter.productivity.loss.type id, echoed back by the Core
-        (Nord Sync Reason Type Import resolves it from the reason's own
-        reason_type_id) — no category mapping needed, the Core just points
-        back at the exact record this bridge itself pushed. Falls back to
-        the shared "Undefined" loss.type when the id is missing/stale
-        (never imported/tagged yet, or deleted since)."""
+    def _nord_sync_get_or_create(self, name, reason_type_name):
+        """reason_type_name is the Core's own nord.reason.reason_type_id.name
+        (e.g. 'Performance') — for a reason.type Nord Sync originally
+        imported FROM this client (Nord Sync Reason Type Import,
+        reason_nord_sync.py on the Core), that name is exactly this
+        client's own loss_type Selection value, capitalized. Matched
+        case-insensitively against loss.type.loss_type, never by id — real
+        bug, found live 2026-09-14: this used to be called
+        loss_type_source_res_id and treated as a client-side record id to
+        browse(), but neither Core payload that calls here
+        (_nord_sync_session_loss_justified_payload,
+        _push_nord_sync_result's work_sessions) has ever sent an id, only
+        this name — so the id branch always missed and every reason landed
+        on "Undefined" regardless of its real type, even when the reason
+        NAME itself (a separate, unaffected code path) applied correctly.
+        Falls back to the shared "Undefined" loss.type when the name is
+        absent or doesn't match any of Odoo's 4 fixed values — e.g. a
+        Core-native type with no client counterpart yet, like Automatic
+        Idle Segments' 'Downtime' (edge_resource.py, Core)."""
         LossType = self.env['mrp.workcenter.productivity.loss.type'].sudo()
-        loss_type_record = LossType.browse(loss_type_source_res_id).exists() if loss_type_source_res_id else False
+        loss_type_record = (
+            LossType.search([('loss_type', '=', reason_type_name.lower())], limit=1)
+            if reason_type_name else False
+        )
         if not loss_type_record:
             loss_type_record = LossType.search([('loss_type', '=', NORD_SYNC_UNDEFINED_LOSS_TYPE)], limit=1) \
                 or LossType.create({'loss_type': NORD_SYNC_UNDEFINED_LOSS_TYPE})

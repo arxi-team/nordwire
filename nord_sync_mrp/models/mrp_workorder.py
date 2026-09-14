@@ -139,9 +139,11 @@ class MrpWorkorder(models.Model):
         Keys:
             event_type (str): 'session_start', 'session_stop' or
                 'session_loss_justified', any other value is rejected.
-            payload (dict): unused for session_start/session_stop (always
-                {}). See _nord_sync_apply_session_loss_justified for that
-                event's own keys.
+            payload (dict): unused for session_stop (always {}).
+                session_start carries nord_timesheet_id (see
+                _nord_sync_button_start_bypassing_employee_check). See
+                _nord_sync_apply_session_loss_justified for that event's
+                own keys.
         """
         self.ensure_one()
         if event_type == 'session_loss_justified':
@@ -153,7 +155,7 @@ class MrpWorkorder(models.Model):
             return False, f'Workorder already {self.state}, event ignored.'
         try:
             if event_type == 'session_start':
-                self._nord_sync_button_start_bypassing_employee_check()
+                self._nord_sync_button_start_bypassing_employee_check(payload)
             elif event_type == 'session_stop':
                 # Not button_pending(): its end_previous(doall=False) only
                 # closes a timer started by the *calling* user, and the Nord
@@ -183,10 +185,9 @@ class MrpWorkorder(models.Model):
                 mrp.workcenter.productivity.nord_sync_timesheet_id.
             reason_name (str, required): the reason's display name,
                 get-or-created by name.
-            reason_loss_type_source_res_id (int or False): the client's own
-                mrp.workcenter.productivity.loss.type id this reason's type
-                was imported from (Nord Sync Reason Type Import) — Nord
-                always wins on the loss.type it points to, even for an
+            reason_type (str, optional): this reason's nord.reason.
+                reason_type_id.name (e.g. 'Performance') — Nord always wins
+                on the loss.type it resolves to, even for an
                 already-existing reason (see
                 mrp.workcenter.productivity.loss._nord_sync_get_or_create).
         """
@@ -201,12 +202,12 @@ class MrpWorkorder(models.Model):
         if not line:
             return False, f'No session found for nord_timesheet_id={nord_timesheet_id}'
         loss = self.env['mrp.workcenter.productivity.loss']._nord_sync_get_or_create(
-            reason_name, payload.get('reason_loss_type_source_res_id'),
+            reason_name, payload.get('reason_type'),
         )
         line.loss_id = loss.id
         return True, 'ok'
 
-    def _nord_sync_button_start_bypassing_employee_check(self):
+    def _nord_sync_button_start_bypassing_employee_check(self, payload=None):
         """button_start(bypass=True) skips the Shop Floor "link this user to
         an employee" guard the mrp_workorder enterprise app adds — this call
         is a machine-to-machine Nord Core event, never an interactive
@@ -245,6 +246,19 @@ class MrpWorkorder(models.Model):
         start_employee() already no-ops if this exact employee already has
         an open session on this workorder, so a retried granular push
         never opens a second one.
+
+        payload's nord_timesheet_id (see _nord_sync_session_start_payload,
+        Core) gets stamped onto the line this call opens — the only stable
+        reference session_loss_justified has to find this exact row again
+        later, live or after Mark Done. Real bug, found live 2026-09-14:
+        without this stamp nord_sync_timesheet_id stayed 0 forever, so
+        every reason correction for this session failed permanently ("No
+        session found"). The start_employee() no-op case above (already
+        has an open session) is skipped on purpose — that session was
+        already stamped whenever IT first opened, restamping here would at
+        best be a no-op and at worst overwrite a real id with a retried
+        push's own (the same nord_timesheet_id either way, so harmless in
+        practice, but the intent is "stamp once, at creation").
         """
         self.ensure_one()
         try:
@@ -255,7 +269,13 @@ class MrpWorkorder(models.Model):
         employee = self.employee_assigned_ids[:1]
         if not employee:
             employee = self.env['hr.employee']._nord_sync_get_or_create_autonomous_employee(self.company_id)
+        already_open = self.time_ids.filtered(lambda t: not t.date_end and t.employee_id == employee)
         self.start_employee(employee.id)
+        if not already_open:
+            nord_timesheet_id = (payload or {}).get('nord_timesheet_id')
+            if nord_timesheet_id:
+                line = self.time_ids.filtered(lambda t: not t.date_end and t.employee_id == employee)[:1]
+                line.nord_sync_timesheet_id = nord_timesheet_id
 
     def _nord_sync_payload(self):
         """Payload sent to the Core for this real workorder.

@@ -211,8 +211,8 @@ class MrpProduction(models.Model):
                 the Core recorded for this job, default None (treated as
                 empty) — [{workorder_source_res_id, employee_source_res_id,
                 start_date, end_date, nord_timesheet_id, energy_kwh_used,
-                reason_name, reason_loss_type_source_res_id}], logged as
-                real mrp.workcenter.productivity entries.
+                reason_name, reason_type}], logged as real
+                mrp.workcenter.productivity entries.
         """
         self.ensure_one()
         if self.state in ('done', 'cancel'):
@@ -334,16 +334,16 @@ class MrpProduction(models.Model):
 
         loss_id (required on mrp.workcenter.productivity) comes from the
         session's own nord.timesheet.reason_id when it already had one at
-        push time (reason_name/reason_loss_type_source_res_id present) —
-        get-or-created by name, loss.type resolved from the Core's own
-        Nord Sync Reason Type Import (no category mapping — the Core just
-        points back at the exact mrp.workcenter.productivity.loss.type id
-        this bridge itself pushed). Otherwise it's the shared "Undefined"
-        placeholder, not the old blanket 'productive' default: an
-        unclassified session shouldn't silently count as good time. A
-        later correction (session_loss_justified, found by
-        nord_sync_timesheet_id) rewrites this same row once a real
-        justification exists.
+        push time (reason_name/reason_type present) — get-or-created by
+        name, loss.type resolved from reason_type (the Core's own
+        nord.reason.reason_type_id.name, matched case-insensitively
+        against this client's own loss_type Selection — see
+        mrp.workcenter.productivity.loss._nord_sync_get_or_create).
+        Otherwise it's the shared "Undefined" placeholder, not the old
+        blanket 'productive' default: an unclassified session shouldn't
+        silently count as good time. A later correction
+        (session_loss_justified, found by nord_sync_timesheet_id) rewrites
+        this same row once a real justification exists.
 
         electric_consume comes straight from the session's own
         energy_kwh_used (nord.timesheet, Core-side B9 snapshot) —
@@ -369,7 +369,7 @@ class MrpProduction(models.Model):
                     employee = False
             if session.get('reason_name'):
                 loss = Loss._nord_sync_get_or_create(
-                    session['reason_name'], session.get('reason_loss_type_source_res_id'),
+                    session['reason_name'], session.get('reason_type'),
                 )
             else:
                 loss = Loss._nord_sync_get_or_create_undefined()
