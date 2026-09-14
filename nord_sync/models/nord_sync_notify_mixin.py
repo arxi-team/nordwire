@@ -16,6 +16,29 @@ class NordSyncNotifyMixin(models.AbstractModel):
     _name = 'nord_sync.notify.mixin'
     _description = 'Nord Sync Notify Mixin'
 
+    def action_nord_sync_force_resync(self):
+        """Manually re-enqueue these records as a 'write' — same effect on
+        the wire as actually editing a field, without needing a real change
+        to trigger it. Every Nord Sync Source/support model gets this for
+        free (this mixin is shared, never subclassed per-model), callable
+        from a button, a Server Action, or the shell.
+
+        Real need this solves: several Core-side handlers in this bridge
+        are get-or-create, not get-or-update (e.g. Nord Sync Reason Type
+        Import, _apply_nord_sync_loss_type/_apply_nord_sync_loss on the
+        Core — once a record's ir.model.data tag exists there, a later
+        'write' entry is a no-op, deliberately, since most of this bridge
+        never overwrites a value a human may have already edited on the
+        Core). A genuine edit on this side still won't retroactively
+        correct an already-imported Core record — but this lets a human
+        force a fresh entry through the same queue on demand (e.g. after
+        the Core's own copy was lost — a DB reset, a record deleted there —
+        so its own ir.model.data tag is gone and the next entry, replayed
+        for real this time, creates it again instead of finding nothing to
+        do).
+        """
+        self._nord_sync_notify('write')
+
     def _nord_sync_notify(self, operation):
         for record in self:
             if not record._nord_sync_should_notify():

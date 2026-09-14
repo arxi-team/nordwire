@@ -8,6 +8,12 @@
         <field name="arch" type="xml">
             <xpath expr="//page[@name='general_info']" position="after">
                 <page string="Nord Sync" name="nord_sync">
+                    <div class="mb-2">
+                        <button name="action_nord_sync_force_resync_reasons" type="object"
+                                string="Resync Reasons to Core" class="btn-secondary"
+                                groups="base.group_system"
+                                help="Re-sends every session-loss reason and reason type to the Core, even ones already imported there — not specific to this work center, use after the Core's own copy was lost."/>
+                    </div>
                     <group>
                         <field name="nord_sync_resource_id" options="{'no_create': True}"/>
                     </group>

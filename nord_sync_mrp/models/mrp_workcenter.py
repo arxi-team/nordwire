@@ -181,6 +181,26 @@ class MrpWorkcenter(models.Model):
     def _nord_sync_source_key(self):
         return 'mrp.production'
 
+    def action_nord_sync_force_resync_reasons(self):
+        """"Resync Reasons to Core" button (Nord Sync tab, base.group_system
+        only) — not actually scoped to this work center, loss/loss.type are
+        global tables, not per-resource; lives here purely because the Nord
+        Sync tab is where an admin already is when they'd reach for it.
+
+        Force-resyncs (action_nord_sync_force_resync, nord_sync.notify.mixin)
+        every mrp.workcenter.productivity.loss.type and .loss — the same gate
+        each model's own _nord_sync_notify already applies (loss needs a real
+        external id) still runs, this only forces a fresh 'write' entry
+        through, it never bypasses that filter. Meant for recovery: the Core
+        apply side is get-or-create, not get-or-update (see
+        reason_nord_sync.py) — if the Core's own nord.reason.type/nord.reason
+        copy is ever lost (a DB reset, a manual delete there), its
+        ir.model.data tag goes with it, and the next entry recreates it
+        instead of being silently skipped as already-applied.
+        """
+        self.env['mrp.workcenter.productivity.loss.type'].search([]).action_nord_sync_force_resync()
+        self.env['mrp.workcenter.productivity.loss'].search([]).action_nord_sync_force_resync()
+
     def _nord_sync_payload(self):
         """Payload sent to the Core to keep this work center's edge.resource
         up to date.
