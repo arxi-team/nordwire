@@ -139,9 +139,12 @@ class MrpWorkorder(models.Model):
         Keys:
             event_type (str): 'session_start', 'session_stop' or
                 'session_loss_justified', any other value is rejected.
-            payload (dict): unused for session_stop (always {}).
-                session_start carries nord_timesheet_id (see
-                _nord_sync_button_start_bypassing_employee_check). See
+            payload (dict): session_start carries nord_timesheet_id (see
+                _nord_sync_button_start_bypassing_employee_check).
+                session_stop carries end_date (str, optional) — the Core's
+                own real end timestamp, applied on top of whatever
+                end_previous()'s own _close() stamped, see that branch's
+                own comment for why. See
                 _nord_sync_apply_session_loss_justified for that event's
                 own keys.
         """
@@ -164,7 +167,24 @@ class MrpWorkorder(models.Model):
                 # timer is actually open on this workorder, regardless of
                 # who/what started it — the right primitive for a
                 # machine-driven event.
+                still_open = self.time_ids.filtered(lambda t: not t.date_end)
                 self.end_previous(doall=True)
+                # _close() (base mrp) always stamps date_end with ITS OWN
+                # fields.Datetime.now() -- real gap, found live 2026-09-14:
+                # on a delayed retry (the granular push queue's own retry
+                # cron, not the first attempt) that's measurably later than
+                # the Core's real end_date, sent right here in payload but
+                # silently discarded until now. Corrected after the fact,
+                # on exactly the line(s) this same call just closed --
+                # _close()'s own duration-based under/over-performance
+                # split (mrp_workorder.py, base) already ran against the
+                # wrong instant by then, a pre-existing limitation of that
+                # split applied to any delayed correction, not something
+                # this fixes; the timestamp actually shown everywhere else
+                # (Shop Floor, OEE duration, electric_consume_cost) is.
+                end_date = payload.get('end_date')
+                if end_date:
+                    still_open.write({'date_end': end_date})
             else:
                 return False, f'Unknown event_type: {event_type}'
         except Exception as exc:
