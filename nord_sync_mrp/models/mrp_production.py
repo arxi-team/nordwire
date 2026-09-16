@@ -228,59 +228,68 @@ class MrpProduction(models.Model):
         self._nord_sync_log_work_sessions(work_sessions or [])
 
         try:
-            # qty_producing is only the good/usable output — scrap and
-            # not_pass never counted as "produced" (real bug found live:
-            # summing them in here let 6 good + 4 scrap satisfy a plan of
-            # 10, moving 10 units of the finished product into stock when
-            # only 6 were actually good). Whatever's short of product_qty
-            # becomes a real backorder MO instead, via skip_backorder +
-            # mo_ids_to_backorder=self.ids — same as ticking "to backorder"
-            # on the wizard's own Confirm button, except no human is there
-            # to click it. The backorder MO is created already
-            # state='confirmed', which nord_sync_automation.xml's
-            # on_create_or_write rule still notifies Cloud for, same as a
-            # human-confirmed MO would.
-            #
-            # mo_ids_to_backorder is only added when there's an actual
-            # shortfall (real bug, found live: passing it unconditionally
-            # made _split_productions() try to create a backorder even when
-            # qty_produced == product_qty, with product_qty=0 — hit the
-            # mrp_production_qty_positive DB constraint and 500'd the whole
-            # request, silently dropping the Result Push).
-            self.qty_producing = qty_produced
-            mo = self.with_context(skip_backorder=True)
-            if not self.product_uom_id.is_zero(self._get_quantity_to_backorder()):
-                mo = mo.with_context(mo_ids_to_backorder=self.ids)
-            result = mo.button_mark_done()
-            if isinstance(result, dict) and result.get('res_model') == 'mrp.consumption.warning':
-                # Odoo's own "consumed qty differs from the BOM's expected
-                # qty, are you sure?" warning — this flow already knows the
-                # real declared quantity (nord.declaration is the ledger a
-                # human would otherwise be asked to eyeball here), so
-                # auto-confirm it exactly like the wizard's own "Set
-                # Quantities & Confirm" button would (action_confirm() alone
-                # is the plain "Confirm" button — it trusts move.quantity as
-                # already set, which our automated flow never touches, so it
-                # left every raw move at quantity=0/picked=False and Odoo
-                # cancelled them instead of consuming anything — real bug,
-                # caught by checking the MO's Components tab after a close).
-                # Any *other* wizard button_mark_done() might still return
-                # (lot/serial) is a real business decision, left for a
-                # human — falls through to the generic blocked message.
-                self._nord_sync_set_raw_move_quantities(materials or [])
-                result = mo.with_context(skip_consumption=True).button_mark_done()
-            if isinstance(result, dict) and result.get('res_model') == 'mrp.production':
-                # button_mark_done() already wrote state='done' on this MO and
-                # split the backorder off (both happen unconditionally once
-                # pre_button_mark_done() clears, before this return) — this
-                # dict is only its own "go look at the new backorder" form
-                # navigation for a human, not a block. Real bug, found live:
-                # every backorder case was falling through to the generic
-                # blocked message below despite having actually finished,
-                # silently skipping scrap creation. mrp.action_assign_serial_numbers
-                # (the one real lot/serial block button_mark_done() can still
-                # return) is a different res_model, so this stays specific.
-                result = True
+            # Wrapped in its own savepoint: button_mark_done() can fail on a
+            # real DB constraint (e.g. mrp_production_qty_positive on a
+            # zero-qty backorder), which aborts the whole Postgres
+            # transaction. Without a savepoint to roll back to, the except
+            # branch's own recovery below (message_post + activity_schedule)
+            # would run on that same aborted transaction and fail too,
+            # turning a caught error into an uncaught 500 with zero
+            # chatter/activity anywhere (real bug, found live).
+            with self.env.cr.savepoint():
+                # qty_producing is only the good/usable output — scrap and
+                # not_pass never counted as "produced" (real bug found live:
+                # summing them in here let 6 good + 4 scrap satisfy a plan of
+                # 10, moving 10 units of the finished product into stock when
+                # only 6 were actually good). Whatever's short of product_qty
+                # becomes a real backorder MO instead, via skip_backorder +
+                # mo_ids_to_backorder=self.ids — same as ticking "to backorder"
+                # on the wizard's own Confirm button, except no human is there
+                # to click it. The backorder MO is created already
+                # state='confirmed', which nord_sync_automation.xml's
+                # on_create_or_write rule still notifies Cloud for, same as a
+                # human-confirmed MO would.
+                #
+                # mo_ids_to_backorder is only added when there's an actual
+                # shortfall (real bug, found live: passing it unconditionally
+                # made _split_productions() try to create a backorder even when
+                # qty_produced == product_qty, with product_qty=0 — hit the
+                # mrp_production_qty_positive DB constraint and 500'd the whole
+                # request, silently dropping the Result Push).
+                self.qty_producing = qty_produced
+                mo = self.with_context(skip_backorder=True)
+                if not self.product_uom_id.is_zero(self._get_quantity_to_backorder()):
+                    mo = mo.with_context(mo_ids_to_backorder=self.ids)
+                result = mo.button_mark_done()
+                if isinstance(result, dict) and result.get('res_model') == 'mrp.consumption.warning':
+                    # Odoo's own "consumed qty differs from the BOM's expected
+                    # qty, are you sure?" warning — this flow already knows the
+                    # real declared quantity (nord.declaration is the ledger a
+                    # human would otherwise be asked to eyeball here), so
+                    # auto-confirm it exactly like the wizard's own "Set
+                    # Quantities & Confirm" button would (action_confirm() alone
+                    # is the plain "Confirm" button — it trusts move.quantity as
+                    # already set, which our automated flow never touches, so it
+                    # left every raw move at quantity=0/picked=False and Odoo
+                    # cancelled them instead of consuming anything — real bug,
+                    # caught by checking the MO's Components tab after a close).
+                    # Any *other* wizard button_mark_done() might still return
+                    # (lot/serial) is a real business decision, left for a
+                    # human — falls through to the generic blocked message.
+                    self._nord_sync_set_raw_move_quantities(materials or [])
+                    result = mo.with_context(skip_consumption=True).button_mark_done()
+                if isinstance(result, dict) and result.get('res_model') == 'mrp.production':
+                    # button_mark_done() already wrote state='done' on this MO and
+                    # split the backorder off (both happen unconditionally once
+                    # pre_button_mark_done() clears, before this return) — this
+                    # dict is only its own "go look at the new backorder" form
+                    # navigation for a human, not a block. Real bug, found live:
+                    # every backorder case was falling through to the generic
+                    # blocked message below despite having actually finished,
+                    # silently skipping scrap creation. mrp.action_assign_serial_numbers
+                    # (the one real lot/serial block button_mark_done() can still
+                    # return) is a different res_model, so this stays specific.
+                    result = True
         except Exception as exc:
             message = f'Nord Sync: failed to apply the result ({exc}).'
             _logger.warning('nord_sync: failed to apply result to MO %s: %s', self.id, exc)
