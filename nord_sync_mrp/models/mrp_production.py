@@ -3,6 +3,7 @@ import logging
 from datetime import timedelta
 
 from odoo import fields, models
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -336,20 +337,30 @@ class MrpProduction(models.Model):
 
     def _nord_sync_friendly_error(self, exc):
         """Turns a caught exception into text safe to show a non-technical
-        user in chatter, an activity, or a Core-side alert -- the exception's
-        own str() can carry a full DB row dump (a check constraint
-        violation's "DETAIL: Failing row contains (...)"), meaningless and
-        alarming to whoever reads it there. The full exc is always logged
-        server-side by the caller before this runs, so nothing is actually
-        lost -- this only controls what a non-technical reader sees.
-        Recognized failure shapes get a real explanation; anything else
-        falls back to a generic message pointing at the server log instead
-        of echoing raw internals.
+        user in chatter, an activity, or a Core-side alert.
+
+        Odoo's own UserError family (UserError itself, ValidationError,
+        AccessError, MissingError, ...) is already written to be read by a
+        human -- that is the entire point of raising one -- so it's shown
+        as-is, unchanged: covers every raise this MO's own close can hit
+        without needing this method to know about each one by name (a
+        missing lot/serial, a duplicate serial already produced, a rounding
+        precision mismatch, a negative quantity, a duplicate production
+        reference, ...). Anything else is a lower-level failure never meant
+        for a human eye -- typically a bare DB/psycopg2 error surfacing
+        straight from a flush, which can carry a full row dump ("DETAIL:
+        Failing row contains (...)"), meaningless and alarming to whoever
+        reads it. The full exc is always logged server-side by the caller
+        before this runs, so nothing is actually lost by hiding it here.
+        Recognized shapes get a real explanation; anything unrecognized
+        falls back to a generic message pointing at the server log.
 
         Keys:
             exc (Exception): the exception caught applying a Nord Sync
                 action to this MO.
         """
+        if isinstance(exc, UserError):
+            return str(exc)
         text = str(exc)
         if 'mrp_production_qty_positive' in text:
             return (
