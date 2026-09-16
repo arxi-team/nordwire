@@ -297,13 +297,13 @@ class TestNordSyncInstallWizard(TransactionCase):
         self.assertEqual(configs.company_uid, 'new-uid')
 
     def test_confirm_hands_off_to_automation_rules_list(self):
-        # The base wizard can't assume any one Nord Sync Source's
+        # The base wizard can't assume any one Nordwire Source's
         # automation rule exists.
         wizard = self._new_wizard(company_uid='new-uid')
         action = wizard.action_confirm()
         self.assertEqual(action['type'], 'ir.actions.act_window')
         self.assertEqual(action['res_model'], 'base.automation')
-        self.assertEqual(action['domain'], [('name', 'like', 'Nord Sync')])
+        self.assertEqual(action['domain'], [('name', 'like', 'Nordwire')])
 
     def test_confirm_raises_when_preflight_not_ok(self):
         wizard = self._new_wizard(cron_threads=0, company_uid='new-uid')

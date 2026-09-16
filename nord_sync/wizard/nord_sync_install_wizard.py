@@ -455,8 +455,8 @@ class NordSyncInstallWizard(models.TransientModel):
     def action_confirm(self):
         """Finish: saves the config, then hands off to the "Nordwire:
         Automation Rules" list (data/nord_sync_automation.xml) instead of
-        just closing — so the trigger criteria shipped by whichever Nord
-        Sync Source addons are installed are the very next thing the person
+        just closing — so the trigger criteria shipped by whichever Nordwire
+        Source addons are installed are the very next thing the person
         configuring this sees, ready to narrow if needed. Generic on
         purpose — the base wizard can't assume any one source's automation
         rule exists.

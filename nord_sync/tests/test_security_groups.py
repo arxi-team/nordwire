@@ -35,9 +35,9 @@ class TestNordSyncSecurityGroups(TransactionCase):
         # Own fixture rather than a real source addon's xmlid (nord_sync_mrp's
         # "MO confirmed" rule, say) — the base module is source-agnostic,
         # so this test only needs a record matching the
-        # ir.rule's actual scoping mechanism: name like 'Nord Sync'.
+        # ir.rule's actual scoping mechanism: name like 'Nordwire'.
         cls.nord_sync_rule = cls.env['base.automation'].create({
-            'name': 'Nord Sync: Test Rule',
+            'name': 'Nordwire: Test Rule',
             'model_id': cls.env.ref('base.model_res_partner').id,
             'trigger': 'on_create',
         })

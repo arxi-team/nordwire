@@ -184,8 +184,8 @@ class MrpWorkcenter(models.Model):
     def action_nord_sync_force_resync_reasons(self):
         """"Resync Reasons to Core" button (Nordwire tab, base.group_system
         only) — not actually scoped to this work center, loss/loss.type are
-        global tables, not per-resource; lives here purely because the Nord
-        Sync tab is where an admin already is when they'd reach for it.
+        global tables, not per-resource; lives here purely because the Nordwire
+        tab is where an admin already is when they'd reach for it.
 
         Force-resyncs (action_nord_sync_force_resync, nord_sync.notify.mixin)
         every mrp.workcenter.productivity.loss.type and .loss — the same gate
