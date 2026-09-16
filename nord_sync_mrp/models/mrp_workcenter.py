@@ -165,9 +165,35 @@ class MrpWorkcenter(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        self._nord_sync_apply_default_control_mode(vals_list)
         records = super().create(vals_list)
         records._nord_sync_notify('create')
         return records
+
+    def _nord_sync_apply_default_control_mode(self, vals_list):
+        """Fills in a new work center's four floor-event fields from its
+        company's nord_sync_default_workcenter_control_mode (nord_sync.config)
+        when the vals dict says nothing at all about Control Mode — checked
+        before super().create() runs, not after, since these are the same
+        fields _compute_nord_sync_control_mode itself depends on. Only ever a
+        starting point: a vals dict naming nord_sync_control_mode itself, or
+        any one of the four fields directly (its own value, its own factory
+        default, an XML data file, another addon), is left alone untouched —
+        explicit always wins, and a work center already created never
+        revisits this, so changing the company default later has no effect on it.
+        """
+        override_keys = {'nord_sync_control_mode', *self.NORD_SYNC_CONTROL_MODE_PRESETS['odoo']}
+        Company = self.env['res.company']
+        for vals in vals_list:
+            if not override_keys.isdisjoint(vals):
+                continue
+            company = Company.browse(vals['company_id']) if vals.get('company_id') else self.env.company
+            config = self.env['nord_sync.config'].sudo()._get_for_company(company)
+            preset = config and self.NORD_SYNC_CONTROL_MODE_PRESETS.get(
+                config.nord_sync_default_workcenter_control_mode,
+            )
+            if preset:
+                vals.update(preset)
 
     def write(self, vals):
         result = super().write(vals)

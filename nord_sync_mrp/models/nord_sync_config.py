@@ -20,6 +20,19 @@ class NordSyncConfig(models.Model):
              'begins.',
     )
 
+    nord_sync_default_workcenter_control_mode = fields.Selection([
+        ('odoo', 'Odoo'), ('nord', 'Nord'),
+    ], string='Default Work Center Control Mode',
+        help='Preset applied to the four floor-event fields (mrp_workcenter.py, ADR 0028) of '
+             'a new work center that leaves Control Mode and all four of those fields unset — '
+             'left empty (the default), a new work center keeps behaving exactly as it always '
+             'has, implicitly "Odoo" via those fields\' own defaults. Purely a starting point: '
+             'once a work center exists it never revisits this setting again, so changing it '
+             'later never touches a work center already created, and any field explicitly '
+             'given at creation time (its own value or Control Mode itself) always wins over '
+             'this default.',
+    )
+
     @api.model
     def _nord_sync_available_native_sources(self):
         sources = super()._nord_sync_available_native_sources()
