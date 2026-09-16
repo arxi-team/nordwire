@@ -125,9 +125,8 @@ class TestMrpWorkcenterForceResyncReasons(TransactionCase):
 
     def _configure(self, **vals):
         # get_or_create, not a plain create() — a persistent dev DB reused
-        # across sessions (see feedback-nordwire-test-db-workflow) can
-        # already have a real nord_sync.config for this company, which
-        # UNIQUE(company_id) would otherwise reject.
+        # across sessions can already have a real nord_sync.config for this
+        # company, which UNIQUE(company_id) would otherwise reject.
         vals.setdefault('enabled', True)
         config = self.env['nord_sync.config']._get_or_create_for_company(self.env.company)
         config.write(vals)
@@ -192,7 +191,7 @@ class TestMrpWorkcenterForceResyncReasons(TransactionCase):
 @tagged('post_install', '-at_install')
 class TestMrpWorkcenterControlMode(TransactionCase):
     """nord_sync_control_mode — computed shortcut over the four
-    floor-event fields, see ADR 0028. Mirror Mode is deliberately outside
+    floor-event fields. Mirror Mode is deliberately outside
     it (a standalone opt-in, never touched by picking a preset) — see
     TestMrpWorkcenterMirrorModeStandalone below. No nord_sync.config/sync
     needed, purely local.
