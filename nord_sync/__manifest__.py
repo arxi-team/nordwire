@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Nord Sync',
+    'name': 'Nordwire',
     'version': '1.0.5',
     'category': 'Manufacturing',
     'summary': 'Bridges this Odoo to the Nord platform: notifies the Nord Cloud of changes, '
                'exposes a queue for the Nord Core to pull, authenticated by API key.',
     'description': """
-Nord Sync
+Nordwire
 =========
 
 Bridges this Odoo instance to the Nord platform: notifies the Nord Cloud of
@@ -19,12 +19,12 @@ changes, exposes a queue for the Nord Core to pull, authenticated by API key.
   parameter, e.g. `https://nordwire.pt` or `http://localhost:8080`) —
   the webhook path itself (`/nordos/sync/nord_sync/webhook`) is fixed in code.
 - `GET /nord_sync/api/v1/queue` — the Nord Core pulls new queue entries here,
-  authenticated with an API key (technical user in the "Nord Sync
+  authenticated with an API key (technical user in the "Nordwire
   Integration" group).
 
 This addon is only the generic bridge machinery (queue, config, payload
 field config, job stage/state mapping, install wizard) — depends on nothing
-business-specific, no mrp/sale/purchase/stock/maintenance/hr. Each Nord Sync
+business-specific, no mrp/sale/purchase/stock/maintenance/hr. Each Nordwire
 Source (`mrp.production`/`sale.order`/`purchase.order`/`stock.picking`/
 `maintenance.request`) lives in its own thin addon (`nord_sync_mrp`,
 `nord_sync_sale`, ...) that depends on this one plus whichever business app
@@ -44,18 +44,18 @@ plus a delivery status (pending/sent/failed) for the wake webhook. No
 write-back endpoint yet.
 
 Install wizard, 5 steps — pre-flight (scheduler active, Odoo version) /
-sources (which currently-installed Nord Sync Source addons to enable) /
+sources (which currently-installed Nordwire Source addons to enable) /
 connection (company UID) / job stages & mapping / finish — opens
 automatically right after install via ir.actions.todo, and reachable
 afterwards from a button on the Configuration screen.
 
 Own top-level app (not nested in Settings) — Sync Queue/Sync
-Failures/Configuration/Automation Rules all live under the "Nord Sync" main
-menu. Two groups gate access: Nord Sync User (read Sync Queue/Sync Failures,
-retry a failed webhook) and Nord Sync Manager (implies User; Configuration,
+Failures/Configuration/Automation Rules all live under the "Nordwire" main
+menu. Two groups gate access: Nordwire User (read Sync Queue/Sync Failures,
+retry a failed webhook) and Nordwire Manager (implies User; Configuration,
 Install Wizard, and the nord_sync-tagged Automation Rules). Neither group is
 `base.group_system` — the Nord Cloud URL (`nord_sync.cloud_base_url` system
-parameter, Settings > Technical > Parameters) and non-Nord-Sync Automation
+parameter, Settings > Technical > Parameters) and non-Nordwire Automation
 Rules stay reserved to the real Odoo administrator, on purpose.
     """,
     'author': 'NORD / Nordwire',

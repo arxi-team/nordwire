@@ -20,7 +20,7 @@
         </field>
     </record>
 
-    <!-- Nord Sync's own electric_consume(_cost) (B9, Result Push work_sessions)
+    <!-- Nordwire's own electric_consume(_cost) (B9, Result Push work_sessions)
          had no view anywhere: correctly populated in the DB, invisible in
          the UI. electric_consume on the per-session line (Time Tracking tab)
          is what the Core actually sent per nord.timesheet; electric_consume_cost

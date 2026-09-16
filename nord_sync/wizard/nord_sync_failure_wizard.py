@@ -12,7 +12,7 @@ class NordSyncFailureWizard(models.TransientModel):
     nord.sync.queue.action_open_failure_wizard).
     """
     _name = 'nord_sync.failure.wizard'
-    _description = 'Nord Sync: Failures'
+    _description = 'Nordwire: Failures'
 
     # Not readonly: record_name/message are read-only per-line already (no
     # explicit readonly needed, the view just never edits them), but
@@ -33,7 +33,7 @@ class NordSyncFailureWizard(models.TransientModel):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Nord Sync: Failures'),
+            'name': _('Nordwire: Failures'),
             'res_model': self._name,
             'res_id': self.id,
             'views': [[False, 'form']],

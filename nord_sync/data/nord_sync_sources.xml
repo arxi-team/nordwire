@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Fixed catalog, one row per Nord Sync Source — noupdate so a client
+    <!-- Fixed catalog, one row per Nordwire Source — noupdate so a client
          who renames a label here doesn't get it silently reset on upgrade.
          nord_sync.config.enabled_source_ids defaults to all of these (see
          that field's own default), so an upgrade from before this feature

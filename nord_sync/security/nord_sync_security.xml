@@ -2,21 +2,21 @@
 <odoo>
     <data>
         <record id="group_nord_sync_integration" model="res.groups">
-            <field name="name">Nord Sync Integration</field>
+            <field name="name">Nordwire Integration</field>
             <field name="comment">Technical users authenticating as the Nord Core (API key, scope=rpc) belong here.</field>
         </record>
 
         <!-- Manager is deliberately not the Odoo administrator — the Nord
-             Cloud URL (system parameter) and non-Nord-Sync Automation Rules
+             Cloud URL (system parameter) and non-Nordwire Automation Rules
              stay reserved to base.group_system on purpose. -->
         <record id="group_nord_sync_user" model="res.groups">
-            <field name="name">Nord Sync User</field>
+            <field name="name">Nordwire User</field>
             <field name="comment">Read-only: Sync Queue, Sync Failures, and manual retry of failed webhooks.</field>
         </record>
         <record id="group_nord_sync_manager" model="res.groups">
-            <field name="name">Nord Sync Manager</field>
+            <field name="name">Nordwire Manager</field>
             <field name="implied_ids" eval="[(4, ref('group_nord_sync_user'))]"/>
-            <field name="comment">Nord Sync User, plus Configuration (enabled/company UID per company), the
+            <field name="comment">Nordwire User, plus Configuration (enabled/company UID per company), the
                 Install Wizard, and the nord_sync-tagged Automation Rules (never other modules').</field>
         </record>
 
@@ -24,13 +24,13 @@
              restricted to base.group_system with no exceptions — granting Manager
              the model access below without this rule would let them edit
              Automation Rules belonging to any module, not just nord_sync's. Same
-             ('name', 'like', 'Nord Sync') filter already used by
+             ('name', 'like', 'Nordwire') filter already used by
              action_nord_sync_automation_rules (data/nord_sync_automation.xml). -->
         <record id="rule_base_automation_nord_sync_manager" model="ir.rule">
-            <field name="name">Nord Sync Manager: only Nord Sync automation rules</field>
+            <field name="name">Nordwire Manager: only Nordwire automation rules</field>
             <field name="model_id" ref="base_automation.model_base_automation"/>
             <field name="groups" eval="[(4, ref('group_nord_sync_manager'))]"/>
-            <field name="domain_force">[('name', 'like', 'Nord Sync')]</field>
+            <field name="domain_force">[('name', 'like', 'Nordwire')]</field>
         </record>
         <!-- The base_automation.ir_cron_data_base_automation_check_ir_actions_server
              OR-clause below exists because ir.cron uses _inherits =
@@ -43,19 +43,19 @@
              (_update_cron(), base_automation/models/base_automation.py) read AND
              write the shared base_automation.ir_cron_data_base_automation_check
              cron record — and therefore its delegate ir.actions.server record too —
-             on every save of ANY base.automation record, including the Nord Sync
+             on every save of ANY base.automation record, including the Nordwire
              ones themselves. Without this exception, that silently broke editing
-             Nord Sync's own automation rules for anyone in Nord Sync Manager
+             Nordwire's own automation rules for anyone in Nordwire Manager
              (AccessError on ir.cron, record rules). Named by its own stable xmlid
              (not the ir.cron's — a _inherits delegate record gets its own separate
              one), scoped to that one shared system object specifically — Manager
              still can't browse/edit arbitrary Scheduled Actions or other unrelated
              Server Actions, matching Manager's narrower-than-administrator scope. -->
         <record id="rule_ir_actions_server_nord_sync_manager" model="ir.rule">
-            <field name="name">Nord Sync Manager: only Nord Sync automation actions</field>
+            <field name="name">Nordwire Manager: only Nordwire automation actions</field>
             <field name="model_id" ref="base.model_ir_actions_server"/>
             <field name="groups" eval="[(4, ref('group_nord_sync_manager'))]"/>
-            <field name="domain_force" eval="['|', ('name', 'like', 'Nord Sync'), ('id', '=', ref('base_automation.ir_cron_data_base_automation_check_ir_actions_server'))]"/>
+            <field name="domain_force" eval="['|', ('name', 'like', 'Nordwire'), ('id', '=', ref('base_automation.ir_cron_data_base_automation_check_ir_actions_server'))]"/>
         </record>
 
         <!-- Real bug, found 2026-08-18: none of this addon's 4 own

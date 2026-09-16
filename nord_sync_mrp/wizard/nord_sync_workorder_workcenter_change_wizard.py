@@ -21,7 +21,7 @@ class NordSyncWorkorderWorkcenterChangeWizard(models.TransientModel):
     already-closed sessions are never touched by this.
     """
     _name = 'nord_sync.workorder.workcenter.change.wizard'
-    _description = 'Nord Sync: Change Work Center'
+    _description = 'Nordwire: Change Work Center'
 
     workorder_id = fields.Many2one('mrp.workorder', required=True, readonly=True)
     workcenter_id = fields.Many2one(

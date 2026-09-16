@@ -6,8 +6,8 @@
              t-on-click="onClick"
              role="button"
              style="cursor: pointer;"
-             title="Nord Sync: failed synchronizations">
-            <i class="fa fa-exclamation-triangle text-danger" role="img" aria-label="Nord Sync failures"/>
+             title="Nordwire: failed synchronizations">
+            <i class="fa fa-exclamation-triangle text-danger" role="img" aria-label="Nordwire failures"/>
             <span class="badge text-bg-danger ms-1" t-esc="state.failedCount"/>
         </div>
     </t>

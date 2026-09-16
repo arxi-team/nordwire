@@ -65,7 +65,7 @@
         </record>
 
         <record id="action_nord_sync_failures" model="ir.actions.act_window">
-            <field name="name">Nord Sync: Sync Failures</field>
+            <field name="name">Nordwire: Sync Failures</field>
             <field name="res_model">nord.sync.queue</field>
             <field name="view_mode">list,form</field>
             <field name="domain">[('status', '=', 'failed')]</field>
@@ -91,7 +91,7 @@
         <!-- Manual resend — appears in the list view's Action (⚙)
              menu once one or more rows are selected. -->
         <record id="action_server_retry_now" model="ir.actions.server">
-            <field name="name">Nord Sync: Retry Now</field>
+            <field name="name">Nordwire: Retry Now</field>
             <field name="model_id" ref="model_nord_sync_queue"/>
             <field name="binding_model_id" ref="model_nord_sync_queue"/>
             <field name="binding_view_types">list</field>

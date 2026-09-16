@@ -19,7 +19,7 @@ class IrActionsServer(models.Model):
         ('create', 'Record Created'),
         ('write', 'Record Updated'),
         ('unlink', 'Record Deleted'),
-    ], string='Nord Sync Change Type',
+    ], string='Nordwire Change Type',
         help='What happened to the record — sent to the Nord Cloud/Core so they '
              'know whether to create, update, or remove the corresponding job.')
 

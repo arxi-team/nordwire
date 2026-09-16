@@ -3,7 +3,7 @@ from odoo import fields, models
 
 
 class NordSyncSource(models.Model):
-    """One row per Nord Sync Source this addon can bridge (mrp.production,
+    """One row per Nordwire Source this addon can bridge (mrp.production,
     sale.order, purchase.order, stock.picking, maintenance.request) — a
     small fixed catalog (data/nord_sync_sources.xml), not something a client
     creates. Every source's model/view/automation code is always installed
@@ -14,7 +14,7 @@ class NordSyncSource(models.Model):
     jobs (install wizard's Sources step), the rest stay installed but inert.
     """
     _name = 'nord_sync.source'
-    _description = 'Nord Sync Source'
+    _description = 'Nordwire Source'
     _order = 'name'
 
     name = fields.Char(required=True, help='Display label, e.g. "Manufacturing".')
@@ -24,4 +24,4 @@ class NordSyncSource(models.Model):
              "against a source's own _nord_sync_payload()-producing model.",
     )
 
-    _model_unique = models.Constraint('UNIQUE(model)', 'A Nord Sync Source for this model already exists.')
+    _model_unique = models.Constraint('UNIQUE(model)', 'A Nordwire Source for this model already exists.')

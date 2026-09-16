@@ -22,7 +22,7 @@ class NordSyncQueue(models.TransientModel):
     bespoke cron keyed off what the Core confirmed applying.
     """
     _name = 'nord.sync.queue'
-    _description = 'Nord Sync Queue'
+    _description = 'Nordwire Queue'
     _order = 'id asc'
     # ponytail: 2h retention — a Core offline longer than that loses whatever
     # was enqueued in the meantime, silently. Accepted tradeoff for letting
@@ -251,17 +251,17 @@ class NordSyncQueue(models.TransientModel):
         if not error:
             return ''
         if 'timed out' in error or 'timeout' in error:
-            return _('Nord Sync: the Nord Cloud took too long to respond.')
+            return _('Nordwire: the Nord Cloud took too long to respond.')
         if 'server error' in error:
-            return _('Nord Sync: the Nord Cloud reported a server error.')
+            return _('Nordwire: the Nord Cloud reported a server error.')
         if 'client error' in error:
-            return _('Nord Sync: the Nord Cloud rejected the request.')
+            return _('Nordwire: the Nord Cloud rejected the request.')
         if 'connection' in error or 'refused' in error or 'resolve' in error or 'name or service not known' in error:
-            return _('Nord Sync: could not reach the Nord Cloud — check the network connection.')
-        return _('Nord Sync: synchronization failed for an unknown reason.')
+            return _('Nordwire: could not reach the Nord Cloud — check the network connection.')
+        return _('Nordwire: synchronization failed for an unknown reason.')
 
     def action_open_failure_wizard(self):
-        """Bound to the technical Sync Failures form — a Nord Sync Manager
+        """Bound to the technical Sync Failures form — a Nordwire Manager
         investigating one specific header gets the same action wizard
         (create an activity for whoever, or jump to the related record) as
         the systray's own, just scoped to this one header instead of the

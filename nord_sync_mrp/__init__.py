@@ -14,13 +14,13 @@ def post_init_hook(env):
     this addon's own models/nord_sync_config.py extends it via _inherit, the
     same dispatch base nord_sync's own post_init_hook already calls.
 
-    Also grants Nord Sync access to any user who already has a Manufacturing
+    Also grants Nordwire access to any user who already has a Manufacturing
     group, tiered the same way Manufacturing itself is tiered: an
-    Administrator (mrp.group_mrp_manager) gets Nord Sync Manager, a plain
-    User (mrp.group_mrp_user, not Manager) gets only Nord Sync User — a
+    Administrator (mrp.group_mrp_manager) gets Nordwire Manager, a plain
+    User (mrp.group_mrp_user, not Manager) gets only Nordwire User — a
     Manufacturing user is exactly who's expected to work with Sync Queue/
     Sync Failures day to day, not just whoever happened to run the Install
-    Wizard, but only a Manufacturing admin should inherit Nord Sync's own
+    Wizard, but only a Manufacturing admin should inherit Nordwire's own
     admin-level access (Configuration, Install Wizard, Automation Rules).
     One-time backfill, same spirit as the bridges above: a user who gains
     Manufacturing access afterwards isn't caught retroactively.

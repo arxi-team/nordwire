@@ -15,7 +15,7 @@ class MrpWorkcenter(models.Model):
     """
     _inherit = ['mrp.workcenter', 'nord_sync.notify.mixin']
 
-    # ── Nord Sync Resource Mapping ───────────────────────────────────────────
+    # ── Nordwire Resource Mapping ───────────────────────────────────────────
     # The real field lives on resource.resource (nord_sync_mrp/models/
     # resource_resource.py) — shared with hr.employee via the resource_id both
     # already carry, see that file's own docstring for why. Exposed here too,
@@ -32,7 +32,7 @@ class MrpWorkcenter(models.Model):
              'nothing below syncs for this work center until this is set.',
     )
 
-    # ── Nord Sync Autonomous Resource Policies ───────────────────────────────
+    # ── Nordwire Autonomous Resource Policies ───────────────────────────────
     # Authored here — mirrored onto the Core's edge.resource by the Resource
     # Bridge, never enforced client-side.
 
@@ -63,7 +63,7 @@ class MrpWorkcenter(models.Model):
         help='Off (default): a session left open on this resource stays open regardless of '
              'what happens elsewhere. On: starting a later operation of the same MO on any '
              'other resource automatically closes this resource\'s own open session for that '
-             'MO first. Mirrors the Zerynth app\'s automatic_close_next_order — covers an '
+             'MO first. Matches the behavior of known external manufacturing systems — covers an '
              'operator moving on to the next step without explicitly closing the previous '
              'one. A different axis from Resource Contention Policy above: that one reacts on '
              'THIS resource when a new session starts here; this one reacts on THIS resource '
@@ -79,7 +79,7 @@ class MrpWorkcenter(models.Model):
              "on the Core job (no result push back for a Done reached this way — the client's "
              'own qty is already final by then). Cancelling always cancels the job either way, '
              'this toggle only adds the other three. Per work center, not company-wide — moved '
-             'here from Nord Sync > Configuration. Deliberately outside Control Mode below — a '
+             'here from Nordwire > Configuration. Deliberately outside Control Mode below — a '
              'special case a client opts into on top of either preset, not an axis "Odoo" or '
              '"Nord" has a stance on; picking either preset never touches it.',
     )
@@ -182,7 +182,7 @@ class MrpWorkcenter(models.Model):
         return 'mrp.production'
 
     def action_nord_sync_force_resync_reasons(self):
-        """"Resync Reasons to Core" button (Nord Sync tab, base.group_system
+        """"Resync Reasons to Core" button (Nordwire tab, base.group_system
         only) — not actually scoped to this work center, loss/loss.type are
         global tables, not per-resource; lives here purely because the Nord
         Sync tab is where an admin already is when they'd reach for it.
@@ -224,7 +224,7 @@ class MrpWorkcenter(models.Model):
 
         Keys:
             nord_resource_uid (str or False): the Core's edge.resource this
-                work center is mapped to (Nord Sync Resource Mapping, ADR
+                work center is mapped to (Nordwire Resource Mapping, ADR
                 0026) — self.resource_id.nord_sync_resource_id.uid, False
                 when unmapped. The Core never creates/guesses a resource
                 from this payload; without this key it just skips the

@@ -3,7 +3,7 @@ from odoo import api, fields, models
 
 
 class NordSyncJobStage(models.Model):
-    """Client-authored job stage. Unlike every other Nord Sync channel, the
+    """Client-authored job stage. Unlike every other Nordwire channel, the
     client is the source of truth here — a fresh Core has no pre-existing
     nord.job.stage to reconcile against, so this pushes one way (client ->
     Core) through the same nord.sync.queue/webhook/pull pipeline
@@ -14,7 +14,7 @@ class NordSyncJobStage(models.Model):
     """
     _name = 'nord_sync.job.stage'
     _inherit = ['nord_sync.notify.mixin']
-    _description = 'Nord Sync Job Stage'
+    _description = 'Nordwire Job Stage'
     _order = 'sequence, name'
 
     name = fields.Char(required=True)
@@ -44,7 +44,7 @@ class NordSyncJobStage(models.Model):
         return super().unlink()
 
     def _nord_sync_source_key(self):
-        # A client-authored meta model, not a toggle-able Nord Sync Source —
+        # A client-authored meta model, not a toggle-able Nordwire Source —
         # only config.enabled gates it, no per-source check.
         return False
 

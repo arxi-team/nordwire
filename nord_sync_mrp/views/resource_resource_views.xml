@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- Nord Sync Resource Mapping — reuses the native Resources
+    <!-- Nordwire Resource Mapping — reuses the native Resources
          screen (Settings > Technical > Resource > Resources) instead of a
          custom view: resource.resource already covers mrp.workcenter and
          hr.employee alike via their shared resource_id. -->
@@ -32,7 +32,7 @@
 
     <!-- Reuses the native action as-is (same list/form above already carry
          the mapping column/field) — only a menu entry is new here, so the
-         mapping is reachable from the Nord Sync app itself instead of only
+         mapping is reachable from the Nordwire app itself instead of only
          Settings > Technical > Resource > Resources. -->
     <menuitem id="menu_nord_sync_resources" name="Resources"
               parent="nord_sync.menu_nord_sync_root" action="resource.action_resource_resource_tree"

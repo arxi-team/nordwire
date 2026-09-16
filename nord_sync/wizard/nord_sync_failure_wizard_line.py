@@ -5,7 +5,7 @@ from odoo.exceptions import UserError
 
 class NordSyncFailureWizardLine(models.TransientModel):
     _name = 'nord_sync.failure.wizard.line'
-    _description = 'Nord Sync: Failure Action Line'
+    _description = 'Nordwire: Failure Action Line'
 
     wizard_id = fields.Many2one('nord_sync.failure.wizard', required=True, ondelete='cascade')
     res_model = fields.Char(required=True)
@@ -26,8 +26,8 @@ class NordSyncFailureWizardLine(models.TransientModel):
         record.activity_schedule(
             'mail.mail_activity_data_todo',
             date_deadline=self.activity_deadline,
-            summary=_('Nord Sync: follow-up requested'),
-            note=self.activity_note or self.message or _('Nord Sync: this record is not syncing to the Nord Cloud.'),
+            summary=_('Nordwire: follow-up requested'),
+            note=self.activity_note or self.message or _('Nordwire: this record is not syncing to the Nord Cloud.'),
             user_id=self.assignee_id.id,
         )
         return {

@@ -3,7 +3,7 @@ from odoo import api, fields, models
 
 
 class NordSyncStateMapping(models.Model):
-    """Client-authored Nord Sync Job Stage Mapping — ties a raw source value
+    """Client-authored Nordwire Job Stage Mapping — ties a raw source value
     (e.g. mrp.production's own 'confirmed'/'cancel' state, or another adapter's
     stage name) to the job stage that should land on the matching nord.job
     on the Core.
@@ -16,14 +16,14 @@ class NordSyncStateMapping(models.Model):
     field on this model, no column in the install wizard.
 
     Pushed one way (client -> Core) through the same nord.sync.queue/webhook/
-    pull pipeline every other Nord Sync source model uses — the Core keeps
+    pull pipeline every other Nordwire source model uses — the Core keeps
     its own local copy (nord.sync.state.mapping there) and is what actually
     resolves mappings at apply time; this client-side copy is only ever the
     authoring surface.
     """
     _name = 'nord_sync.state.mapping'
     _inherit = ['nord_sync.notify.mixin']
-    _description = 'Nord Sync Job Stage Mapping'
+    _description = 'Nordwire Job Stage Mapping'
 
     company_id = fields.Many2one(
         'res.company', required=True, default=lambda self: self.env.company,
@@ -42,7 +42,7 @@ class NordSyncStateMapping(models.Model):
 
     @api.model
     def _selection_source_model(self):
-        """One entry per currently-registered Nord Sync Source — dynamic,
+        """One entry per currently-registered Nordwire Source — dynamic,
         not a hardcoded list, so installing a new source addon makes it selectable
         here without touching this file. A source with nothing in its own
         'source_field' (no native state to map — e.g. maintenance.request
@@ -108,7 +108,7 @@ class NordSyncStateMapping(models.Model):
         return super().unlink()
 
     def _nord_sync_source_key(self):
-        # A client-authored meta model, not a toggle-able Nord Sync Source —
+        # A client-authored meta model, not a toggle-able Nordwire Source —
         # only config.enabled gates it, no per-source check.
         return False
 

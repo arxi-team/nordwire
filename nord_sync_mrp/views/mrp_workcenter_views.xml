@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="mrp.mrp_workcenter_view"/>
         <field name="arch" type="xml">
             <xpath expr="//page[@name='general_info']" position="after">
-                <page string="Nord Sync" name="nord_sync">
+                <page string="Nordwire" name="nord_sync">
                     <div class="mb-2">
                         <button name="action_nord_sync_force_resync_reasons" type="object"
                                 string="Resync Reasons to Core" class="btn-secondary"

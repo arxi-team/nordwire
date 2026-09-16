@@ -3,7 +3,7 @@ from odoo import api, fields, models
 
 
 class NordSyncConfig(models.Model):
-    """Registers mrp.production as a Nord Sync Source — consumed by the
+    """Registers mrp.production as a Nordwire Source — consumed by the
     install wizard's Job Stages & Mapping step and by nord_sync.state.mapping's
     source_model/source_value Selections. _inherit chain, same shape as the
     Core's _apply_nord_sync_entry override in nordos_nord_sync_core_mrp.

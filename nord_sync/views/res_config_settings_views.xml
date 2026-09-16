@@ -9,16 +9,16 @@
             <field name="inherit_id" ref="base.res_config_settings_view_form"/>
             <field name="arch" type="xml">
                 <xpath expr="//form" position="inside">
-                    <app data-string="Nord Sync" string="Nord Sync" name="nord_sync"
+                    <app data-string="Nordwire" string="Nordwire" name="nord_sync"
                          groups="base.group_system">
-                        <h2>Nord Sync</h2>
+                        <h2>Nordwire</h2>
                         <div class="row mt16 o_settings_container" name="nord_sync_settings_container">
                             <div class="col-12 col-lg-6 o_setting_box">
                                 <div class="o_setting_left_pane">
                                     <field name="nord_sync_enabled"/>
                                 </div>
                                 <div class="o_setting_right_pane">
-                                    <label for="nord_sync_enabled" string="Nord Sync Enabled"/>
+                                    <label for="nord_sync_enabled" string="Nordwire Enabled"/>
                                     <div class="text-muted">
                                         Queue mrp.production changes and notify the Nord Cloud webhook.
                                     </div>
@@ -57,7 +57,7 @@
         </record>
 
         <record id="action_nord_sync_res_config_settings" model="ir.actions.act_window">
-            <field name="name">Nord Sync Settings</field>
+            <field name="name">Nordwire Settings</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">res.config.settings</field>
             <field name="view_id" ref="res_config_settings_view_form_nord_sync"/>

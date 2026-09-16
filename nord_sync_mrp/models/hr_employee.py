@@ -57,7 +57,7 @@ class HrEmployee(models.Model):
 
         Keys:
             nord_resource_uid (str or False): the Core's edge.resource this
-                employee is mapped to (Nord Sync Resource Mapping, ADR
+                employee is mapped to (Nordwire Resource Mapping, ADR
                 0026) — self.resource_id.nord_sync_resource_id.uid, False
                 when unmapped. Same "never create/guess, just skip" posture
                 as mrp.workcenter's own payload — see that docstring.

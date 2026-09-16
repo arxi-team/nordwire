@@ -8,7 +8,7 @@
              retried here instead of only ever being picked up by the Core's
              next scheduled pull. -->
         <record id="ir_cron_retry_failed_webhooks" model="ir.cron">
-            <field name="name">Nord Sync: Retry Failed Webhooks</field>
+            <field name="name">Nordwire: Retry Failed Webhooks</field>
             <field name="model_id" ref="model_nord_sync_config"/>
             <field name="state">code</field>
             <field name="code">model._cron_retry_failed_webhooks()</field>
@@ -21,7 +21,7 @@
              retry cron above (5 min, a different concern) so a small
              wake_throttle_minutes is actually honored, not rounded up. -->
         <record id="ir_cron_send_throttled_wakes" model="ir.cron">
-            <field name="name">Nord Sync: Send Throttled Wakes</field>
+            <field name="name">Nordwire: Send Throttled Wakes</field>
             <field name="model_id" ref="model_nord_sync_config"/>
             <field name="state">code</field>
             <field name="code">model._cron_send_throttled_wakes()</field>

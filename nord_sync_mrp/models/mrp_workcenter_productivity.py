@@ -6,7 +6,7 @@ NORD_SYNC_UNDEFINED_LOSS_TYPE = 'availability'
 
 
 class MrpWorkcenterProductivityLossType(models.Model):
-    """Nord Sync Reason Type Import — pushes this loss type's own value to
+    """Nordwire Reason Type Import — pushes this loss type's own value to
     the Core as a nord.reason.type, so classifying a session there can
     still resolve a real Odoo loss_type on the way back, even though
     nord.reason.type itself carries no fixed category (client-configured
@@ -54,7 +54,7 @@ class MrpWorkcenterProductivityLossType(models.Model):
 
 
 class MrpWorkcenterProductivityLoss(models.Model):
-    """Get-or-create side of the Nord Sync bridge's session classification —
+    """Get-or-create side of the Nordwire bridge's session classification —
     unlike the rest of this bridge (which never overwrites a value a human
     already set), a reason matched by name has its loss.type rewritten
     every time: Nord is authoritative here, since re-justifying is the
@@ -102,7 +102,7 @@ class MrpWorkcenterProductivityLoss(models.Model):
             name (str): the reason's display name.
             loss_type_source_res_id (int or False): this reason's own
                 loss.id, so the Core can resolve the nord.reason.type it
-                already imported (Nord Sync Reason Type Import) — False
+                already imported (Nordwire Reason Type Import) — False
                 when this reason has no category.
         """
         self.ensure_one()
@@ -111,8 +111,8 @@ class MrpWorkcenterProductivityLoss(models.Model):
     @api.model
     def _nord_sync_get_or_create(self, name, reason_type_name):
         """reason_type_name is the Core's own nord.reason.reason_type_id.name
-        (e.g. 'Performance') — for a reason.type Nord Sync originally
-        imported FROM this client (Nord Sync Reason Type Import,
+        (e.g. 'Performance') — for a reason.type Nordwire originally
+        imported FROM this client (Nordwire Reason Type Import,
         reason_nord_sync.py on the Core), that name is exactly this
         client's own loss_type Selection value, capitalized. Matched
         case-insensitively against loss.type.loss_type, never by id — real
@@ -163,7 +163,7 @@ class MrpWorkcenterProductivity(models.Model):
     )
     electric_consume = fields.Float(
         string='Electric Consume', copy=False,
-        help='Same field/shape as the Zerynth app\'s own mrp.workcenter.productivity.'
-             'electric_consume -- filled from the Core\'s own nord.timesheet.energy_kwh_used '
-             'for this exact session (Nord Sync Result Push).',
+        help='Tracks electric consumption for this session, using the same field shape as known '
+             'external manufacturing systems for data compatibility -- filled from the Core\'s own '
+             'nord.timesheet.energy_kwh_used for this exact session (Nordwire Result Push).',
     )

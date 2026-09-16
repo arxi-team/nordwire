@@ -51,7 +51,7 @@ NORD_SYNC_PAYLOAD_SCALAR_TTYPES = [
 # seeding mrp.production with whichever of its 4 default fields happened to
 # already be loaded (state resolved, log_note — an mrp_workorder-owned field —
 # didn't, or nothing did at all if `mrp` itself wasn't loaded yet either).
-# Nord Sync State Mapping/job stage resolution reads mrp.production's
+# Nordwire State Mapping/job stage resolution reads mrp.production's
 # `state`, so a row missing it means every MO silently stops advancing its
 # job stage, with nothing in the UI pointing at why. nord_sync_mrp now ships
 # its own static XML data for these 6 models instead (data/
@@ -74,14 +74,14 @@ NORD_SYNC_PAYLOAD_DEFAULT_FIELDS = {
 # that model's own _nord_sync_payload(), never routed through this
 # mechanism, so they can't be deselected here in the first place.
 # mrp.production.state is the only real, selectable field today that also
-# resolves Nord Sync State Mapping / advances job_stage_id on the Core.
+# resolves Nordwire State Mapping / advances job_stage_id on the Core.
 NORD_SYNC_PAYLOAD_BEHAVIORAL_FIELDS = {
     'mrp.production': {'state'},
 }
 
 
 class NordSyncPayloadFieldConfig(models.Model):
-    """Per-company, per-model selection of which of a Nord Sync source/
+    """Per-company, per-model selection of which of a Nordwire source/
     support model's own scalar fields go out in its _nord_sync_payload().
     Only the genuinely scalar-field slice of each payload is
     covered: constants, relational-reference resolutions, and nested
@@ -93,13 +93,13 @@ class NordSyncPayloadFieldConfig(models.Model):
     same model — but never let a misconfiguration shadow one).
 
     No hard protection against selecting a field the Core wires real
-    behavior to (e.g. mrp.production's own 'state', which drives Nord Sync
+    behavior to (e.g. mrp.production's own 'state', which drives Nordwire
     State Mapping) — deselecting it still silently stops that behavior, on
     purpose: the company configuring this decides, the system doesn't block
     them. _onchange_field_ids_warn_behavioral below only warns, never blocks.
     """
     _name = 'nord_sync.payload.field.config'
-    _description = 'Nord Sync Payload Field Config'
+    _description = 'Nordwire Payload Field Config'
 
     company_id = fields.Many2one(
         'res.company', required=True, default=lambda self: self.env.company,

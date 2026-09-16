@@ -39,7 +39,7 @@ class NordSyncQueueController(http.Controller):
 
         config = request.env['nord_sync.config'].sudo()._get_for_company(request.env.company)
         if not config:
-            return request.make_json_response({'error': 'Nord Sync not configured for this company'}, status=403)
+            return request.make_json_response({'error': 'Nordwire not configured for this company'}, status=403)
 
         entries = request.env['nord.sync.queue'].sudo().search([
             ('id', '>', last_seq),
@@ -82,12 +82,12 @@ class NordSyncQueueController(http.Controller):
 
         config = request.env['nord_sync.config'].sudo()._get_for_company(request.env.company)
         if not config:
-            return request.make_json_response({'error': 'Nord Sync not configured for this company'}, status=403)
+            return request.make_json_response({'error': 'Nordwire not configured for this company'}, status=403)
 
         return self._nord_sync_apply_result(config, body, res_model)
 
     def _nord_sync_apply_result(self, config, body, res_model):
-        """Extension point — each Nord Sync Source addon that pushes a
+        """Extension point — each Nordwire Source addon that pushes a
         result back (today only nord_sync_mrp: mrp.production/mrp.workorder)
         subclasses this controller and overrides this method, checking its
         own res_model(s) first and calling super() otherwise. Base has none
@@ -119,20 +119,20 @@ class NordSyncQueueController(http.Controller):
 
         config = request.env['nord_sync.config'].sudo()._get_for_company(request.env.company)
         if not config:
-            return request.make_json_response({'error': 'Nord Sync not configured for this company'}, status=403)
+            return request.make_json_response({'error': 'Nordwire not configured for this company'}, status=403)
 
         return self._nord_sync_apply_workorder_event(config, body, res_model, event_type)
 
     def _nord_sync_apply_workorder_event(self, config, body, res_model, event_type):
         """Extension point, same shape as _nord_sync_apply_result — base has
-        no handler, each Nord Sync Source addon that opts into granular
+        no handler, each Nordwire Source addon that opts into granular
         push overrides this and checks its own res_model(s) first.
         """
         return request.make_json_response({'error': f'Unsupported res_model: {res_model}'}, status=400)
 
     @http.route('/nord_sync/api/v1/resources', type='http', auth='nord_sync_api_key', methods=['POST'], csrf=False)
     def nord_sync_resources(self, **kwargs):
-        """Nord Sync Resource Mapping — the Core pushes its full
+        """Nordwire Resource Mapping — the Core pushes its full
         edge.resource list here on every heartbeat tick (see
         _push_nord_sync_resources), upserted wholesale into nord_sync.resource
         by uid. Base-addon endpoint, not a source extension point: the
@@ -149,7 +149,7 @@ class NordSyncQueueController(http.Controller):
 
         config = request.env['nord_sync.config'].sudo()._get_for_company(request.env.company)
         if not config:
-            return request.make_json_response({'error': 'Nord Sync not configured for this company'}, status=403)
+            return request.make_json_response({'error': 'Nordwire not configured for this company'}, status=403)
 
         request.env['nord_sync.resource'].sudo()._nord_sync_upsert_from_core(
             request.env.company, body.get('resources') or [],

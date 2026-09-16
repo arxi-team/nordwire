@@ -4,7 +4,7 @@ from odoo import models
 
 class NordSyncNotifyMixin(models.AbstractModel):
     """Shared "look up the config, check it's allowed, enqueue" plumbing for
-    every Nord Sync Source/support model. Identical everywhere except two
+    every Nordwire Source/support model. Identical everywhere except two
     knobs a concrete model overrides when it isn't the plain case: the
     per-record guard (_nord_sync_should_notify, e.g. quality.check skipping
     checks with no production_id) and the source-gating key
@@ -14,17 +14,17 @@ class NordSyncNotifyMixin(models.AbstractModel):
     _nord_sync_payload — never touched here, that stays per-model.
     """
     _name = 'nord_sync.notify.mixin'
-    _description = 'Nord Sync Notify Mixin'
+    _description = 'Nordwire Notify Mixin'
 
     def action_nord_sync_force_resync(self):
         """Manually re-enqueue these records as a 'write' — same effect on
         the wire as actually editing a field, without needing a real change
-        to trigger it. Every Nord Sync Source/support model gets this for
+        to trigger it. Every Nordwire Source/support model gets this for
         free (this mixin is shared, never subclassed per-model), callable
         from a button, a Server Action, or the shell.
 
         Real need this solves: several Core-side handlers in this bridge
-        are get-or-create, not get-or-update (e.g. Nord Sync Reason Type
+        are get-or-create, not get-or-update (e.g. Nordwire Reason Type
         Import, _apply_nord_sync_loss_type/_apply_nord_sync_loss on the
         Core — once a record's ir.model.data tag exists there, a later
         'write' entry is a no-op, deliberately, since most of this bridge

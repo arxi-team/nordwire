@@ -3,7 +3,7 @@ from odoo import models
 
 
 class StockPicking(models.Model):
-    """Nord Sync Source for stock.picking — same minimal shape as
+    """Nordwire Source for stock.picking — same minimal shape as
     maintenance.request (nord_sync_maintenance): create-only Automation Rule, no product/
     declaration/result push, own _nord_sync_payload only (the create/enqueue
     plumbing is nord_sync.notify.mixin, shared by every source). `operation_type`

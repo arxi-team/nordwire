@@ -3,7 +3,7 @@ from odoo import api, fields, models
 
 
 class NordSyncResource(models.Model):
-    """Nord Sync Resource Mapping: a read-only local mirror of
+    """Nordwire Resource Mapping: a read-only local mirror of
     the Core's edge.resource list, pushed down whole on every Core
     heartbeat (POST /nord_sync/api/v1/resources) — never a delta, so a
     missed tick self-heals on the next one. This is the pick list behind
@@ -18,7 +18,7 @@ class NordSyncResource(models.Model):
     write access in ir.model.access.csv.
     """
     _name = 'nord_sync.resource'
-    _description = 'Nord Sync Resource'
+    _description = 'Nordwire Resource'
     _rec_name = 'complete_name'
     _order = 'complete_name'
 
@@ -39,7 +39,7 @@ class NordSyncResource(models.Model):
 
     _company_uid_unique = models.Constraint(
         'UNIQUE(company_id, uid)',
-        'A Nord Sync Resource with this uid already exists for this company.',
+        'A Nordwire Resource with this uid already exists for this company.',
     )
 
     @api.model

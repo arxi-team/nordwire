@@ -11,7 +11,7 @@ class NordSyncWorkorderStartWizard(models.TransientModel):
     action_change_workcenter below.
     """
     _name = 'nord_sync.workorder.start.wizard'
-    _description = 'Nord Sync: Confirm Work Center on Start'
+    _description = 'Nordwire: Confirm Work Center on Start'
 
     workorder_id = fields.Many2one('mrp.workorder', required=True, readonly=True)
     workcenter_id = fields.Many2one(related='workorder_id.workcenter_id', readonly=True)

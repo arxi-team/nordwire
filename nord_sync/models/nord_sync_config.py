@@ -33,7 +33,7 @@ NORD_SYNC_CONFIG_SIGNAL_FIELDS = {'job_naming_mode', 'job_naming_custom_prefix'}
 
 
 class NordSyncConfig(models.Model):
-    """Nord Sync connection config — one record per company, replacing the
+    """Nordwire connection config — one record per company, replacing the
     nord_sync_enabled/nord_sync_company_uid fields that used to live directly
     on res.company. Kept company-scoped so multi-company opt-in still works —
     see docs/plano_addon_odoo_cliente_producao.md §7 (data scope section).
@@ -41,12 +41,12 @@ class NordSyncConfig(models.Model):
     above) — it lives in ir.config_parameter, not on this model.
     """
     _name = 'nord_sync.config'
-    _description = 'Nord Sync Configuration'
+    _description = 'Nordwire Configuration'
 
     company_id = fields.Many2one(
         'res.company', required=True, default=lambda self: self.env.company,
     )
-    enabled = fields.Boolean(string='Nord Sync Enabled')
+    enabled = fields.Boolean(string='Nordwire Enabled')
     company_uid = fields.Char(
         string='Nord Company UID',
         help='Tenant UID assigned by Nord (matches a res.company.uid on the Nord '
@@ -89,7 +89,7 @@ class NordSyncConfig(models.Model):
     enabled_source_ids = fields.Many2many(
         'nord_sync.source', string='Enabled Sources',
         default=lambda self: self.env['nord_sync.source'].search([]),
-        help='Which Nord Sync Sources actually produce jobs for this company '
+        help='Which Nordwire Sources actually produce jobs for this company '
              '— every source is always installed together now (they all live '
              'in this one addon), this is what used to be a per-source addon '
              'install/uninstall. Defaults to every known source, so an '
@@ -98,14 +98,14 @@ class NordSyncConfig(models.Model):
     )
 
     _company_unique = models.Constraint(
-        'UNIQUE(company_id)', 'Only one Nord Sync configuration per company is allowed.',
+        'UNIQUE(company_id)', 'Only one Nordwire configuration per company is allowed.',
     )
 
     def write(self, vals):
         changed = NORD_SYNC_CONFIG_SIGNAL_FIELDS & set(vals)
         # Captured before super().write() — self.enabled below still reads
         # the pre-write value at this point. 'enabled' is editable any time
-        # from Settings (not just install-time), and every Nord Sync Source
+        # from Settings (not just install-time), and every Nordwire Source
         # model's own create/write guard on it is otherwise completely
         # silent — a company left disabled by mistake would just have every
         # create/write quietly no-op with zero trace, nothing to notice by.
@@ -133,7 +133,7 @@ class NordSyncConfig(models.Model):
                 elif was_enabled and not config.enabled:
                     _logger.info(
                         'nord_sync: disabled for company_id=%s — every create/write on a '
-                        'Nord Sync Source model is silently skipped until re-enabled',
+                        'Nordwire Source model is silently skipped until re-enabled',
                         config.company_id.id,
                     )
         return result
@@ -156,7 +156,7 @@ class NordSyncConfig(models.Model):
         return self.search([('company_id', '=', company.id)], limit=1)
 
     def _is_source_enabled(self, source_model):
-        """Gate every Nord Sync Source's create/write hook — this addon
+        """Gate every Nordwire Source's create/write hook — this addon
         always has every source's code installed, so `enabled` alone can no
         longer say whether a specific source (e.g. sale.order) should
         actually produce jobs for this company; enabled_source_ids is what
@@ -170,7 +170,7 @@ class NordSyncConfig(models.Model):
 
     @api.model
     def _nord_sync_available_native_sources(self):
-        """Extension point — the single place every Nord Sync Source addon
+        """Extension point — the single place every Nordwire Source addon
         (nord_sync_mrp, nord_sync_maintenance, ...) registers itself, via
         _inherit chain: prepend its own {'source_model', 'source_field',
         'label'} entry and call super(). Consumed by the install wizard's
@@ -192,7 +192,7 @@ class NordSyncConfig(models.Model):
         return config or self.create({'company_id': company.id})
 
     def _ensure_state_mapping(self, source_model, source_value, target_job_stage_id=False):
-        """Idempotent upsert for one Nord Sync Job Stage Mapping row — the
+        """Idempotent upsert for one Nordwire Job Stage Mapping row — the
         one place that decides what "already configured" means, so the
         install wizard (Job Stages & Mapping step) is the only writer and
         never disagrees with itself about it. Job stage only — nord.job.state
@@ -228,7 +228,7 @@ class NordSyncConfig(models.Model):
         return base_url.rstrip('/') + CLOUD_WEBHOOK_PATH if base_url else False
 
     def _enqueue_and_notify(self, res_model, res_id, operation, payload):
-        """Shared by every Nord Sync Source's create/write/unlink override
+        """Shared by every Nordwire Source's create/write/unlink override
         (mrp.production, maintenance.request, ...), plus nord_sync.job.stage/
         nord_sync.state.mapping — one nord.sync.queue.line + one best-effort
         wake webhook per change, so each model only needs to supply its own
@@ -303,7 +303,7 @@ class NordSyncConfig(models.Model):
         """Notify the Core about every pre-existing record a source's own
         create/write hooks would otherwise never catch — those only fire on
         an edit *after* the bridge exists. Base is a no-op (nothing to
-        backfill without a source installed); each Nord Sync Source addon
+        backfill without a source installed); each Nordwire Source addon
         overrides via _inherit and calls super(), same pattern as
         _apply_nord_sync_entry.
 

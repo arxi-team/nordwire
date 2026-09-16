@@ -27,8 +27,8 @@ class MrpWorkorder(models.Model):
 
     electric_consume = fields.Float(
         string='Electric Consume (kWh)', compute='_compute_nord_sync_electric_consume', store=True,
-        help='Sum of this workorder\'s own real work sessions\' electric_consume -- same shape '
-             'as the Zerynth app\'s own mrp.workorder.zcloud_electric_consume.',
+        help='Sum of this workorder\'s own real work sessions\' electric_consume -- compatible with '
+             'the field shape of known external manufacturing systems for data portability.',
     )
     electric_consume_cost = fields.Float(
         string='Electric Consume Cost', compute='_compute_nord_sync_electric_consume', store=True,
@@ -248,7 +248,7 @@ class MrpWorkorder(models.Model):
 
         No operator assigned is not the same as "no timer needed" -- a
         machine-autonomous resource (no human ever assigned, the normal
-        case for a port-driven Nord Sync start) has nothing in
+        case for a port-driven Nordwire start) has nothing in
         employee_assigned_ids by design. mrp_workorder's own
         _should_start_timer() is hardcoded False (it defers ALL timer
         creation to start_employee(), which requires a real employee_id),
@@ -322,7 +322,7 @@ class MrpWorkorder(models.Model):
             expected_duration (float): expected duration in hours (converted
                 from duration_expected, which is in minutes).
             sequence (int): this workorder's own routing order within its
-                MO (self.sequence) — consulted by Nord Sync Chain Close to
+                MO (self.sequence) — consulted by Nordwire Chain Close to
                 find this job's earlier operations, not a display/list
                 ordering concern on the Core side.
             employee_source_res_id (int or False): the client's own

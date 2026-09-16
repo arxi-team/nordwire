@@ -54,7 +54,7 @@
         </record>
 
         <record id="action_nord_sync_queue" model="ir.actions.act_window">
-            <field name="name">Nord Sync Queue</field>
+            <field name="name">Nordwire Queue</field>
             <field name="res_model">nord.sync.queue</field>
             <field name="view_mode">list,form</field>
             <!-- Explicit empty domain, not omitted — an omitted field is
@@ -67,9 +67,9 @@
 
         <!-- Root app menu — no parent, so it shows as its own
              top-level entry/App tile instead of nesting under Settings. Group is
-             Nord Sync User only: Manager sees it too via implied_ids, so listing
+             Nordwire User only: Manager sees it too via implied_ids, so listing
              both here would be redundant. -->
-        <menuitem id="menu_nord_sync_root" name="Nord Sync"
+        <menuitem id="menu_nord_sync_root" name="Nordwire"
                   web_icon="nord_sync,static/description/icon.png"
                   groups="group_nord_sync_user" sequence="120"/>
 

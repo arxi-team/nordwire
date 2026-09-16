@@ -9,7 +9,7 @@ _logger = logging.getLogger(__name__)
 
 
 class MrpProduction(models.Model):
-    """Source model for the Nord Sync bridge's MO channel.
+    """Source model for the Nordwire bridge's MO channel.
 
     No create/write/unlink override here — the trigger criterion is
     configurable: `_nord_sync_notify` is called from the native Automation
@@ -217,7 +217,7 @@ class MrpProduction(models.Model):
         """
         self.ensure_one()
         if self.state in ('done', 'cancel'):
-            message = f'Nord Sync: result received but the MO was already "{self.state}" — ignored.'
+            message = f'Nordwire: result received but the MO was already "{self.state}" — ignored.'
             self.message_post(body=message)
             return False, message
 
@@ -293,7 +293,7 @@ class MrpProduction(models.Model):
                     result = True
         except Exception as exc:
             _logger.warning('nord_sync: failed to apply result to MO %s: %s', self.id, exc)
-            message = f'Nord Sync: failed to apply the result. {self._nord_sync_friendly_error(exc)}'
+            message = f'Nordwire: failed to apply the result. {self._nord_sync_friendly_error(exc)}'
             self._nord_sync_notify_result_failure(message)
             return False, message
 
@@ -302,12 +302,12 @@ class MrpProduction(models.Model):
             self._nord_sync_notify_result_failure(message)
             return False, message
 
-        self._nord_sync_create_scrap(scrap_qty, 'Nord Sync: scrap')
-        self._nord_sync_create_scrap(not_pass_qty, 'Nord Sync: quality reject (not pass)')
+        self._nord_sync_create_scrap(scrap_qty, 'Nordwire: scrap')
+        self._nord_sync_create_scrap(not_pass_qty, 'Nordwire: quality reject (not pass)')
         self._nord_sync_log_quality_loss(not_pass_qty)
 
         self.message_post(
-            body=f'Nord Sync: result applied — {qty_produced} {self.product_uom_id.name} produced.',
+            body=f'Nordwire: result applied — {qty_produced} {self.product_uom_id.name} produced.',
         )
         return True, 'ok'
 
@@ -356,7 +356,7 @@ class MrpProduction(models.Model):
         falls back to a generic message pointing at the server log.
 
         Keys:
-            exc (Exception): the exception caught applying a Nord Sync
+            exc (Exception): the exception caught applying a Nordwire
                 action to this MO.
         """
         if isinstance(exc, UserError):
@@ -421,7 +421,7 @@ class MrpProduction(models.Model):
             self.env['mrp.workcenter.productivity'].sudo().create({
                 'workorder_id': workorder.id,
                 'workcenter_id': workorder.workcenter_id.id,
-                'description': f"Nord Sync: real session ({employee.name if employee else workorder.workcenter_id.name})",
+                'description': f"Nordwire: real session ({employee.name if employee else workorder.workcenter_id.name})",
                 'loss_id': loss.id,
                 'date_start': session['start_date'],
                 'date_end': session['end_date'],
@@ -529,7 +529,7 @@ class MrpProduction(models.Model):
         self.env['mrp.workcenter.productivity'].sudo().create({
             'workorder_id': workorder.id,
             'workcenter_id': workorder.workcenter_id.id,
-            'description': f'Nord Sync: quality reject ({not_pass_qty} {self.product_uom_id.name})',
+            'description': f'Nordwire: quality reject ({not_pass_qty} {self.product_uom_id.name})',
             'loss_id': loss.id,
             'date_start': date_end - timedelta(minutes=duration_minutes),
             'date_end': date_end,
@@ -551,7 +551,7 @@ class MrpProduction(models.Model):
         """
         self.ensure_one()
         return (
-            'Nord Sync: result received, but the MO needs manual confirmation '
+            'Nordwire: result received, but the MO needs manual confirmation '
             '(lot/serial, consumed quantity, or backorder) before it can close on its own.'
         )
 
@@ -560,7 +560,7 @@ class MrpProduction(models.Model):
         self.message_post(body=message)
         self.activity_schedule(
             'mail.mail_activity_data_todo',
-            summary='Nord Sync: result not applied automatically',
+            summary='Nordwire: result not applied automatically',
             note=message,
             user_id=self.user_id.id or self.env.user.id,
         )

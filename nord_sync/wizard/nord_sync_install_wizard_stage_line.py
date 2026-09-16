@@ -10,7 +10,7 @@ class NordSyncInstallWizardStageLine(models.TransientModel):
     push behind.
     """
     _name = 'nord_sync.install.wizard.stage.line'
-    _description = 'Nord Sync Install Wizard — Job Stage Line'
+    _description = 'Nordwire Install Wizard — Job Stage Line'
     _order = 'sequence, id'
 
     wizard_id = fields.Many2one('nord_sync.install.wizard', required=True, ondelete='cascade')

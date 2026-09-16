@@ -3,7 +3,7 @@ from odoo import api, fields, models
 
 
 class ResConfigSettings(models.TransientModel):
-    """Nord Sync's entry in the standard Settings page (sidebar app section),
+    """Nordwire's entry in the standard Settings page (sidebar app section),
     mirroring an unrelated project's Shopify integration
     (/odoo17/custom/addons/server-casca-rija/appstore/integration/models/
     res_config_settings.py) — requested explicitly by the user 2026-08-04 in

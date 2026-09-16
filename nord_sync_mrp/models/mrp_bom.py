@@ -74,7 +74,7 @@ class MrpBom(models.Model):
                     'product': self._nord_sync_product_payload(line.product_id),
                     'quantity': line.product_qty,
                     # Which operation/resource this material is consumed at — a
-                    # Nord Sync Task (see the Workorder Bridge) only makes sense
+                    # Nordwire Task (see the Workorder Bridge) only makes sense
                     # once that resource's real workorder exists. Blank when the
                     # line isn't tied to any operation (no resource to wait for).
                     'workcenter_source_res_id': line.operation_id.workcenter_id.id or False,

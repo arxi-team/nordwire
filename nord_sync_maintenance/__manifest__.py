@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Nord Sync: Maintenance',
+    'name': 'Nordwire: Maintenance',
     'version': '1.0.0',
     'category': 'Manufacturing/Maintenance',
-    'summary': 'Nord Sync source: maintenance.request.',
+    'summary': 'Nordwire source: maintenance.request.',
     'description': """
-Nord Sync: Maintenance
+Nordwire: Maintenance
 ========================
 
-`maintenance.request` as a Nord Sync Source — produces a `nord.job` on the
+`maintenance.request` as a Nordwire Source — produces a `nord.job` on the
 Core on create, `operation_type='maintenance'`.
 
 Auto-installs the moment both `nord_sync` and `maintenance` are present —

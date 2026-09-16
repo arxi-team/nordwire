@@ -37,9 +37,9 @@ class NordSyncInstallWizard(models.TransientModel):
 
     Multi-step shape (state + _steps + run_before_/run_after_ per-step
     hooks) is a small self-contained step machine — no reusable abstract
-    base, since Nord Sync is the only wizard using it today.
+    base, since Nordwire is the only wizard using it today.
 
-    The Sources step means "install this Nord Sync Source's own addon"
+    The Sources step means "install this Nordwire Source's own addon"
     again — each source (mrp/sale/purchase/inventory/maintenance) split
     back out into its own thin addon (2026-08-24), so this step's own
     action_confirm_sources installs whichever selected source isn't
@@ -53,7 +53,7 @@ class NordSyncInstallWizard(models.TransientModel):
     (enabled_source_ids), never auto-uninstalled — same posture as before.
     """
     _name = 'nord_sync.install.wizard'
-    _description = 'Nord Sync Installation Wizard'
+    _description = 'Nordwire Installation Wizard'
 
     _steps = [
         ('step_preflight', 'Pre-flight'),
@@ -304,7 +304,7 @@ class NordSyncInstallWizard(models.TransientModel):
             'cron_active': cron_active,
             'odoo_version_supported': version_supported,
             'preflight_ok': cron_active and version_supported,
-            'preflight_message': ' '.join(problems) or 'Environment ready to configure Nord Sync.',
+            'preflight_message': ' '.join(problems) or 'Environment ready to configure Nordwire.',
         }
 
     def action_refresh_preflight(self):
@@ -398,7 +398,7 @@ class NordSyncInstallWizard(models.TransientModel):
     @api.model
     def _mapping_line_vals(self):
         """One row per native value of every registered source model — the
-        full range each source's own Nord Sync State Mapping mechanism
+        full range each source's own Nordwire State Mapping mechanism
         supports, not narrowed to whichever values today's shipped Automation
         Rules happen to send. The client edits Automation Rules directly,
         so any of these could reach the bridge; a row left blank
@@ -453,7 +453,7 @@ class NordSyncInstallWizard(models.TransientModel):
     # ── Step: Finish ─────────────────────────────────────────────────────────────
 
     def action_confirm(self):
-        """Finish: saves the config, then hands off to the "Nord Sync:
+        """Finish: saves the config, then hands off to the "Nordwire:
         Automation Rules" list (data/nord_sync_automation.xml) instead of
         just closing — so the trigger criteria shipped by whichever Nord
         Sync Source addons are installed are the very next thing the person
@@ -502,7 +502,7 @@ class NordSyncInstallWizard(models.TransientModel):
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'base.automation',
-            'domain': [('name', 'like', 'Nord Sync')],
+            'domain': [('name', 'like', 'Nordwire')],
             'view_mode': 'list,form',
             'target': 'current',
         }

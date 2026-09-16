@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Nord Sync: Manufacturing',
+    'name': 'Nordwire: Manufacturing',
     'version': '1.0.1',
     'category': 'Manufacturing',
-    'summary': 'Nord Sync source: mrp.production, plus the BOM/Resource/Employee/Workorder/Quality '
+    'summary': 'Nordwire source: mrp.production, plus the BOM/Resource/Employee/Workorder/Quality '
                'Check Bridges that support it.',
     'description': """
-Nord Sync: Manufacturing
+Nordwire: Manufacturing
 =========================
 
-`mrp.production` as a Nord Sync Source (produces `nord.job` on the Core), and
+`mrp.production` as a Nordwire Source (produces `nord.job` on the Core), and
 every model that only exists to support it — `mrp.workcenter`/`hr.employee`
 (Resource/Employee Bridge, `edge.resource`), `mrp.bom` (BOM Bridge,
 `nord.bom`), `mrp.workorder` (Workorder Bridge, `nord.timesheet`),
 `quality.check` (Quality Check Bridge, `nord.tasks`). None of these support
-models are Nord Sync Sources of their own — they never produce a `nord.job`
+models are Nordwire Sources of their own — they never produce a `nord.job`
 by themselves, only alongside the MO they belong to, so they live here
 instead of getting their own addon each.
 

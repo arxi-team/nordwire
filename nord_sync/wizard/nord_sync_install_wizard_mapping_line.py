@@ -33,14 +33,14 @@ class NordSyncInstallWizardMappingLine(models.TransientModel):
     carries the human-readable label instead, resolved once per row from
     that row's own source at generation time — see _mapping_line_vals.
 
-    source_model: which Nord Sync Source this row belongs to — with more than one
+    source_model: which Nordwire Source this row belongs to — with more than one
     source addon installed, rows from different sources coexist in the same
     mapping_line_ids list (there's no per-source sub-view in a Transient
     wizard), grouped by _mapping_line_vals's own generation order and told
     apart by this column.
     """
     _name = 'nord_sync.install.wizard.mapping.line'
-    _description = 'Nord Sync Install Wizard — Mapping Line'
+    _description = 'Nordwire Install Wizard — Mapping Line'
     _order = 'sequence, id'
 
     wizard_id = fields.Many2one('nord_sync.install.wizard', required=True, ondelete='cascade')

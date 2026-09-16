@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Nord Sync: Purchase',
+    'name': 'Nordwire: Purchase',
     'version': '1.0.0',
     'category': 'Inventory/Purchase',
-    'summary': 'Nord Sync source: purchase.order.',
+    'summary': 'Nordwire source: purchase.order.',
     'description': """
-Nord Sync: Purchase
+Nordwire: Purchase
 =====================
 
-`purchase.order` as a Nord Sync Source — produces a `nord.job` on the Core
+`purchase.order` as a Nordwire Source — produces a `nord.job` on the Core
 on create, `operation_type='purchase'`.
 
 Auto-installs the moment both `nord_sync` and `purchase` are present — never

@@ -3,7 +3,7 @@ from odoo import models
 
 
 class MaintenanceRequest(models.Model):
-    """A second source model for the Nord Sync bridge, proving the
+    """A second source model for the Nordwire bridge, proving the
     dispatcher is genuinely generic: this model only needs its own
     _nord_sync_payload and an Automation Rule (data/nord_sync_automation.xml)
     — the create/enqueue plumbing is nord_sync.notify.mixin, shared by

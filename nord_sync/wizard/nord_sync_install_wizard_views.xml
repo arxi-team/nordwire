@@ -6,7 +6,7 @@
             <field name="name">nord_sync.install.wizard.form</field>
             <field name="model">nord_sync.install.wizard</field>
             <field name="arch" type="xml">
-                <form string="Nord Sync — Install">
+                <form string="Nordwire — Install">
                     <field name="state" invisible="1"/>
 
                     <div invisible="state != 'step_preflight'">
@@ -64,7 +64,7 @@
                         <h3>Step 5. Mapping</h3>
                         <p class="text-muted">
                             For each native state value (Manufacturing Orders, and every
-                            other source Nord Sync bridges), choose which Job Stage its
+                            other source Nordwire bridges), choose which Job Stage its
                             job lands in on the Nord Core, or leave it blank to not map
                             that value at all. You decide which values matter; nothing
                             here is forced.
@@ -110,7 +110,7 @@
                             <field name="company_uid" readonly="1"/>
                             <field name="cloud_base_url" readonly="1"/>
                         </group>
-                        <p>Confirming activates Nord Sync for this company.</p>
+                        <p>Confirming activates Nordwire for this company.</p>
                     </div>
 
                     <footer>
@@ -131,7 +131,7 @@
         </record>
 
         <record id="action_nord_sync_install_wizard" model="ir.actions.act_window">
-            <field name="name">Nord Sync — Install</field>
+            <field name="name">Nordwire — Install</field>
             <field name="res_model">nord_sync.install.wizard</field>
             <field name="view_mode">form</field>
             <field name="target">new</field>

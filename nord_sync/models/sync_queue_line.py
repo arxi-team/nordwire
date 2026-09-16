@@ -14,7 +14,7 @@ class NordSyncQueueLine(models.TransientModel):
     retention of its own.
     """
     _name = 'nord.sync.queue.line'
-    _description = 'Nord Sync Queue Line'
+    _description = 'Nordwire Queue Line'
     _order = 'id asc'
 
     queue_id = fields.Many2one('nord.sync.queue', required=True, ondelete='cascade', index=True)
