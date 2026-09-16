@@ -291,8 +291,8 @@ class MrpProduction(models.Model):
                     # return) is a different res_model, so this stays specific.
                     result = True
         except Exception as exc:
-            message = f'Nord Sync: failed to apply the result ({exc}).'
             _logger.warning('nord_sync: failed to apply result to MO %s: %s', self.id, exc)
+            message = f'Nord Sync: failed to apply the result. {self._nord_sync_friendly_error(exc)}'
             self._nord_sync_notify_result_failure(message)
             return False, message
 
@@ -330,8 +330,33 @@ class MrpProduction(models.Model):
         try:
             self.action_cancel()
         except Exception as exc:
-            return False, str(exc)
+            _logger.warning('nord_sync: failed to cancel MO %s: %s', self.id, exc)
+            return False, self._nord_sync_friendly_error(exc)
         return True, 'ok'
+
+    def _nord_sync_friendly_error(self, exc):
+        """Turns a caught exception into text safe to show a non-technical
+        user in chatter, an activity, or a Core-side alert -- the exception's
+        own str() can carry a full DB row dump (a check constraint
+        violation's "DETAIL: Failing row contains (...)"), meaningless and
+        alarming to whoever reads it there. The full exc is always logged
+        server-side by the caller before this runs, so nothing is actually
+        lost -- this only controls what a non-technical reader sees.
+        Recognized failure shapes get a real explanation; anything else
+        falls back to a generic message pointing at the server log instead
+        of echoing raw internals.
+
+        Keys:
+            exc (Exception): the exception caught applying a Nord Sync
+                action to this MO.
+        """
+        text = str(exc)
+        if 'mrp_production_qty_positive' in text:
+            return (
+                'This production order cannot close with 0 units produced '
+                'automatically — please confirm the quantity manually.'
+            )
+        return 'An unexpected error occurred — see the server log for details.'
 
     def _nord_sync_log_work_sessions(self, work_sessions):
         """Creates one real mrp.workcenter.productivity entry per Core
