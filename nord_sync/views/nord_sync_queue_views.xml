@@ -77,11 +77,11 @@
              button on the Sync Overview page (action_nord_sync_queue is
              kept for that, just not menu-bound anymore). -->
 
-        <!-- Parent for the config screens (Job Stages, Job Stage Mapping,
-             Payload Fields, Automation Rules) — each keeps its own group
-             on its menuitem (they don't all share the same access), this
-             is just the folder they live in. -->
-        <menuitem id="menu_nord_sync_settings" name="Settings"
+        <!-- Parent for the config screens (Settings, Job Stages, Job Stage
+             Mapping, Payload Fields, Automation Rules) — each keeps its own
+             group on its menuitem (they don't all share the same access),
+             this is just the folder they live in. -->
+        <menuitem id="menu_nord_sync_settings" name="Configuration"
                   parent="menu_nord_sync_root" sequence="40"/>
 
     </data>

@@ -94,5 +94,13 @@
             <field name="context">{'module': 'nord_sync'}</field>
         </record>
 
+        <!-- First entry under Nordwire > Configuration — same
+             base.group_system gate as the res.config.settings <app> block
+             it opens, so nothing here grants access the button-based
+             version didn't already have. -->
+        <menuitem id="menu_nord_sync_general_settings" name="Settings"
+                  parent="nord_sync.menu_nord_sync_settings" action="action_nord_sync_res_config_settings"
+                  groups="base.group_system" sequence="5"/>
+
     </data>
 </odoo>
