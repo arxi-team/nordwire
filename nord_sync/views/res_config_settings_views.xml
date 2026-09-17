@@ -20,17 +20,17 @@
                                 <div class="o_setting_right_pane">
                                     <label for="nord_sync_enabled" string="Nordwire Enabled"/>
                                     <div class="text-muted">
-                                        Queue mrp.production changes and notify the Nord Cloud webhook.
+                                        Queue changes selected and notify the Nord Cloud webhook.
                                     </div>
                                     <div class="content-group" invisible="not nord_sync_enabled">
                                         <div class="mt16">
-                                            <label for="nord_sync_company_uid"/>
+                                            <label for="nord_sync_company_uid" class="me-3"/>
                                             <field name="nord_sync_company_uid"/>
                                         </div>
-                                    </div>
+                                </div>
                                 </div>
                             </div>
-                            <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="col-12 col-lg-6 o_setting_box" invisible="not nord_sync_enabled">
                                 <div class="o_setting_right_pane">
                                     <div class="text-muted mb-3">
                                         Run the install wizard for environment pre-flight checks
@@ -40,7 +40,7 @@
                                             string="Open Install Wizard" class="btn btn-outline-primary"/>
                                 </div>
                             </div>
-                            <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="col-12 col-lg-6 o_setting_box" invisible="not nord_sync_enabled">
                                 <div class="o_setting_right_pane">
                                     <label for="nord_sync_job_naming_mode" string="Job Naming"/>
                                     <div class="text-muted">
@@ -49,14 +49,14 @@
                                     </div>
                                     <div class="content-group">
                                         <div class="mt16">
-                                            <field name="nord_sync_job_naming_mode"/>
+                                            <field name="nord_sync_job_naming_mode" />
                                             <field name="nord_sync_job_naming_custom_prefix"
                                                    invisible="nord_sync_job_naming_mode != 'custom_prefix'"/>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="col-12 col-lg-6 o_setting_box" invisible="not nord_sync_enabled">
                                 <div class="o_setting_right_pane">
                                     <label for="nord_sync_wake_mode" string="Wake Behavior"/>
                                     <div class="text-muted">
@@ -66,10 +66,10 @@
                                     </div>
                                     <div class="content-group">
                                         <div class="mt16">
-                                            <field name="nord_sync_wake_mode"/>
+                                            <field name="nord_sync_wake_mode" />
                                             <field name="nord_sync_wake_throttle_minutes"
-                                                   invisible="nord_sync_wake_mode != 'throttled'"/>
-                                            <field name="nord_sync_last_wake_sent" readonly="1"/>
+                                                   invisible="nord_sync_wake_mode != 'throttled'" class="me-3"/>
+                                            <span invisible="nord_sync_wake_mode != 'throttled'">minutes</span>
                                         </div>
                                     </div>
                                 </div>

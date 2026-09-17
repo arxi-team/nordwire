@@ -25,11 +25,10 @@ class MrpWorkcenter(models.Model):
     # convenient door onto the same field).
 
     nord_sync_resource_id = fields.Many2one(
-        'nord_sync.resource', string='Nord Core Resource',
+        'nord_sync.resource', string='Connected Nord Resource',
         related='resource_id.nord_sync_resource_id', readonly=False,
-        help='Which edge.resource on the Nord Core this work center is. The Resource Bridge '
-             'only ever updates an already-mapped Core resource — it never creates one, so '
-             'nothing below syncs for this work center until this is set.',
+        help='Select the Nord resource linked to this work center. '
+             'This connection is required for production data to be synchronized with Nord.',
     )
 
     # ── Nordwire Autonomous Resource Policies ───────────────────────────────
@@ -37,51 +36,42 @@ class MrpWorkcenter(models.Model):
     # Bridge, never enforced client-side.
 
     nord_sync_autonomous_close = fields.Boolean(
-        string='Autonomous Close',
+        string='Complete Jobs Automatically',
         default=False,
-        help='Let a port-driven Nord Alert on the Core close the job on this resource without '
-             'a human clicking "Mark Done". Off by default — the Core keeps requiring a human action.',
+        help='Automatically complete the job when Nord reports that the work is finished. '
+             'When disabled, a user must confirm completion in Odoo.',
     )
     nord_sync_granular_push = fields.Boolean(
-        string='Granular Push to Client',
+        string='Keep Work Progress in Sync',
         default=False,
-        help='Push work-session start/stop and job cancellation from the Core back to this '
-             'work order in real time, not just the final result. Off by default — only the '
-             'final result (Mark Done) reaches this workcenter, as today.',
+        help='Keep the job progress synchronized between Nord and Odoo. '
+     'This includes starting and stopping work and cancelling jobs, so changes made in Nord '
+     'are reflected in Odoo while the job is being worked on.',
     )
     nord_sync_contention_policy = fields.Selection([
-        ('block', 'Block'),
-        ('auto_close_previous', 'Auto-close Previous'),
-    ], string='Resource Contention Policy', default='block', required=True,
-        help='What the Core does when a new work session starts on this resource while another '
-             'is still open: "Block" refuses the new session (current behavior); "Auto-close '
-             'Previous" closes the open one first.',
+        ('block', "Don't Start Another Job"),
+        ('auto_close_previous', 'Finish the Previous Job Automatically'),
+    ], string='When This Resource Is Already in Use', default='block', required=True,
+        help='Choose what happens when someone tries to start a new job while another job '
+             'is still being worked on this resource. '
+             'block → Do not start the new job while another job is still active. '
+             'auto_close_previous → Automatically finish the current job before starting the new one.'
+        ,
     )
     nord_sync_chain_close = fields.Boolean(
-        string='Chain Close',
+        string='Finish Previous Steps Automatically',
         default=False,
-        help='Off (default): a session left open on this resource stays open regardless of '
-             'what happens elsewhere. On: starting a later operation of the same MO on any '
-             'other resource automatically closes this resource\'s own open session for that '
-             'MO first. Matches the behavior of known external manufacturing systems — covers an '
-             'operator moving on to the next step without explicitly closing the previous '
-             'one. A different axis from Resource Contention Policy above: that one reacts on '
-             'THIS resource when a new session starts here; this one reacts on THIS resource '
-             'when a later operation starts somewhere else.',
+        help='Automatically finish the previous step when the next step of the same job '
+             'starts on another resource. This is useful when operators move to the next step '
+             'without manually stopping the previous one.'
+        ,
     )
     nord_sync_mirror_mode = fields.Boolean(
-        string='Mirror Mode',
+        string='Sync Job Status from Odoo',
         default=False,
-        help='Off (default): the Core only ever advances a job past a human/device action on '
-             "the Core itself (NordGo, a port-driven alert) — this resource's MOs' own state "
-             'is paperwork, not real production. On: an MO on this resource reaching '
-             'Confirmed/In Progress/Done on the client additionally drives the matching action '
-             "on the Core job (no result push back for a Done reached this way — the client's "
-             'own qty is already final by then). Cancelling always cancels the job either way, '
-             'this toggle only adds the other three. Per work center, not company-wide — moved '
-             'here from Nordwire > Configuration. Deliberately outside Control Mode below — a '
-             'special case a client opts into on top of either preset, not an axis "Odoo" or '
-             '"Nord" has a stance on; picking either preset never touches it.',
+        help='When enabled, job status changes made in Odoo are also sent to Nord. '
+             'This keeps Nord aligned when a job is confirmed, started, or completed in Odoo. '
+             'Job cancellations are synchronized regardless of this setting.',
     )
 
     # ── Automatic Idle/Tooling Segments ──────────────────────────────────────
@@ -93,24 +83,24 @@ class MrpWorkcenter(models.Model):
     # concern, not floor-event or job-state authority.
 
     nord_sync_auto_idle_segments = fields.Boolean(
-        string='Automatic Idle Segments',
+        string='Record Idle Time Automatically',
         default=False,
-        help='Off (default): a resource has no session at all between two jobs. On: stopping '
-             'work opens an unclassified downtime session on the Core, closed by the next '
-             'start — no gap ever goes unexplained, and it\'s excluded from worked time.',
+        help='Automatically record the time between work sessions as idle time. '
+             'This helps account for periods when the resource is not actively working on a job. '
+             'Idle time is not counted as worked time.',
     )
     nord_sync_idle_segment_reason_name = fields.Char(
-        string='Idle Segment Reason',
+        string='Idle Time Reason',
         default='Idle',
         help='Unused for now — downtime segments open without a reason.',
     )
     nord_sync_auto_tooling_segments = fields.Boolean(
-        string='Automatic Tooling Segments',
+        string='Track Tooling Time Automatically',
         default=False,
         help='Unused for now.',
     )
     nord_sync_tooling_segment_reason_name = fields.Char(
-        string='Tooling Segment Reason',
+        string='Tooling Time Reason',
         default='Tooling',
         help='Unused for now.',
     )
@@ -127,15 +117,12 @@ class MrpWorkcenter(models.Model):
     }
 
     nord_sync_control_mode = fields.Selection([
-        ('odoo', 'Odoo'), ('nord', 'Nord'), ('custom', 'Custom'),
-    ], string='Control Mode', compute='_compute_nord_sync_control_mode', inverse='_inverse_nord_sync_control_mode',
-        help='Shortcut over the four floor-event fields above, not a fact of its own — always '
-             'reflects their current values, never drifts. "Odoo": this Odoo stays in control '
-             '(no autonomous close, no live push, refuses contention, no chain close). "Nord": '
-             'the Core is handed full autonomy on all four. Picking either writes all four '
-             'fields at once; editing any of them by hand afterwards silently falls back to '
-             "\"Custom\" — there is nothing to keep in sync, it's recomputed from the same "
-             'four fields every time. Mirror Mode is not part of this — see its own help text.',
+        ('odoo', 'Odoo controls production'), ('nord', 'Nord controls production'), ('custom', 'Custom settings'),
+    ], string='Production Control', compute='_compute_nord_sync_control_mode', inverse='_inverse_nord_sync_control_mode',
+        help='Choose how production activity is controlled for this resource. '
+             'Odoo controls production keeps job activity under Odoo control. '
+             'Nord controls production lets Nord manage production activity automatically. '
+             'Custom settings lets you configure each production behavior individually.',
     )
 
     @api.depends(

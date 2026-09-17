@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="nord_sync.res_config_settings_view_form_nord_sync"/>
         <field name="arch" type="xml">
             <xpath expr="//div[@name='nord_sync_settings_container']" position="inside">
-                <div class="col-12 col-lg-6 o_setting_box">
+                <div class="col-12 col-lg-6 o_setting_box" invisible="not nord_sync_enabled">
                     <div class="o_setting_left_pane">
                         <field name="nord_sync_confirm_workcenter_on_start"/>
                     </div>
@@ -22,7 +22,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-12 col-lg-6 o_setting_box">
+                <div class="col-12 col-lg-6 o_setting_box" invisible="not nord_sync_enabled">
                     <div class="o_setting_right_pane">
                         <label for="nord_sync_default_workcenter_control_mode"
                                string="Default Work Center Control Mode"/>
