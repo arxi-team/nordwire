@@ -47,9 +47,5 @@
             <field name="view_mode">list,form</field>
         </record>
 
-        <menuitem id="menu_nord_sync_config" name="Configuration"
-                  parent="menu_nord_sync_root" action="action_nord_sync_config"
-                  groups="group_nord_sync_manager" sequence="30"/>
-
     </data>
 </odoo>

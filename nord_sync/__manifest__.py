@@ -47,16 +47,20 @@ Install wizard, 5 steps — pre-flight (scheduler active, Odoo version) /
 sources (which currently-installed Nordwire Source addons to enable) /
 connection (company UID) / job stages & mapping / finish — opens
 automatically right after install via ir.actions.todo, and reachable
-afterwards from a button on the Configuration screen.
+afterwards from a button on Settings > Nordwire.
 
-Own top-level app (not nested in Settings) — Sync Queue/Sync
-Failures/Configuration/Automation Rules all live under the "Nordwire" main
-menu. Two groups gate access: Nordwire User (read Sync Queue/Sync Failures,
-retry a failed webhook) and Nordwire Manager (implies User; Configuration,
-Install Wizard, and the nord_sync-tagged Automation Rules). Neither group is
-`base.group_system` — the Nord Cloud URL (`nord_sync.cloud_base_url` system
-parameter, Settings > Technical > Parameters) and non-Nordwire Automation
-Rules stay reserved to the real Odoo administrator, on purpose.
+Configuration (job naming, wake behavior, company UID) lives in Settings >
+Nordwire, not its own top-level menu — merged in as scalar fields for its
+own values, plus buttons opening Job Stages / Job Stage Mapping / Payload
+Fields / Automation Rules for the record lists behind them. Sync Queue and
+Sync Failures stay on the "Nordwire" top-level menu — technical/support
+tooling, not configuration. Two groups gate access: Nordwire User (read Sync
+Queue/Sync Failures, retry a failed webhook) and Nordwire Manager (implies
+User; Install Wizard and the nord_sync-tagged Automation Rules). Neither
+group is `base.group_system` — the Nord Cloud URL
+(`nord_sync.cloud_base_url` system parameter, Settings > Technical >
+Parameters) and non-Nordwire Automation Rules stay reserved to the real Odoo
+administrator, on purpose.
     """,
     'author': 'NORD / Nordwire',
     'license': 'LGPL-3',

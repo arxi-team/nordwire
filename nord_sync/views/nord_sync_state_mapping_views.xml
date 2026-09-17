@@ -66,13 +66,5 @@
             </field>
         </record>
 
-        <menuitem id="menu_nord_sync_job_stage" name="Job Stages"
-                  parent="menu_nord_sync_root" action="action_nord_sync_job_stage"
-                  groups="group_nord_sync_manager" sequence="30"/>
-
-        <menuitem id="menu_nord_sync_state_mapping" name="Job Stage Mapping"
-                  parent="menu_nord_sync_root" action="action_nord_sync_state_mapping"
-                  groups="group_nord_sync_manager" sequence="40"/>
-
     </data>
 </odoo>

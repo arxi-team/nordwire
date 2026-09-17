@@ -42,6 +42,69 @@
                             </div>
                             <div class="col-12 col-lg-6 o_setting_box">
                                 <div class="o_setting_right_pane">
+                                    <label for="nord_sync_job_naming_mode" string="Job Naming"/>
+                                    <div class="text-muted">
+                                        How jobs created on the Nord Core from this company's synced
+                                        records get their name/reference.
+                                    </div>
+                                    <div class="content-group">
+                                        <div class="mt16">
+                                            <field name="nord_sync_job_naming_mode"/>
+                                            <field name="nord_sync_job_naming_custom_prefix"
+                                                   invisible="nord_sync_job_naming_mode != 'custom_prefix'"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_right_pane">
+                                    <label for="nord_sync_wake_mode" string="Wake Behavior"/>
+                                    <div class="text-muted">
+                                        Immediate: every change pings the Nord Cloud wake webhook right
+                                        away. Throttled: at most one wake ping every Wake Throttle
+                                        below, however many changes happen in between.
+                                    </div>
+                                    <div class="content-group">
+                                        <div class="mt16">
+                                            <field name="nord_sync_wake_mode"/>
+                                            <field name="nord_sync_wake_throttle_minutes"
+                                                   invisible="nord_sync_wake_mode != 'throttled'"/>
+                                            <field name="nord_sync_last_wake_sent" readonly="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_right_pane">
+                                    <div class="text-muted mb-3">
+                                        Which job stages this company uses.
+                                    </div>
+                                    <button name="%(nord_sync.action_nord_sync_job_stage)d" type="action"
+                                            string="Configure Job Stages" class="btn btn-outline-primary"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_right_pane">
+                                    <div class="text-muted mb-3">
+                                        Which source value (e.g. a Manufacturing Order state) sets
+                                        which job stage on the matching job.
+                                    </div>
+                                    <button name="%(nord_sync.action_nord_sync_state_mapping)d" type="action"
+                                            string="Configure Job Stage Mapping" class="btn btn-outline-primary"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_right_pane">
+                                    <div class="text-muted mb-3">
+                                        Which of a model's own fields go out to the Nord Core when
+                                        it syncs.
+                                    </div>
+                                    <button name="%(nord_sync.action_nord_sync_payload_field_config)d" type="action"
+                                            string="Configure Payload Fields" class="btn btn-outline-primary"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_right_pane">
                                     <div class="text-muted mb-3">
                                         Which MOs trigger a sync (default: on confirm) is an editable
                                         Automation Rule, not fixed in code.

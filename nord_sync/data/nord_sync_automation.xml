@@ -13,8 +13,4 @@
         <field name="context">{}</field>
     </record>
 
-    <menuitem id="menu_nord_sync_automation_rules" name="Automation Rules"
-              parent="nord_sync.menu_nord_sync_root" action="action_nord_sync_automation_rules"
-              groups="group_nord_sync_manager" sequence="40"/>
-
 </odoo>

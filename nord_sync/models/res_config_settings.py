@@ -16,6 +16,17 @@ class ResConfigSettings(models.TransientModel):
     )
     nord_sync_enabled = fields.Boolean(related='nord_sync_config_id.enabled', readonly=False)
     nord_sync_company_uid = fields.Char(related='nord_sync_config_id.company_uid', readonly=False)
+    nord_sync_job_naming_mode = fields.Selection(
+        related='nord_sync_config_id.job_naming_mode', readonly=False,
+    )
+    nord_sync_job_naming_custom_prefix = fields.Char(
+        related='nord_sync_config_id.job_naming_custom_prefix', readonly=False,
+    )
+    nord_sync_wake_mode = fields.Selection(related='nord_sync_config_id.wake_mode', readonly=False)
+    nord_sync_wake_throttle_minutes = fields.Integer(
+        related='nord_sync_config_id.wake_throttle_minutes', readonly=False,
+    )
+    nord_sync_last_wake_sent = fields.Datetime(related='nord_sync_config_id.last_wake_sent', readonly=False)
 
     @api.depends('company_id')
     def _compute_nord_sync_config_id(self):
