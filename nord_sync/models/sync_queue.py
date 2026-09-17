@@ -208,10 +208,15 @@ class NordSyncQueue(models.TransientModel):
 
     @api.model
     def systray_get_failed_count(self):
-        """Counts distinct failing owners — each header is already exactly
-        one owner, but a sealed header that failed and a fresh one opened
-        for the same owner afterward can both be 'failed' at once, so this
-        still dedups by (owner_res_model, owner_res_id)."""
+        """Counts distinct failing owners across both directions — each
+        header is already exactly one owner, but a sealed header that
+        failed and a fresh one opened for the same owner afterward can both
+        be 'failed' at once, so this still dedups by (owner_res_model,
+        owner_res_id). Also folds in failed nord_sync.inbox entries (the
+        inbound direction — see nord_sync.inbox._nord_sync_failed_owners) so
+        one badge, one number, reflects both directions instead of needing a
+        second one to learn.
+        """
         hidden = self._nord_sync_hidden_owner_models()
         failed = self.sudo().search([
             ('status', '=', 'failed'), ('company_id', 'in', self.env.companies.ids),
@@ -219,6 +224,10 @@ class NordSyncQueue(models.TransientModel):
         owners = {
             (h.owner_res_model, h.owner_res_id) for h in failed if h.owner_res_model not in hidden
         }
+        owners.update(
+            (res_model, res_id)
+            for res_model, res_id, _message in self.env['nord_sync.inbox']._nord_sync_failed_owners()
+        )
         return len(owners)
 
     # ── Sync Overview dashboard ──────────────────────────────────────────────────

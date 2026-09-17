@@ -3,7 +3,7 @@ import logging
 
 import requests
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -185,6 +185,34 @@ class NordSyncConfig(models.Model):
         to map yet.
         """
         return []
+
+    # ── inbound extension points ────────────────────────────────────────────────
+    # Dispatched from nord_sync.inbox._cron_process_pending (never from a
+    # controller directly anymore — see nord_sync/controllers/main.py). Same
+    # _inherit-chain shape as _nord_sync_available_native_sources above: a
+    # Nordwire Source addon that wants to apply a Core->client push overrides
+    # one of these, checking its own res_model(s) first and calling super()
+    # otherwise. Signature is called ON a config record (self is what used to
+    # be the controller's own `config` argument) and returns (applied, message)
+    # instead of an HTTP response — the cron turns that into entry.status.
+
+    def _nord_sync_apply_result(self, body, res_model):
+        """Extension point — each Nordwire Source addon that pushes a
+        result back (today only nord_sync_mrp: mrp.production/mrp.workorder)
+        overrides this, checking its own res_model(s) first and calling
+        super() otherwise. Base has none — unsupported is the correct
+        answer when no source addon claims it.
+        """
+        self.ensure_one()
+        return False, _('Unsupported res_model: %s') % res_model
+
+    def _nord_sync_apply_workorder_event(self, body, res_model, event_type):
+        """Extension point, same shape as _nord_sync_apply_result — base has
+        no handler, each Nordwire Source addon that opts into granular
+        push overrides this and checks its own res_model(s) first.
+        """
+        self.ensure_one()
+        return False, _('Unsupported res_model: %s') % res_model
 
     @api.model
     def _get_or_create_for_company(self, company):

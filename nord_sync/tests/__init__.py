@@ -4,3 +4,5 @@ from . import test_security_groups
 from . import test_nord_sync_state_mapping
 from . import test_settings_consolidation
 from . import test_sync_overview
+from . import test_nord_sync_inbox
+from . import test_nord_sync_resources_controller

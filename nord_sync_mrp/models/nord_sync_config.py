@@ -64,3 +64,60 @@ class NordSyncConfig(models.Model):
         # forever unless someone happened to edit it again afterwards.
         self.env['mrp.production'].sudo().search(
             [('company_id', '=', self.company_id.id)])._nord_sync_notify('create')
+
+    # ── inbound extension points (Core->client result/event push) ──────────────
+    # Moved here from nord_sync_mrp/controllers/main.py — the dispatch is now
+    # called from nord_sync.inbox._cron_process_pending, not in-request, so it
+    # can no longer read request.env/return request.make_json_response. Same
+    # _inherit-chain shape as _nord_sync_available_native_sources above: check
+    # this addon's own res_model(s) first, fall back to super() otherwise.
+
+    def _nord_sync_apply_result(self, body, res_model):
+        if res_model == 'mrp.production':
+            return self._nord_sync_result_mrp_production(body)
+        return super()._nord_sync_apply_result(body, res_model)
+
+    def _nord_sync_result_mrp_production(self, body):
+        self.ensure_one()
+        res_id = body.get('res_id')
+        if not res_id:
+            return False, 'Missing res_id'
+        record = self.env['mrp.production'].sudo().browse(int(res_id))
+        if not record.exists() or record.company_id != self.company_id:
+            return False, 'Unknown record'
+        return record._nord_sync_apply_result(
+            body.get('qty_produced') or 0.0,
+            scrap_qty=body.get('scrap_qty') or 0.0,
+            not_pass_qty=body.get('not_pass_qty') or 0.0,
+            materials=body.get('materials') or [],
+            work_sessions=body.get('work_sessions') or [],
+        )
+
+    # ── granular push (session start/stop, job cancellation) ───────────────────
+
+    def _nord_sync_apply_workorder_event(self, body, res_model, event_type):
+        if res_model == 'mrp.workorder':
+            return self._nord_sync_workorder_event_mrp_workorder(body, event_type)
+        if res_model == 'mrp.production':
+            return self._nord_sync_workorder_event_mrp_production(body, event_type)
+        return super()._nord_sync_apply_workorder_event(body, res_model, event_type)
+
+    def _nord_sync_workorder_event_mrp_workorder(self, body, event_type):
+        self.ensure_one()
+        res_id = body.get('res_id')
+        if not res_id:
+            return False, 'Missing res_id'
+        workorder = self.env['mrp.workorder'].sudo().browse(int(res_id))
+        if not workorder.exists() or workorder.production_id.company_id != self.company_id:
+            return False, 'Unknown record'
+        return workorder._nord_sync_apply_granular_event(event_type, body.get('payload') or {})
+
+    def _nord_sync_workorder_event_mrp_production(self, body, event_type):
+        self.ensure_one()
+        res_id = body.get('res_id')
+        if not res_id:
+            return False, 'Missing res_id'
+        production = self.env['mrp.production'].sudo().browse(int(res_id))
+        if not production.exists() or production.company_id != self.company_id:
+            return False, 'Unknown record'
+        return production._nord_sync_apply_granular_event(event_type, body.get('payload') or {})

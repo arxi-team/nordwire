@@ -62,12 +62,13 @@ class NordSyncQueueController(http.Controller):
     @http.route('/nord_sync/api/v1/result', type='http', auth='nord_sync_api_key', methods=['POST'], csrf=False)
     def nord_sync_result(self, **kwargs):
         """The Core pushes here when a Nord-sourced job finishes, or a real
-        work session closes. Keyed by res_model (not MRP-specific in the
-        wire format), same deliberately-minimal dispatch-by-model shape as
-        the queue side — but not every res_model is keyed by a literal
-        res_id: mrp.workorder never gets one (the Core never creates a
-        client-side workorder to reference), so its own handler resolves by
-        two source references instead — see that handler's docstring.
+        work session closes. Only the envelope is validated in-request
+        (valid JSON, res_model present, config resolves) — the body is
+        captured verbatim into a nord_sync.inbox entry and applied later by
+        nord_sync.inbox._cron_process_pending (same
+        nord_sync.config._nord_sync_apply_result extension-point dispatch
+        the old in-request handler used, just called from the cron now), so
+        a slow/failing domain handler never blocks the Core's own request.
         """
         try:
             body = request.get_json_data()
@@ -84,16 +85,10 @@ class NordSyncQueueController(http.Controller):
         if not config:
             return request.make_json_response({'error': 'Nordwire not configured for this company'}, status=403)
 
-        return self._nord_sync_apply_result(config, body, res_model)
-
-    def _nord_sync_apply_result(self, config, body, res_model):
-        """Extension point — each Nordwire Source addon that pushes a
-        result back (today only nord_sync_mrp: mrp.production/mrp.workorder)
-        subclasses this controller and overrides this method, checking its
-        own res_model(s) first and calling super() otherwise. Base has none
-        — unsupported is the correct answer when no source addon claims it.
-        """
-        return request.make_json_response({'error': f'Unsupported res_model: {res_model}'}, status=400)
+        request.env['nord_sync.inbox'].sudo().create({
+            'endpoint': 'result', 'res_model': res_model, 'payload': body, 'company_id': config.company_id.id,
+        })
+        return request.make_json_response({'success': True})
 
     @http.route(
         '/nord_sync/api/v1/workorder_event', type='http', auth='nord_sync_api_key',
@@ -103,7 +98,7 @@ class NordSyncQueueController(http.Controller):
         """Granular Core->client push (session start/stop, job cancellation)
         — opt-in per resource (nord_sync_granular_push on the client's
         mrp.workcenter), unlike the always-on result push above. Same
-        res_model-keyed extension-point dispatch as _nord_sync_apply_result.
+        envelope-only validation and inbox capture as nord_sync_result.
         """
         try:
             body = request.get_json_data()
@@ -121,24 +116,25 @@ class NordSyncQueueController(http.Controller):
         if not config:
             return request.make_json_response({'error': 'Nordwire not configured for this company'}, status=403)
 
-        return self._nord_sync_apply_workorder_event(config, body, res_model, event_type)
-
-    def _nord_sync_apply_workorder_event(self, config, body, res_model, event_type):
-        """Extension point, same shape as _nord_sync_apply_result — base has
-        no handler, each Nordwire Source addon that opts into granular
-        push overrides this and checks its own res_model(s) first.
-        """
-        return request.make_json_response({'error': f'Unsupported res_model: {res_model}'}, status=400)
+        request.env['nord_sync.inbox'].sudo().create({
+            'endpoint': 'workorder_event', 'res_model': res_model, 'payload': body, 'company_id': config.company_id.id,
+        })
+        return request.make_json_response({'success': True})
 
     @http.route('/nord_sync/api/v1/resources', type='http', auth='nord_sync_api_key', methods=['POST'], csrf=False)
     def nord_sync_resources(self, **kwargs):
         """Nordwire Resource Mapping — the Core pushes its full
         edge.resource list here on every heartbeat tick (see
         _push_nord_sync_resources), upserted wholesale into nord_sync.resource
-        by uid. Base-addon endpoint, not a source extension point: the
-        mapping is generic (resource.resource, not any one business model),
-        so unlike /result and /workorder_event above there's nothing here
-        for a source addon (nord_sync_mrp, ...) to override.
+        by uid, later, from the cron — same envelope-only/inbox-capture
+        shape as the two routes above. Base-addon endpoint, not a source
+        extension point: the mapping is generic (resource.resource, not any
+        one business model), so unlike /result and /workorder_event there's
+        nothing here for a source addon (nord_sync_mrp, ...) to override.
+        This route's own body carries no res_model key at all (just
+        {'resources': [...]}) — the inbox entry's res_model is set to the
+        fixed literal 'nord_sync.resource', the model it always upserts
+        into, rather than read from the body.
         """
         try:
             body = request.get_json_data()
@@ -151,7 +147,7 @@ class NordSyncQueueController(http.Controller):
         if not config:
             return request.make_json_response({'error': 'Nordwire not configured for this company'}, status=403)
 
-        request.env['nord_sync.resource'].sudo()._nord_sync_upsert_from_core(
-            request.env.company, body.get('resources') or [],
-        )
+        request.env['nord_sync.inbox'].sudo().create({
+            'endpoint': 'resources', 'res_model': 'nord_sync.resource', 'payload': body, 'company_id': config.company_id.id,
+        })
         return request.make_json_response({'success': True})

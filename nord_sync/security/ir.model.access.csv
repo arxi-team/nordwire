@@ -27,3 +27,6 @@ access_nord_sync_failure_wizard_line_user,nord_sync.failure.wizard.line.user,mod
 access_nord_sync_resource_system,nord_sync.resource.system,model_nord_sync_resource,base.group_system,1,1,1,1
 access_nord_sync_resource_manager,nord_sync.resource.manager,model_nord_sync_resource,group_nord_sync_manager,1,0,0,0
 access_nord_sync_resource_user,nord_sync.resource.user,model_nord_sync_resource,group_nord_sync_user,1,0,0,0
+access_nord_sync_inbox_system,nord_sync.inbox.system,model_nord_sync_inbox,base.group_system,1,1,1,1
+access_nord_sync_inbox_integration,nord_sync.inbox.integration,model_nord_sync_inbox,group_nord_sync_integration,1,0,0,0
+access_nord_sync_inbox_user,nord_sync.inbox.user,model_nord_sync_inbox,group_nord_sync_user,1,0,0,0

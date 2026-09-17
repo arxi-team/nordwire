@@ -43,11 +43,17 @@ class NordSyncFailureWizard(models.TransientModel):
     @api.model
     def action_open_for_current_failures(self):
         """Systray entry point — one line per distinct failing owner among
-        this company's current failures, friendly message taken from
-        whichever failed header names that owner first. Each header is
-        already exactly one owner, but a sealed header that failed and a
-        fresh one opened for the same owner afterward can both be 'failed'
-        at once, so this still dedups by owner.
+        this company's current failures, both outbound (nord.sync.queue)
+        and inbound (nord_sync.inbox — same mechanism, not a second one to
+        learn), friendly message taken from whichever failed entry names
+        that owner first. Each nord.sync.queue header is already exactly
+        one owner, but a sealed header that failed and a fresh one opened
+        for the same owner afterward can both be 'failed' at once, so this
+        still dedups by owner — same reasoning extends to folding inbox
+        owners into the same dict. Inbox entries have no friendly-
+        translation helper (nord.sync.queue._nord_sync_friendly_error) — raw
+        last_error is used directly for them, same as the technical Sync
+        Failures list already shows for the outbound direction.
         """
         Queue = self.env['nord.sync.queue']
         hidden = Queue._nord_sync_hidden_owner_models()
@@ -61,6 +67,10 @@ class NordSyncFailureWizard(models.TransientModel):
             owner = (header.owner_res_model, header.owner_res_id)
             if owner not in owners:
                 owners[owner] = header._nord_sync_friendly_error()
+        for res_model, res_id, message in self.env['nord_sync.inbox']._nord_sync_failed_owners():
+            owner = (res_model, res_id)
+            if owner not in owners:
+                owners[owner] = message
         line_vals = []
         for (res_model, res_id), message in owners.items():
             record = self.env[res_model].sudo().browse(res_id)

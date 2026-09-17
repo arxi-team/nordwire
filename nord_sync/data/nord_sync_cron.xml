@@ -30,5 +30,19 @@
             <field name="active">True</field>
         </record>
 
+        <!-- Inbound Core->client pushes (/result, /workorder_event,
+             /resources) land in nord_sync.inbox in-request and are applied
+             here, off the request path — a slow/failing domain handler
+             never blocks the Core's own POST. -->
+        <record id="ir_cron_process_nord_sync_inbox" model="ir.cron">
+            <field name="name">Nordwire: Process Inbox</field>
+            <field name="model_id" ref="model_nord_sync_inbox"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_process_pending()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">minutes</field>
+            <field name="active">True</field>
+        </record>
+
     </data>
 </odoo>

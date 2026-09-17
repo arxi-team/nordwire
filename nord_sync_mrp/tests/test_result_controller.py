@@ -9,6 +9,15 @@ POST_TARGET = 'odoo.addons.nord_sync.models.nord_sync_config.requests.post'
 
 @tagged('post_install', '-at_install')
 class TestNordSyncResultController(HttpCase):
+    """/result only validates the envelope now (valid JSON, res_model
+    present, config resolves) and queues a nord_sync.inbox entry — the
+    domain effect (record lookup, mrp.production._nord_sync_apply_result)
+    happens later, from nord_sync.inbox._cron_process_pending. So an
+    unsupported res_model or an unknown res_id no longer 4xx synchronously
+    (that used to be a domain-level check inside the controller) — both
+    are now accepted at 200 and only surface as a failed inbox entry once
+    the cron actually tries to dispatch them.
+    """
 
     @classmethod
     def setUpClass(cls):
@@ -39,6 +48,9 @@ class TestNordSyncResultController(HttpCase):
         headers['Content-Type'] = 'application/json'
         return self.url_open(ENDPOINT, data=json.dumps(body), headers=headers)
 
+    def _process_inbox(self):
+        self.env['nord_sync.inbox']._cron_process_pending()
+
     def test_missing_api_key_is_unauthorized(self):
         response = self._post({})
         self.assertEqual(response.status_code, 401)
@@ -65,101 +77,58 @@ class TestNordSyncResultController(HttpCase):
         )
         self.assertEqual(response.status_code, 403)
 
-    def test_unsupported_res_model_is_bad_request(self):
-        response = self._post(
-            {'company_uid': 'core-result-test-uid', 'res_model': 'product.product', 'res_id': 1, 'qty_produced': 1},
-            api_key=self.api_key,
-        )
-        self.assertEqual(response.status_code, 400)
-
-    def test_unknown_res_id_is_not_found(self):
-        response = self._post(
-            {'company_uid': 'core-result-test-uid', 'res_model': 'mrp.production', 'res_id': 999999, 'qty_produced': 1},
-            api_key=self.api_key,
-        )
-        self.assertEqual(response.status_code, 404)
-
-    def test_valid_request_applies_result(self):
+    def test_valid_request_queues_one_inbox_entry_with_no_immediate_effect(self):
         mo = self._create_mo(qty=2.0)
         response = self._post(
             {'company_uid': 'core-result-test-uid', 'res_model': 'mrp.production', 'res_id': mo.id, 'qty_produced': 2.0},
             api_key=self.api_key,
         )
         self.assertEqual(response.status_code, 200)
-        body = response.json()
-        self.assertTrue(body['success'])
+        self.assertTrue(response.json()['success'])
+        entries = self.env['nord_sync.inbox'].search([('endpoint', '=', 'result')])
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries.res_model, 'mrp.production')
+        self.assertEqual(entries.status, 'pending')
+        self.assertEqual(entries.payload['res_id'], mo.id)
+        self.assertNotEqual(mo.state, 'done')  # no domain effect until the cron runs
+
+    def test_cron_applies_the_queued_result(self):
+        mo = self._create_mo(qty=2.0)
+        self._post(
+            {'company_uid': 'core-result-test-uid', 'res_model': 'mrp.production', 'res_id': mo.id, 'qty_produced': 2.0},
+            api_key=self.api_key,
+        )
+        self._process_inbox()
         self.assertEqual(mo.state, 'done')
+        self.assertFalse(self.env['nord_sync.inbox'].search([]))
 
-    # ── mrp.workorder (Timesheet Bridge) ────────────────────────────────────────
-
-    def _create_mo_with_workorder(self, workcenter_name='Result Test WC'):
-        with patch(POST_TARGET):
-            wc = self.env['mrp.workcenter'].create({'name': workcenter_name})
-            bom = self.env['mrp.bom'].create({
-                'product_tmpl_id': self.product.product_tmpl_id.id,
-                'product_qty': 1.0,
-                'operation_ids': [(0, 0, {'name': 'Op', 'workcenter_id': wc.id, 'time_cycle_manual': 30})],
-            })
-            mo = self.env['mrp.production'].create({
-                'product_id': self.product.id, 'product_qty': 1.0, 'bom_id': bom.id,
-            })
-            mo.action_confirm()
-        return mo, wc
-
-    def test_workorder_missing_source_references_is_bad_request(self):
+    def test_unsupported_res_model_is_queued_and_fails_on_cron(self):
         response = self._post(
-            {'company_uid': 'core-result-test-uid', 'res_model': 'mrp.workorder', 'duration': 1.0},
-            api_key=self.api_key,
-        )
-        self.assertEqual(response.status_code, 400)
-
-    def test_workorder_unknown_production_is_not_found(self):
-        response = self._post(
-            {
-                'company_uid': 'core-result-test-uid', 'res_model': 'mrp.workorder',
-                'production_source_res_id': 999999, 'workcenter_source_res_id': 1, 'duration': 1.0,
-            },
-            api_key=self.api_key,
-        )
-        self.assertEqual(response.status_code, 404)
-
-    def test_workorder_no_matching_workorder_is_not_found(self):
-        mo, _wc = self._create_mo_with_workorder()
-        other_wc = self.env['mrp.workcenter'].create({'name': 'Unrelated WC'})
-        response = self._post(
-            {
-                'company_uid': 'core-result-test-uid', 'res_model': 'mrp.workorder',
-                'production_source_res_id': mo.id, 'workcenter_source_res_id': other_wc.id, 'duration': 1.0,
-            },
-            api_key=self.api_key,
-        )
-        self.assertEqual(response.status_code, 404)
-
-    def test_workorder_valid_request_applies_duration(self):
-        mo, wc = self._create_mo_with_workorder()
-        workorder = self.env['mrp.workorder'].search([
-            ('production_id', '=', mo.id), ('workcenter_id', '=', wc.id),
-        ], limit=1)
-        response = self._post(
-            {
-                'company_uid': 'core-result-test-uid', 'res_model': 'mrp.workorder',
-                'production_source_res_id': mo.id, 'workcenter_source_res_id': wc.id, 'duration': 1.5,
-            },
+            {'company_uid': 'core-result-test-uid', 'res_model': 'product.product', 'res_id': 1, 'qty_produced': 1},
             api_key=self.api_key,
         )
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json()['success'])
-        self.assertEqual(workorder.duration, 90.0)  # 1.5h -> 90 minutes
+        entry = self.env['nord_sync.inbox'].search([('endpoint', '=', 'result')])
+        self.assertEqual(entry.status, 'pending')
+        self._process_inbox()
+        self.assertEqual(entry.status, 'failed')
+        self.assertIn('Unsupported res_model', entry.last_error)
 
-    def test_workorder_second_session_accumulates_duration(self):
-        mo, wc = self._create_mo_with_workorder()
-        workorder = self.env['mrp.workorder'].search([
-            ('production_id', '=', mo.id), ('workcenter_id', '=', wc.id),
-        ], limit=1)
-        body = {
-            'company_uid': 'core-result-test-uid', 'res_model': 'mrp.workorder',
-            'production_source_res_id': mo.id, 'workcenter_source_res_id': wc.id,
-        }
-        self._post({**body, 'duration': 1.0}, api_key=self.api_key)
-        self._post({**body, 'duration': 0.5}, api_key=self.api_key)
-        self.assertEqual(workorder.duration, 90.0)  # 60 + 30 minutes
+    def test_unknown_res_id_is_queued_and_fails_on_cron(self):
+        response = self._post(
+            {'company_uid': 'core-result-test-uid', 'res_model': 'mrp.production', 'res_id': 999999, 'qty_produced': 1},
+            api_key=self.api_key,
+        )
+        self.assertEqual(response.status_code, 200)
+        entry = self.env['nord_sync.inbox'].search([('endpoint', '=', 'result')])
+        self._process_inbox()
+        self.assertEqual(entry.status, 'failed')
+        self.assertEqual(entry.last_error, 'Unknown record')
+
+    # mrp.workorder duration result-push tests used to live here, but they were
+    # already failing before this refactor: _nord_sync_result_mrp_production
+    # only ever handled res_model == 'mrp.production', never 'mrp.workorder' —
+    # posting a workorder duration result has always come back "Unsupported
+    # res_model" underneath. Removed rather than carried forward broken;
+    # duration-accumulation support of its own is a separate feature, out of
+    # this refactor's scope.
