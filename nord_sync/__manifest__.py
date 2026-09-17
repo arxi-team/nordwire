@@ -75,6 +75,7 @@ administrator, on purpose.
         'wizard/nord_sync_install_wizard_views.xml',
         'wizard/nord_sync_failure_wizard_views.xml',
         'views/nord_sync_queue_views.xml',
+        'views/nord_sync_sync_overview_views.xml',
         'views/nord_sync_failures_views.xml',
         'views/nord_sync_state_mapping_views.xml',
         'views/nord_sync_payload_field_config_views.xml',
@@ -91,6 +92,8 @@ administrator, on purpose.
         'web.assets_backend': [
             'nord_sync/static/src/components/nord_sync_systray/nord_sync_systray.js',
             'nord_sync/static/src/components/nord_sync_systray/nord_sync_systray.xml',
+            'nord_sync/static/src/components/sync_overview/sync_overview.js',
+            'nord_sync/static/src/components/sync_overview/sync_overview.xml',
         ],
     },
     'installable': True,

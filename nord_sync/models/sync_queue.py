@@ -221,6 +221,84 @@ class NordSyncQueue(models.TransientModel):
         }
         return len(owners)
 
+    # ── Sync Overview dashboard ──────────────────────────────────────────────────
+
+    @api.model
+    def get_overview_data(self):
+        """Live snapshot for the Sync Overview client action (cards row +
+        both breakdown panels) — one round trip, since nothing here is worth
+        caching or fetching separately: this model's own 2h transient
+        retention already makes every read "current state", and the whole
+        dataset for a company is small enough that a second call would only
+        add latency, not save it.
+
+        Scoped like systray_get_failed_count (sudo(), company_id in
+        self.env.companies.ids) rather than the Failure Wizard's
+        hidden-owner-model filter — this sits on the technical menu next to
+        Sync Queue/Sync Failures, neither of which hides any owner model, so
+        every header counts here too.
+
+        Keys:
+            kpis (dict): pending/sent/failed counts (status) plus unsealed
+                (is_sealed=False, still waiting to be pulled by the Core) —
+                each a plain int over every current header for the company.
+            by_model (list[dict]): one entry per distinct owner_res_model
+                among current headers, alphabetical — {owner_res_model,
+                count, age}, age being the oldest header's own age in that
+                group (see _nord_sync_format_age).
+            failures (list[dict]): one entry per header with status='failed',
+                oldest first — {owner_res_model, owner_res_id, owner,
+                last_error, age}. last_error is the raw exception text (this
+                is a technical surface, not the friendly translation
+                _nord_sync_friendly_error exists for); owner is the cheap
+                'model #id' form, not a browsed display_name.
+        """
+        headers = self.sudo().search([('company_id', 'in', self.env.companies.ids)])
+        kpis = {'pending': 0, 'sent': 0, 'failed': 0, 'unsealed': 0}
+        by_model = {}
+        failures = []
+        for header in headers:
+            if header.status in kpis:
+                kpis[header.status] += 1
+            if not header.is_sealed:
+                kpis['unsealed'] += 1
+            group = by_model.setdefault(header.owner_res_model, {'count': 0, 'oldest': header.create_date})
+            group['count'] += 1
+            if header.create_date < group['oldest']:
+                group['oldest'] = header.create_date
+            if header.status == 'failed':
+                failures.append(header)
+        return {
+            'kpis': kpis,
+            'by_model': [
+                {
+                    'owner_res_model': model,
+                    'count': data['count'],
+                    'age': self._nord_sync_format_age(data['oldest']),
+                }
+                for model, data in sorted(by_model.items())
+            ],
+            'failures': [{
+                'owner_res_model': header.owner_res_model,
+                'owner_res_id': header.owner_res_id,
+                'owner': f'{header.owner_res_model} #{header.owner_res_id}',
+                'last_error': header.last_error or '',
+                'age': self._nord_sync_format_age(header.create_date),
+            } for header in failures],
+        }
+
+    @api.model
+    def _nord_sync_format_age(self, create_date):
+        """'Xh Ym ago' (or just 'Ym ago' under an hour) from a create_date to
+        now — plain string math is enough for a field that only ever spans
+        this model's own 2h retention window, no need for a duration widget
+        or a library just for this."""
+        if not create_date:
+            return ''
+        minutes = max(int((fields.Datetime.now() - create_date).total_seconds() // 60), 0)
+        hours, minutes = divmod(minutes, 60)
+        return f'{hours}h {minutes}m ago' if hours else f'{minutes}m ago'
+
     def action_retry_now(self):
         """Manual resend — same one-ping-per-company mechanism as the
         periodic cron, just triggered on demand instead of waiting for the

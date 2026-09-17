@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="nord_sync.SyncOverview">
+        <div class="o_nord_sync_overview p-4">
+            <div class="row mb-4 align-items-center">
+                <div class="col-md-6">
+                    <h2 class="h2 d-inline-block">Sync Overview</h2>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <button type="button" class="btn btn-primary" t-on-click="onRefresh">Refresh</button>
+                </div>
+            </div>
+
+            <div class="row mb-4 g-3">
+                <div class="col-sm-6 col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h4 class="card-title">Pending</h4>
+                            <p class="display-6" t-esc="state.kpis.pending"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h4 class="card-title">Sent</h4>
+                            <p class="display-6" t-esc="state.kpis.sent"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h4 class="card-title">Failed</h4>
+                            <p class="display-6" t-esc="state.kpis.failed"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h4 class="card-title">Not Yet Served to Core</h4>
+                            <p class="display-6" t-esc="state.kpis.unsealed"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4>Queue by Model</h4>
+                        </div>
+                        <div class="card-body">
+                            <t t-if="state.byModel.length">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Model</th>
+                                            <th>Count</th>
+                                            <th>Oldest Entry</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.byModel" t-as="group" t-key="group.owner_res_model">
+                                            <td t-esc="group.owner_res_model"/>
+                                            <td t-esc="group.count"/>
+                                            <td t-esc="group.age"/>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </t>
+                            <t t-else="">
+                                <p class="text-muted mb-0">Nothing in the queue right now.</p>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4>Current Failures</h4>
+                        </div>
+                        <div class="card-body">
+                            <t t-if="state.failures.length">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Owner</th>
+                                            <th>Error</th>
+                                            <th>Age</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.failures" t-as="failure"
+                                            t-key="failure.owner_res_model + '_' + failure.owner_res_id">
+                                            <td t-esc="failure.owner"/>
+                                            <td t-esc="failure.last_error"/>
+                                            <td t-esc="failure.age"/>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </t>
+                            <t t-else="">
+                                <p class="text-muted mb-0">No failures right now.</p>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

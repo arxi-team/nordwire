@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- OWL client action (static/src/components/sync_overview) — a live
+             read-only snapshot of the queue, not a record list, so an
+             ir.actions.client + tag is the whole action, no view/model here. -->
+        <record id="action_nord_sync_sync_overview" model="ir.actions.client">
+            <field name="name">Sync Overview</field>
+            <field name="tag">nord_sync_sync_overview</field>
+        </record>
+
+        <!-- Ahead of Sync Queue (sequence 10) — an overview is naturally the
+             first stop before the raw technical lists it summarizes. -->
+        <menuitem id="menu_nord_sync_overview" name="Sync Overview"
+                  parent="menu_nord_sync_root" action="action_nord_sync_sync_overview"
+                  groups="group_nord_sync_user" sequence="5"/>
+
+    </data>
+</odoo>
