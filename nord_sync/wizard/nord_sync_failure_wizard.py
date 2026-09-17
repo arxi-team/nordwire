@@ -67,7 +67,7 @@ class NordSyncFailureWizard(models.TransientModel):
             owner = (header.owner_res_model, header.owner_res_id)
             if owner not in owners:
                 owners[owner] = header._nord_sync_friendly_error()
-        for res_model, res_id, message in self.env['nord_sync.inbox']._nord_sync_failed_owners():
+        for res_model, res_id, message, _create_date in self.env['nord_sync.inbox']._nord_sync_failed_owners():
             owner = (res_model, res_id)
             if owner not in owners:
                 owners[owner] = message

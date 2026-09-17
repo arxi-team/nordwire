@@ -6,3 +6,5 @@ from . import test_settings_consolidation
 from . import test_sync_overview
 from . import test_nord_sync_inbox
 from . import test_nord_sync_resources_controller
+from . import test_failure_wizard
+from . import test_res_config_settings

@@ -8,3 +8,4 @@ from . import test_mrp_workcenter
 from . import test_mrp_bom
 from . import test_install_wizard
 from . import test_nord_sync_state_mapping
+from . import test_sync_queue_failure_visibility

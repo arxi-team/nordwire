@@ -30,7 +30,7 @@
             <field name="name">Nordwire Manager: only Nordwire automation rules</field>
             <field name="model_id" ref="base_automation.model_base_automation"/>
             <field name="groups" eval="[(4, ref('group_nord_sync_manager'))]"/>
-            <field name="domain_force">[('name', 'like', 'Nordwire')]</field>
+            <field name="domain_force" eval="['|', ('name', 'like', 'Nordwire'), ('name', 'like', 'Nord Sync')]"/>
         </record>
         <!-- The base_automation.ir_cron_data_base_automation_check_ir_actions_server
              OR-clause below exists because ir.cron uses _inherits =
@@ -55,7 +55,7 @@
             <field name="name">Nordwire Manager: only Nordwire automation actions</field>
             <field name="model_id" ref="base.model_ir_actions_server"/>
             <field name="groups" eval="[(4, ref('group_nord_sync_manager'))]"/>
-            <field name="domain_force" eval="['|', ('name', 'like', 'Nordwire'), ('id', '=', ref('base_automation.ir_cron_data_base_automation_check_ir_actions_server'))]"/>
+            <field name="domain_force" eval="['|', '|', ('name', 'like', 'Nordwire'), ('name', 'like', 'Nord Sync'), ('id', '=', ref('base_automation.ir_cron_data_base_automation_check_ir_actions_server'))]"/>
         </record>
 
         <!-- Real bug, found 2026-08-18: none of this addon's 4 own
@@ -95,6 +95,11 @@
             <field name="name">nord.sync.queue.line: multi-company</field>
             <field name="model_id" ref="model_nord_sync_queue_line"/>
             <field name="domain_force">[('queue_id.company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="rule_nord_sync_inbox_multi_company" model="ir.rule">
+            <field name="name">nord_sync.inbox: multi-company</field>
+            <field name="model_id" ref="model_nord_sync_inbox"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
         </record>
     </data>
 </odoo>

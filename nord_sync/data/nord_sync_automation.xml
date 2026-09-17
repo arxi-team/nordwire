@@ -9,8 +9,12 @@
         <field name="name">Nordwire: Automation Rules</field>
         <field name="res_model">base.automation</field>
         <field name="view_mode">list,form</field>
-        <field name="domain">[('name', 'like', 'Nordwire')]</field>
+        <field name="domain">['|', ('name', 'like', 'Nordwire'), ('name', 'like', 'Nord Sync')]</field>
         <field name="context">{}</field>
     </record>
+
+    <menuitem id="menu_nord_sync_automation_rules" name="Automation Rules"
+              parent="nord_sync.menu_nord_sync_root" action="action_nord_sync_automation_rules"
+              groups="group_nord_sync_manager" sequence="40"/>
 
 </odoo>

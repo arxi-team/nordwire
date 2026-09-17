@@ -184,7 +184,7 @@ class MrpWorkcenter(models.Model):
         """
         override_keys = {'nord_sync_control_mode', *self.NORD_SYNC_CONTROL_MODE_PRESETS['odoo']}
         Company = self.env['res.company']
-        for vals in vals_list:
+        for index, vals in enumerate(vals_list):
             if not override_keys.isdisjoint(vals):
                 continue
             company = Company.browse(vals['company_id']) if vals.get('company_id') else self.env.company
@@ -193,7 +193,12 @@ class MrpWorkcenter(models.Model):
                 config.nord_sync_default_workcenter_control_mode,
             )
             if preset:
-                vals.update(preset)
+                # Copy before updating — vals is the caller's own dict object
+                # (create() may be called with a vals_list a caller reuses
+                # across several create() calls), and mutating it in place
+                # would bake this company's preset into it permanently, the
+                # same class of bug already fixed once in mrp.production.create.
+                vals_list[index] = {**vals, **preset}
 
     def write(self, vals):
         result = super().write(vals)
@@ -250,9 +255,8 @@ class MrpWorkcenter(models.Model):
 
         Keys:
             nord_resource_uid (str or False): the Core's edge.resource this
-                work center is mapped to (Nordwire Resource Mapping, ADR
-                0026) — self.resource_id.nord_sync_resource_id.uid, False
-                when unmapped. The Core never creates/guesses a resource
+                work center is mapped to — self.resource_id.nord_sync_resource_id.uid,
+                False when unmapped. The Core never creates/guesses a resource
                 from this payload; without this key it just skips the
                 entry, so nothing syncs for this work center until a human
                 maps it (Configuration > Technical > Resources).

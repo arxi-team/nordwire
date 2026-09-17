@@ -37,11 +37,12 @@ source of its own) had no obvious addon to live in — resolved this time by
 a clear rule instead: support models always live inside their parent
 source's addon, never get one of their own.
 
-Phase 2 in progress: queue entries now carry a business payload snapshot
-(name/qty/state and product name/UoM/internal reference, captured at
-enqueue time) alongside the change reference (seq/model/operation/res_id),
-plus a delivery status (pending/sent/failed) for the wake webhook. No
-write-back endpoint yet.
+Outbound queue entries carry a business payload snapshot (name/qty/state and
+product name/UoM/internal reference, captured at enqueue time) alongside the
+change reference (seq/model/operation/res_id), plus a delivery status
+(pending/sent/failed) for the wake webhook. Inbound pushes from the Nord
+Core (`/result`, `/workorder_event`, `/resources`) go through a matching
+inbox, applied by a cron rather than inline in the HTTP request.
 
 Install wizard, 5 steps — pre-flight (scheduler active, Odoo version) /
 sources (which currently-installed Nordwire Source addons to enable) /

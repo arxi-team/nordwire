@@ -94,7 +94,7 @@
                                     </thead>
                                     <tbody>
                                         <tr t-foreach="state.failures" t-as="failure"
-                                            t-key="failure.owner_res_model + '_' + failure.owner_res_id">
+                                            t-key="failure.key">
                                             <td t-esc="failure.owner"/>
                                             <td t-esc="failure.last_error"/>
                                             <td t-esc="failure.age"/>

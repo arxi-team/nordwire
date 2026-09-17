@@ -64,8 +64,12 @@ class NordSyncInbox(models.TransientModel):
 
     @api.model
     def _cron_process_pending(self):
-        """Dispatches every pending entry, oldest first (order='id asc',
-        same "no ordering guarantee beyond oldest-first" as nord.sync.queue).
+        """Dispatches every pending or failed entry, oldest first
+        (order='id asc', same "no ordering guarantee beyond oldest-first" as
+        nord.sync.queue) — a failed entry is retried on every tick, same
+        unbounded-retry philosophy as nord.sync.queue._retry_failed_webhooks,
+        bounded only by this model's own 2h retention rather than an
+        attempt counter.
 
         Each entry's dispatch runs inside its own savepoint — a domain-level
         failure inside _nord_sync_apply_result (or the resource upsert) can
@@ -78,7 +82,7 @@ class NordSyncInbox(models.TransientModel):
         entry in the same batch — one bad entry never blocks the rest.
         """
         Config = self.env['nord_sync.config'].sudo()
-        for entry in self.sudo().search([('status', '=', 'pending')], order='id asc'):
+        for entry in self.sudo().search([('status', 'in', ('pending', 'failed'))], order='id asc'):
             try:
                 with self.env.cr.savepoint():
                     config = Config._get_for_company(entry.company_id)
@@ -108,21 +112,26 @@ class NordSyncInbox(models.TransientModel):
     # ── failure visibility (folded into nord.sync.queue's own systray/wizard) ──
 
     def _nord_sync_failed_owners(self):
-        """[(res_model, res_id, last_error)], one row per failed entry
-        visible to the current companies — same owner shape
+        """[(res_model, res_id, last_error, create_date)], one row per failed
+        entry visible to the current companies — same owner shape
         (owner_res_model, owner_res_id) as nord.sync.queue's own headers, so
-        nord.sync.queue.systray_get_failed_count and
-        nord_sync.failure.wizard.action_open_for_current_failures can fold
-        this set into theirs. Not deduped here — each caller already dedupes
-        its own combined owner set the same way it dedupes nord.sync.queue's.
+        nord.sync.queue.systray_get_failed_count,
+        nord_sync.failure.wizard.action_open_for_current_failures, and
+        nord.sync.queue.get_overview_data can fold this set into theirs. Not
+        deduped here — each caller already dedupes its own combined owner
+        set the same way it dedupes nord.sync.queue's.
 
         For endpoint in ('result', 'workorder_event') the owner is
-        (entry.res_model, entry.payload.get('res_id')) — always a real
-        browsable record, both handlers already require res_id in the body.
-        For endpoint == 'resources' there is no single owning record (one
-        heartbeat covers a whole list of resources) — resolved onto the
-        company's own Nordwire Configuration record instead, so the caller
-        still gets a real, browsable owner rather than a fake id.
+        (entry.res_model, entry.payload.get('res_id')) — normally a real
+        browsable record, but both fields are free text/JSON from the Core,
+        never validated beyond presence at the controller — an unknown
+        model or a non-numeric res_id would otherwise crash every caller's
+        self.env[res_model].browse(res_id) with a raw KeyError, so both are
+        checked here, once, at the source. For endpoint == 'resources' there
+        is no single owning record (one heartbeat covers a whole list of
+        resources) — resolved onto the company's own Nordwire Configuration
+        record instead, so the caller still gets a real, browsable owner
+        rather than a fake id.
         """
         Config = self.env['nord_sync.config'].sudo()
         rows = []
@@ -132,9 +141,21 @@ class NordSyncInbox(models.TransientModel):
             if entry.endpoint == 'resources':
                 config = Config._get_for_company(entry.company_id)
                 if config:
-                    rows.append((config._name, config.id, entry.last_error))
+                    rows.append((config._name, config.id, entry.last_error, entry.create_date))
                 continue
-            res_id = entry.payload.get('res_id')
-            if res_id:
-                rows.append((entry.res_model, res_id, entry.last_error))
+            if entry.res_model not in self.env:
+                _logger.warning(
+                    'nord_sync: inbox entry %s names unknown res_model %r, skipping from failure UI',
+                    entry.id, entry.res_model,
+                )
+                continue
+            try:
+                res_id = int(entry.payload.get('res_id'))
+            except (TypeError, ValueError):
+                _logger.warning(
+                    'nord_sync: inbox entry %s has non-numeric res_id %r, skipping from failure UI',
+                    entry.id, entry.payload.get('res_id'),
+                )
+                continue
+            rows.append((entry.res_model, res_id, entry.last_error, entry.create_date))
         return rows

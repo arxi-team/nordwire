@@ -4,20 +4,26 @@ from odoo.tests import TransactionCase, tagged
 
 @tagged('post_install', '-at_install')
 class TestNordSyncSettingsConsolidation(TransactionCase):
-    """Job Stages / Job Stage Mapping / Payload Fields / Automation Rules /
-    Configuration used to each have their own top-level menu item under
-    Nordwire — moved into Settings > Nordwire instead (own scalar fields
-    merged in directly, the four record lists reachable via a button, same
-    pattern the Automation Rules box already used). Only the menu items are
-    gone; every action/view they pointed at is kept, since the Settings
-    buttons still open them.
+    """Configuration / Payload Fields had their own top-level menu item
+    under Nordwire — moved into Settings > Nordwire instead (own scalar
+    fields merged in directly, reachable via a button). Both stay
+    base.group_system-only, no regression there. Job Stages / Job Stage
+    Mapping / Automation Rules got the same Settings-page boxes, but also
+    kept their own top-level menu item (group_nord_sync_manager) — the
+    whole Settings `<app>` block is base.group_system-gated, and Manager is
+    deliberately not an administrator (see nord_sync_security.xml), so
+    losing the top-level menu would have locked Manager out of them
+    entirely. Every action/view is kept either way, since the Settings
+    buttons open the same ones.
     """
 
     REMOVED_MENU_XMLIDS = [
         'nord_sync.menu_nord_sync_config',
+        'nord_sync.menu_nord_sync_payload_field_config',
+    ]
+    RESTORED_MANAGER_MENU_XMLIDS = [
         'nord_sync.menu_nord_sync_job_stage',
         'nord_sync.menu_nord_sync_state_mapping',
-        'nord_sync.menu_nord_sync_payload_field_config',
         'nord_sync.menu_nord_sync_automation_rules',
     ]
     KEPT_ACTION_XMLIDS = [
@@ -32,6 +38,14 @@ class TestNordSyncSettingsConsolidation(TransactionCase):
         for xmlid in self.REMOVED_MENU_XMLIDS:
             with self.assertRaises(ValueError):
                 self.env.ref(xmlid)
+
+    def test_manager_menu_items_are_restored_alongside_settings(self):
+        root = self.env.ref('nord_sync.menu_nord_sync_root')
+        manager_group = self.env.ref('nord_sync.group_nord_sync_manager')
+        for xmlid in self.RESTORED_MANAGER_MENU_XMLIDS:
+            menu = self.env.ref(xmlid)
+            self.assertEqual(menu.parent_id, root)
+            self.assertIn(manager_group, menu.group_ids)
 
     def test_absorbed_actions_still_exist(self):
         for xmlid in self.KEPT_ACTION_XMLIDS:

@@ -502,7 +502,7 @@ class NordSyncInstallWizard(models.TransientModel):
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'base.automation',
-            'domain': [('name', 'like', 'Nordwire')],
+            'domain': ['|', ('name', 'like', 'Nordwire'), ('name', 'like', 'Nord Sync')],
             'view_mode': 'list,form',
             'target': 'current',
         }

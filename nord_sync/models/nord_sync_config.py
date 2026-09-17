@@ -35,17 +35,29 @@ NORD_SYNC_CONFIG_SIGNAL_FIELDS = {'job_naming_mode', 'job_naming_custom_prefix'}
 class NordSyncConfig(models.Model):
     """Nordwire connection config — one record per company, replacing the
     nord_sync_enabled/nord_sync_company_uid fields that used to live directly
-    on res.company. Kept company-scoped so multi-company opt-in still works —
-    see docs/plano_addon_odoo_cliente_producao.md §7 (data scope section).
+    on res.company. Kept company-scoped so multi-company opt-in still works,
+    one company's sync toggle and Core identity never leak onto another's.
     The Cloud base URL itself is not company-scoped (see CLOUD_BASE_URL_PARAM
     above) — it lives in ir.config_parameter, not on this model.
     """
     _name = 'nord_sync.config'
     _description = 'Nordwire Configuration'
+    _rec_name = 'name'
 
     company_id = fields.Many2one(
         'res.company', required=True, default=lambda self: self.env.company,
     )
+    name = fields.Char(compute='_compute_name')
+
+    @api.depends('company_id.name')
+    def _compute_name(self):
+        # Only ever browsed by id (_get_for_company), never searched/sorted
+        # by name — this exists purely so display_name reads e.g. "Nordwire
+        # Configuration — Acme" instead of Odoo's bare "nord_sync.config,3"
+        # fallback, used by the Sync Failures wizard's /resources line.
+        for config in self:
+            config.name = f'Nordwire Configuration — {config.company_id.name}'
+
     enabled = fields.Boolean(string='Nordwire Enabled')
     company_uid = fields.Char(
         string='Nord Company UID',

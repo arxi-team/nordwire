@@ -226,7 +226,7 @@ class NordSyncQueue(models.TransientModel):
         }
         owners.update(
             (res_model, res_id)
-            for res_model, res_id, _message in self.env['nord_sync.inbox']._nord_sync_failed_owners()
+            for res_model, res_id, _message, _create_date in self.env['nord_sync.inbox']._nord_sync_failed_owners()
         )
         return len(owners)
 
@@ -251,16 +251,28 @@ class NordSyncQueue(models.TransientModel):
             kpis (dict): pending/sent/failed counts (status) plus unsealed
                 (is_sealed=False, still waiting to be pulled by the Core) —
                 each a plain int over every current header for the company.
+                failed also folds in nord_sync.inbox failures (the inbound
+                direction — see nord_sync.inbox._nord_sync_failed_owners),
+                same as systray_get_failed_count/the Failure Wizard, so this
+                dashboard's own "Failed" card matches those numbers.
             by_model (list[dict]): one entry per distinct owner_res_model
                 among current headers, alphabetical — {owner_res_model,
                 count, age}, age being the oldest header's own age in that
-                group (see _nord_sync_format_age).
-            failures (list[dict]): one entry per header with status='failed',
-                oldest first — {owner_res_model, owner_res_id, owner,
-                last_error, age}. last_error is the raw exception text (this
-                is a technical surface, not the friendly translation
-                _nord_sync_friendly_error exists for); owner is the cheap
-                'model #id' form, not a browsed display_name.
+                group (see _nord_sync_format_age). Queue-only — inbox
+                entries have no owner_res_model grouping concept the same
+                way a queue header does (one heartbeat can cover many
+                resources), so they're never folded in here.
+            failures (list[dict]): one entry per failed queue header or
+                inbox entry, oldest first — {key, owner_res_model,
+                owner_res_id, owner, last_error, age}. last_error is the raw
+                exception text (this is a technical surface, not the
+                friendly translation _nord_sync_friendly_error exists for);
+                owner is the cheap 'model #id' form, not a browsed
+                display_name. key is a stable per-row identifier
+                ('queue-<header id>' / 'inbox-<index>') for the OWL
+                template's t-key — two failed rows can share the same owner
+                (a sealed header that failed, then a fresh one opened for
+                the same owner), so owner alone isn't unique.
         """
         headers = self.sudo().search([('company_id', 'in', self.env.companies.ids)])
         kpis = {'pending': 0, 'sent': 0, 'failed': 0, 'unsealed': 0}
@@ -276,7 +288,30 @@ class NordSyncQueue(models.TransientModel):
             if header.create_date < group['oldest']:
                 group['oldest'] = header.create_date
             if header.status == 'failed':
-                failures.append(header)
+                failures.append({
+                    'key': f'queue-{header.id}',
+                    'owner_res_model': header.owner_res_model,
+                    'owner_res_id': header.owner_res_id,
+                    'owner': f'{header.owner_res_model} #{header.owner_res_id}',
+                    'last_error': header.last_error or '',
+                    'age': self._nord_sync_format_age(header.create_date),
+                })
+        inbox_failures = self.env['nord_sync.inbox']._nord_sync_failed_owners()
+        kpis['failed'] += len(inbox_failures)
+        for index, (res_model, res_id, last_error, create_date) in enumerate(inbox_failures):
+            # ponytail: index-based key, not the inbox entry's own id --
+            # _nord_sync_failed_owners()'s tuple shape is shared with
+            # systray/wizard callers that don't need the id; fine since OWL
+            # only needs uniqueness within this one render, not stability
+            # across renders. Upgrade to the entry id if that ever matters.
+            failures.append({
+                'key': f'inbox-{index}',
+                'owner_res_model': res_model,
+                'owner_res_id': res_id,
+                'owner': f'{res_model} #{res_id}',
+                'last_error': last_error or '',
+                'age': self._nord_sync_format_age(create_date),
+            })
         return {
             'kpis': kpis,
             'by_model': [
@@ -287,13 +322,7 @@ class NordSyncQueue(models.TransientModel):
                 }
                 for model, data in sorted(by_model.items())
             ],
-            'failures': [{
-                'owner_res_model': header.owner_res_model,
-                'owner_res_id': header.owner_res_id,
-                'owner': f'{header.owner_res_model} #{header.owner_res_id}',
-                'last_error': header.last_error or '',
-                'age': self._nord_sync_format_age(header.create_date),
-            } for header in failures],
+            'failures': failures,
         }
 
     @api.model

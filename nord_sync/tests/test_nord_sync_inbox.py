@@ -107,12 +107,14 @@ class TestNordSyncInboxFailureVisibility(TransactionCase):
         self._failed_entry('result', 'res.partner', {'res_id': self.partner.id})
         self._failed_entry('workorder_event', 'res.partner', {'res_id': self.partner.id})
         owners = self.env['nord_sync.inbox']._nord_sync_failed_owners()
-        self.assertEqual({(m, i) for m, i, _msg in owners}, {('res.partner', self.partner.id)})
+        self.assertEqual({(m, i) for m, i, _msg, _create_date in owners}, {('res.partner', self.partner.id)})
 
     def test_failed_owners_resolves_resources_endpoint_onto_the_company_config(self):
         self._failed_entry('resources', 'nord_sync.resource', {'resources': []})
         owners = self.env['nord_sync.inbox']._nord_sync_failed_owners()
-        self.assertEqual([(m, i) for m, i, _msg in owners], [('nord_sync.config', self.config.id)])
+        self.assertEqual(
+            [(m, i) for m, i, _msg, _create_date in owners], [('nord_sync.config', self.config.id)],
+        )
 
     def test_systray_count_folds_in_failed_inbox_entries(self):
         self._failed_entry('result', 'res.partner', {'res_id': self.partner.id})

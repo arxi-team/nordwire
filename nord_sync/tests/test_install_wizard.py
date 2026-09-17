@@ -303,7 +303,7 @@ class TestNordSyncInstallWizard(TransactionCase):
         action = wizard.action_confirm()
         self.assertEqual(action['type'], 'ir.actions.act_window')
         self.assertEqual(action['res_model'], 'base.automation')
-        self.assertEqual(action['domain'], [('name', 'like', 'Nordwire')])
+        self.assertEqual(action['domain'], ['|', ('name', 'like', 'Nordwire'), ('name', 'like', 'Nord Sync')])
 
     def test_confirm_raises_when_preflight_not_ok(self):
         wizard = self._new_wizard(cron_threads=0, company_uid='new-uid')
