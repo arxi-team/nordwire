@@ -19,6 +19,7 @@ export class SyncOverview extends Component {
 
     setup() {
         this.orm = useService("orm");
+        this.action = useService("action");
         this.state = useState({
             kpis: { pending: 0, sent: 0, failed: 0, unsealed: 0 },
             byModel: [],
@@ -36,6 +37,14 @@ export class SyncOverview extends Component {
 
     async onRefresh() {
         await this._fetchData();
+    }
+
+    onOpenQueue() {
+        this.action.doAction("nord_sync.action_nord_sync_queue");
+    }
+
+    onOpenFailures() {
+        this.action.doAction("nord_sync.action_nord_sync_failures");
     }
 }
 

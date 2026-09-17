@@ -73,9 +73,16 @@
                   web_icon="nord_sync,static/description/icon.png"
                   groups="group_nord_sync_user" sequence="120"/>
 
-        <menuitem id="menu_nord_sync_queue" name="Sync Queue"
-                  parent="menu_nord_sync_root" action="action_nord_sync_queue"
-                  groups="group_nord_sync_user" sequence="10"/>
+        <!-- Sync Queue has no menu item of its own — it's opened from a
+             button on the Sync Overview page (action_nord_sync_queue is
+             kept for that, just not menu-bound anymore). -->
+
+        <!-- Parent for the config screens (Job Stages, Job Stage Mapping,
+             Payload Fields, Automation Rules) — each keeps its own group
+             on its menuitem (they don't all share the same access), this
+             is just the folder they live in. -->
+        <menuitem id="menu_nord_sync_settings" name="Settings"
+                  parent="menu_nord_sync_root" sequence="40"/>
 
     </data>
 </odoo>

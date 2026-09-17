@@ -35,5 +35,12 @@
             </field>
         </record>
 
+        <!-- base.group_system only, no group_nord_sync_manager row here —
+             matches ir.model.access.csv (Manager has no access to this
+             model), unlike the other Settings submenus. -->
+        <menuitem id="menu_nord_sync_payload_field_config" name="Payload Fields"
+                  parent="nord_sync.menu_nord_sync_settings" action="action_nord_sync_payload_field_config"
+                  groups="base.group_system" sequence="30"/>
+
     </data>
 </odoo>

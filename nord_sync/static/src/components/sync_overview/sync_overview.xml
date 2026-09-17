@@ -7,6 +7,8 @@
                     <h2 class="h2 d-inline-block">Sync Overview</h2>
                 </div>
                 <div class="col-md-6 text-md-end">
+                    <button type="button" class="btn btn-outline-secondary me-2" t-on-click="onOpenQueue">Sync Queue</button>
+                    <button type="button" class="btn btn-outline-secondary me-2" t-on-click="onOpenFailures">Sync Failures</button>
                     <button type="button" class="btn btn-primary" t-on-click="onRefresh">Refresh</button>
                 </div>
             </div>
