@@ -23,14 +23,16 @@
                     </div>
                     <separator string="Control Mode"/>
                     <group>
-                        <group string="Floor-Event Policies">
+                        <field name="nord_sync_control_mode"/>
+                    </group>
+                    <group>
+                        <group string="Port &amp; Sensor Behavior">
                             <field name="nord_sync_autonomous_close"/>
-                            <field name="nord_sync_granular_push"/>
                             <field name="nord_sync_contention_policy"/>
-                            <field name="nord_sync_chain_close"/>
                         </group>
-                        <group string="Mode">
-                            <field name="nord_sync_control_mode"/>
+                        <group string="General Sync Behavior">
+                            <field name="nord_sync_granular_push"/>
+                            <field name="nord_sync_chain_close"/>
                             <field name="nord_sync_mirror_mode"/>
                         </group>
                     </group>

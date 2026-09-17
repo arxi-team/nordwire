@@ -36,27 +36,26 @@ class MrpWorkcenter(models.Model):
     # Bridge, never enforced client-side.
 
     nord_sync_autonomous_close = fields.Boolean(
-        string='Complete Jobs Automatically',
+        string='Let Nord Finish Jobs Automatically',
         default=False,
-        help='Automatically complete the job when Nord reports that the work is finished. '
-             'When disabled, a user must confirm completion in Odoo.',
+        help='Let a Nord sensor or alert finish the job on this resource by itself, '
+             'without anyone pressing "Mark Done" on the Nord side first. '
+             'Does not change what happens in Odoo: any job someone finishes on Nord, '
+             'whether by hand or automatically, still closes this production order here.',
     )
     nord_sync_granular_push = fields.Boolean(
-        string='Keep Work Progress in Sync',
+        string='Sync Work Progress to Odoo',
         default=False,
-        help='Keep the job progress synchronized between Nord and Odoo. '
-     'This includes starting and stopping work and cancelling jobs, so changes made in Nord '
-     'are reflected in Odoo while the job is being worked on.',
+        help='Send job progress from Nord to Odoo as it happens, not just the final result. '
+             'This includes starting and stopping work and cancelling jobs, so changes made '
+             'in Nord are reflected in Odoo while the job is still being worked on.',
     )
     nord_sync_contention_policy = fields.Selection([
         ('block', "Don't Start Another Job"),
         ('auto_close_previous', 'Finish the Previous Job Automatically'),
     ], string='When This Resource Is Already in Use', default='block', required=True,
-        help='Choose what happens when someone tries to start a new job while another job '
-             'is still being worked on this resource. '
-             'block → Do not start the new job while another job is still active. '
-             'auto_close_previous → Automatically finish the current job before starting the new one.'
-        ,
+        help='What happens when someone tries to start a new job on this resource while '
+             'another one is still being worked.',
     )
     nord_sync_chain_close = fields.Boolean(
         string='Finish Previous Steps Automatically',
