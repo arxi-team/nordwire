@@ -6,13 +6,24 @@ import { useService } from "@web/core/utils/hooks";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 
 /**
- * "Sync Overview" — read-only snapshot of nord.sync.queue for the current
- * company: a KPI cards row plus two breakdown panels (by model, current
- * failures). No date range, no percent-vs-previous-period, no server-side
+ * "Sync Overview" — read-only snapshot of nord.sync.queue and
+ * nord_sync.inbox for the current company: a KPI cards row plus three
+ * breakdown panels (outbound queue, inbound inbox, current failures). No
+ * date range, no percent-vs-previous-period, no server-side
  * cache — the queue itself is a 2h-retention transient model, so there is
  * nothing to compare against and nothing worth caching; a Refresh button is
  * enough, no auto-polling needed at this volume.
  */
+// Same status set as nord.sync.queue/nord_sync.inbox's own selections — one
+// badge color per status, shared by every table in this dashboard so
+// "failed" always reads the same regardless of which panel it's in.
+const STATUS_BADGE_CLASS = {
+    pending: "text-bg-secondary",
+    sent: "text-bg-success",
+    done: "text-bg-success",
+    failed: "text-bg-danger",
+};
+
 export class SyncOverview extends Component {
     static template = "nord_sync.SyncOverview";
     static props = { ...standardActionServiceProps };
@@ -21,18 +32,27 @@ export class SyncOverview extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.state = useState({
+            loading: true,
             kpis: { pending: 0, sent: 0, failed: 0, unsealed: 0 },
-            byModel: [],
+            queue: [],
+            inbox: [],
             failures: [],
         });
         onWillStart(() => this._fetchData());
     }
 
     async _fetchData() {
+        this.state.loading = true;
         const data = await this.orm.call("nord.sync.queue", "get_overview_data", []);
         this.state.kpis = data.kpis;
-        this.state.byModel = data.by_model;
+        this.state.queue = data.queue;
+        this.state.inbox = data.inbox;
         this.state.failures = data.failures;
+        this.state.loading = false;
+    }
+
+    statusBadgeClass(status) {
+        return STATUS_BADGE_CLASS[status] || "text-bg-secondary";
     }
 
     async onRefresh() {
@@ -45,6 +65,21 @@ export class SyncOverview extends Component {
 
     onOpenFailures() {
         this.action.doAction("nord_sync.action_nord_sync_failures");
+    }
+
+    onOpenInbox() {
+        this.action.doAction("nord_sync.action_nord_sync_inbox");
+    }
+
+    // Pending/sent/unsealed all live on the same nord.sync.queue list, so
+    // clicking any of those 3 KPI cards opens it too — only "failed" has a
+    // dedicated screen. Saves the click of first finding the right button.
+    onKpiClick(kind) {
+        if (kind === "failed") {
+            this.onOpenFailures();
+        } else {
+            this.onOpenQueue();
+        }
     }
 }
 

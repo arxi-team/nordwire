@@ -255,13 +255,18 @@ class NordSyncQueue(models.TransientModel):
                 direction — see nord_sync.inbox._nord_sync_failed_owners),
                 same as systray_get_failed_count/the Failure Wizard, so this
                 dashboard's own "Failed" card matches those numbers.
-            by_model (list[dict]): one entry per distinct owner_res_model
-                among current headers, alphabetical — {owner_res_model,
-                count, age}, age being the oldest header's own age in that
-                group (see _nord_sync_format_age). Queue-only — inbox
-                entries have no owner_res_model grouping concept the same
-                way a queue header does (one heartbeat can cover many
-                resources), so they're never folded in here.
+            queue (list[dict]): one entry per current header, oldest first
+                (the model's own default order) — {key, owner_res_model,
+                owner_res_id, owner, status, age}. Row-per-header, not
+                grouped by model — this is "what's in flight right now",
+                the per-model rollup a dashboard summary would give doesn't
+                say which record is stuck.
+            inbox (list[dict]): one entry per current nord_sync.inbox
+                record, oldest first — {key, endpoint, res_model, status,
+                age}. A processed entry never appears here — it's unlinked
+                on success (see nord_sync.inbox._cron_process_pending) — so
+                this only ever shows pending/failed inbound pushes still
+                waiting on the cron.
             failures (list[dict]): one entry per failed queue header or
                 inbox entry, oldest first — {key, owner_res_model,
                 owner_res_id, owner, last_error, age}. last_error is the raw
@@ -276,17 +281,21 @@ class NordSyncQueue(models.TransientModel):
         """
         headers = self.sudo().search([('company_id', 'in', self.env.companies.ids)])
         kpis = {'pending': 0, 'sent': 0, 'failed': 0, 'unsealed': 0}
-        by_model = {}
+        queue = []
         failures = []
         for header in headers:
             if header.status in kpis:
                 kpis[header.status] += 1
             if not header.is_sealed:
                 kpis['unsealed'] += 1
-            group = by_model.setdefault(header.owner_res_model, {'count': 0, 'oldest': header.create_date})
-            group['count'] += 1
-            if header.create_date < group['oldest']:
-                group['oldest'] = header.create_date
+            queue.append({
+                'key': f'queue-{header.id}',
+                'owner_res_model': header.owner_res_model,
+                'owner_res_id': header.owner_res_id,
+                'owner': f'{header.owner_res_model} #{header.owner_res_id}',
+                'status': header.status,
+                'age': self._nord_sync_format_age(header.create_date),
+            })
             if header.status == 'failed':
                 failures.append({
                     'key': f'queue-{header.id}',
@@ -312,16 +321,20 @@ class NordSyncQueue(models.TransientModel):
                 'last_error': last_error or '',
                 'age': self._nord_sync_format_age(create_date),
             })
+        inbox_entries = self.env['nord_sync.inbox'].sudo().search([
+            ('company_id', 'in', self.env.companies.ids),
+        ])
+        inbox = [{
+            'key': f'inbox-{entry.id}',
+            'endpoint': entry.endpoint,
+            'res_model': entry.res_model,
+            'status': entry.status,
+            'age': self._nord_sync_format_age(entry.create_date),
+        } for entry in inbox_entries]
         return {
             'kpis': kpis,
-            'by_model': [
-                {
-                    'owner_res_model': model,
-                    'count': data['count'],
-                    'age': self._nord_sync_format_age(data['oldest']),
-                }
-                for model, data in sorted(by_model.items())
-            ],
+            'queue': queue,
+            'inbox': inbox,
             'failures': failures,
         }
 
