@@ -14,10 +14,10 @@ class TestRetryFailedWebhooks(TransactionCase):
         self.env['nord_sync.config']._set_cloud_base_url('http://cloud.example.com')
         return self.env['nord_sync.config'].create({'company_id': (company or self.env.company).id, **vals})
 
-    def _failed_entry(self, company_id, **vals):
+    def _failed_entry(self, company_id, res_id=1, **vals):
         vals.setdefault('last_error', 'old error')
         return self.env['nord.sync.queue'].create({
-            'res_model': 'mrp.production', 'res_id': 1, 'operation': 'write',
+            'owner_res_model': 'mrp.production', 'owner_res_id': res_id,
             'company_id': company_id, 'status': 'failed', **vals,
         })
 
@@ -70,10 +70,10 @@ class TestRetryFailedWebhooks(TransactionCase):
 
     def test_systray_count_matches_failed_entries_in_accessible_companies(self):
         config = self._configure()
-        self._failed_entry(config.company_id.id)
-        self._failed_entry(config.company_id.id)
+        self._failed_entry(config.company_id.id, res_id=1)
+        self._failed_entry(config.company_id.id, res_id=2)
         self.env['nord.sync.queue'].create({
-            'res_model': 'mrp.production', 'res_id': 2, 'operation': 'write',
+            'owner_res_model': 'mrp.production', 'owner_res_id': 3,
             'company_id': config.company_id.id, 'status': 'sent',
         })
         count = self.env['nord.sync.queue'].systray_get_failed_count()

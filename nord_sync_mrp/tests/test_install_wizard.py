@@ -55,11 +55,15 @@ class TestNordSyncInstallWizardMrp(TransactionCase):
             wizard.action_confirm()
         mocked_post.assert_called()
         entries = self.env['nord.sync.queue'].search([
-            ('res_model', '=', 'nord_sync.job.stage'), ('company_id', '=', company.id),
+            ('owner_res_model', '=', 'nord_sync.job.stage'), ('company_id', '=', company.id),
         ])
         self.assertEqual(len(entries), 6)  # mrp.production's 6 native states
 
-    def test_confirm_seeds_backward_compat_cancel_mapping(self):
+    def test_confirm_creates_cancel_mapping(self):
+        # No longer a dedicated "backward compat" seeding step — the 'cancel'
+        # row is just one of every native state's own mapping row (native
+        # mode auto-picks the 'Cancelled' job stage for it by name, see
+        # _default_mapping_targets), created the same way as every other row.
         company = self.env['res.company'].create({'name': 'Job Stage Compat Test Co'})
         wizard = self._new_wizard(company_id=company.id, company_uid='new-uid')
         with patch(POST_TARGET):
@@ -68,7 +72,7 @@ class TestNordSyncInstallWizardMrp(TransactionCase):
             ('company_id', '=', company.id), ('source_model', '=', 'mrp.production'), ('source_value', '=', 'cancel'),
         ])
         self.assertEqual(len(mapping), 1)
-        self.assertEqual(mapping.target_state, 'cancelled')
+        self.assertEqual(mapping.target_job_stage_id.name, 'Cancelled')
 
     def test_mapping_has_one_row_per_native_state_not_just_confirm_cancel(self):
         # The client decides for every state, not just the two the shipped
@@ -81,15 +85,16 @@ class TestNordSyncInstallWizardMrp(TransactionCase):
         )
         self.assertTrue(all(m == 'mrp.production' for m in wizard.mapping_line_ids.mapped('source_model')))
 
-    def test_only_confirmed_and_cancelled_rows_have_a_default_target_state(self):
+    def test_native_mode_every_row_defaults_to_its_own_same_named_stage(self):
+        # _default_mapping_targets() pre-picks a stage whenever a row's own
+        # source_value_label matches a job stage line by name — in native
+        # mode job_stage_line_ids IS the list of mrp.production's own state
+        # labels, so every row's own label always has a same-named stage to
+        # match, not just Confirmed/Cancelled.
         wizard = self._new_wizard()
+        state_labels = dict(self.env['mrp.production']._fields['state'].selection)
         for line in wizard.mapping_line_ids:
-            if line.source_value == 'confirmed':
-                self.assertEqual(line.target_state, 'open')
-            elif line.source_value == 'cancel':
-                self.assertEqual(line.target_state, 'cancelled')
-            else:
-                self.assertFalse(line.target_state)
+            self.assertEqual(line.target_job_stage_line_id.name, state_labels[line.source_value])
 
     def test_native_mode_defaults_confirmed_and_cancelled_stage_by_name(self):
         wizard = self._new_wizard()
@@ -139,7 +144,5 @@ class TestNordSyncInstallWizardMrp(TransactionCase):
             wizard.action_confirm()
         mappings = self.env['nord_sync.state.mapping'].search([('company_id', '=', company.id)])
         by_value = {m.source_value: m for m in mappings}
-        self.assertEqual(by_value['confirmed'].target_state, 'open')
         self.assertEqual(by_value['confirmed'].target_job_stage_id.name, 'Confirmed')
-        self.assertEqual(by_value['cancel'].target_state, 'cancelled')
         self.assertEqual(by_value['cancel'].target_job_stage_id.name, 'Cancelled')

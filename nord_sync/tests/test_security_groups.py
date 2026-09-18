@@ -44,7 +44,7 @@ class TestNordSyncSecurityGroups(TransactionCase):
 
     def test_user_can_read_queue(self):
         self.env['nord.sync.queue'].create({
-            'res_model': 'mrp.production', 'res_id': 1, 'operation': 'write',
+            'owner_res_model': 'mrp.production', 'owner_res_id': 1,
             'company_id': self.env.company.id,
         })
         entries = self.env['nord.sync.queue'].with_user(self.user).search([])

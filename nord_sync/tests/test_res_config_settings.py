@@ -11,16 +11,17 @@ class TestResConfigSettingsNordSync(TransactionCase):
         self.assertEqual(settings.nord_sync_config_id.company_id, self.env.company)
 
     def test_save_writes_to_nord_sync_config(self):
+        # cloud_base_url is system-wide (ir.config_parameter, set once via the
+        # install wizard), never a per-company res.config.settings field —
+        # only enabled/company_uid are settable here.
         settings = self.env['res.config.settings'].create({
             'nord_sync_enabled': True,
             'nord_sync_company_uid': 'settings-uid',
-            'nord_sync_cloud_webhook_url': 'http://cloud.example.com/webhook',
         })
         settings.execute()
         config = self.env['nord_sync.config']._get_for_company(self.env.company)
         self.assertTrue(config.enabled)
         self.assertEqual(config.company_uid, 'settings-uid')
-        self.assertEqual(config.cloud_webhook_url, 'http://cloud.example.com/webhook')
 
     def test_save_updates_existing_config_instead_of_duplicating(self):
         self.env['nord_sync.config'].create({'company_id': self.env.company.id, 'company_uid': 'old-uid'})

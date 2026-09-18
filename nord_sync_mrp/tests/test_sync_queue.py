@@ -34,18 +34,25 @@ class TestNordSyncQueue(TransactionCase):
         return self.env['nord_sync.config'].create({'company_id': self.env.company.id, **vals})
 
     def test_create_alone_does_not_enqueue(self):
-        """A draft MO is not synced — only on confirm (or delete)."""
+        """A draft MO's own header (name/state/qty) is not synced — only on
+        confirm (or delete); the automation rule that pushes it is gated on
+        state (see data/nord_sync_automation.xml). Components/output moves
+        are a separate, unrelated push channel (mrp.production.moves — see
+        test_stock_move.py) that isn't state-gated and does fire immediately,
+        since Odoo creates the finished-product move at MO creation time —
+        not this test's concern."""
         self._configure()
         with patch(POST_TARGET) as mocked_post:
             mo = self._create_mo()
-        self.assertFalse(self.env['nord.sync.queue'].search([('res_id', '=', mo.id)]))
+        self.assertFalse(self.env['nord.sync.queue.line'].search(
+            [('res_id', '=', mo.id), ('res_model', '=', 'mrp.production')]))
         mocked_post.assert_not_called()
 
     def test_no_config_does_not_enqueue_on_confirm(self):
         with patch(POST_TARGET) as mocked_post:
             mo = self._create_mo()
             mo.action_confirm()
-        self.assertFalse(self.env['nord.sync.queue'].search([('res_id', '=', mo.id)]))
+        self.assertFalse(self.env['nord.sync.queue'].search([('owner_res_id', '=', mo.id), ('owner_res_model', '=', 'mrp.production')]))
         mocked_post.assert_not_called()
 
     def test_disabled_config_does_not_enqueue_on_confirm(self):
@@ -53,7 +60,7 @@ class TestNordSyncQueue(TransactionCase):
         with patch(POST_TARGET) as mocked_post:
             mo = self._create_mo()
             mo.action_confirm()
-        self.assertFalse(self.env['nord.sync.queue'].search([('res_id', '=', mo.id)]))
+        self.assertFalse(self.env['nord.sync.queue'].search([('owner_res_id', '=', mo.id), ('owner_res_model', '=', 'mrp.production')]))
         mocked_post.assert_not_called()
 
     def test_enabled_config_enqueues_on_confirm(self):
@@ -61,9 +68,9 @@ class TestNordSyncQueue(TransactionCase):
         with patch(POST_TARGET) as mocked_post:
             mo = self._create_mo()
             mo.action_confirm()
-        entry = self.env['nord.sync.queue'].search([('res_id', '=', mo.id)])
+        entry = self.env['nord.sync.queue'].search([('owner_res_id', '=', mo.id), ('owner_res_model', '=', 'mrp.production')])
         self.assertEqual(len(entry), 1)
-        self.assertEqual(entry.res_model, 'mrp.production')
+        self.assertEqual(entry.owner_res_model, 'mrp.production')
         mocked_post.assert_not_called()  # no webhook_url/company_uid configured yet
 
     def test_write_after_confirm_does_not_reenqueue(self):
@@ -74,7 +81,8 @@ class TestNordSyncQueue(TransactionCase):
         self._configure()
         with patch(POST_TARGET) as mocked_post:
             mo.write({'product_qty': 5})
-        self.assertFalse(self.env['nord.sync.queue'].search([('res_id', '=', mo.id), ('operation', '=', 'write')]))
+        self.assertFalse(self.env['nord.sync.queue.line'].search(
+            [('res_id', '=', mo.id), ('res_model', '=', 'mrp.production'), ('operation', '=', 'write')]))
         mocked_post.assert_not_called()
 
     def test_webhook_not_configured_leaves_status_pending(self):
@@ -82,7 +90,7 @@ class TestNordSyncQueue(TransactionCase):
         with patch(POST_TARGET):
             mo = self._create_mo()
             mo.action_confirm()  # no webhook_url/company_uid set
-        entry = self.env['nord.sync.queue'].search([('res_id', '=', mo.id)])
+        entry = self.env['nord.sync.queue'].search([('owner_res_id', '=', mo.id), ('owner_res_model', '=', 'mrp.production')])
         self.assertEqual(entry.status, 'pending')
 
     def test_enqueue_captures_business_payload(self):
@@ -91,11 +99,11 @@ class TestNordSyncQueue(TransactionCase):
         with patch(POST_TARGET):
             mo = self._create_mo()
             mo.action_confirm()
-        entry = self.env['nord.sync.queue'].search([('res_id', '=', mo.id)])
-        self.assertEqual(entry.data['name'], mo.name)
-        self.assertEqual(entry.data['product_qty'], mo.product_qty)
-        self.assertEqual(entry.data['state'], mo.state)
-        self.assertEqual(entry.data['product'], {
+        entry = self.env['nord.sync.queue'].search([('owner_res_id', '=', mo.id), ('owner_res_model', '=', 'mrp.production')])
+        self.assertEqual(entry.payload['name'], mo.name)
+        self.assertEqual(entry.payload['product_qty'], mo.product_qty)
+        self.assertEqual(entry.payload['state'], mo.state)
+        self.assertEqual(entry.payload['product'], {
             'name': self.product.name,
             'default_code': 'NSPT-1',
             'uom': self.product.uom_id.name,
@@ -109,8 +117,9 @@ class TestNordSyncQueue(TransactionCase):
         self._configure()
         with patch(POST_TARGET):
             mo.unlink()
-        entry = self.env['nord.sync.queue'].search([('res_id', '=', mo_id), ('operation', '=', 'unlink')])
-        self.assertEqual(entry.data['name'], mo_name)
+        line = self.env['nord.sync.queue.line'].search(
+            [('res_id', '=', mo_id), ('res_model', '=', 'mrp.production'), ('operation', '=', 'unlink')])
+        self.assertEqual(line.data['name'], mo_name)
 
     def test_webhook_posted_when_configured(self):
         self._configure(company_uid='test-uid')
@@ -122,7 +131,7 @@ class TestNordSyncQueue(TransactionCase):
         call_args, call_kwargs = mocked_post.call_args
         self.assertEqual(call_args[0], 'http://cloud.example.com/nordos/sync/nord_sync/webhook')
         self.assertEqual(call_kwargs['json'], {'company_uid': 'test-uid'})
-        entry = self.env['nord.sync.queue'].search([('res_id', '=', mo.id)])
+        entry = self.env['nord.sync.queue'].search([('owner_res_id', '=', mo.id), ('owner_res_model', '=', 'mrp.production')])
         self.assertEqual(entry.status, 'sent')
 
     def test_webhook_failure_does_not_raise(self):
@@ -131,7 +140,7 @@ class TestNordSyncQueue(TransactionCase):
         with patch(POST_TARGET, side_effect=ConnectionError('refused')):
             mo = self._create_mo()
             mo.action_confirm()  # must not raise
-        entry = self.env['nord.sync.queue'].search([('res_id', '=', mo.id)])
+        entry = self.env['nord.sync.queue'].search([('owner_res_id', '=', mo.id), ('owner_res_model', '=', 'mrp.production')])
         self.assertTrue(entry)
         self.assertEqual(entry.status, 'failed')
 
@@ -143,7 +152,7 @@ class TestNordSyncQueue(TransactionCase):
         with patch(POST_TARGET, return_value=error_response):
             mo = self._create_mo()
             mo.action_confirm()
-        entry = self.env['nord.sync.queue'].search([('res_id', '=', mo.id)])
+        entry = self.env['nord.sync.queue'].search([('owner_res_id', '=', mo.id), ('owner_res_model', '=', 'mrp.production')])
         self.assertEqual(entry.status, 'failed')
 
     def test_cancel_enqueues(self):
@@ -153,9 +162,10 @@ class TestNordSyncQueue(TransactionCase):
         self._configure()
         with patch(POST_TARGET) as mocked_post:
             mo.action_cancel()
-        entries = self.env['nord.sync.queue'].search([('res_id', '=', mo.id), ('operation', '=', 'write')])
-        self.assertEqual(len(entries), 1)
-        self.assertEqual(entries.data['state'], 'cancel')
+        lines = self.env['nord.sync.queue.line'].search(
+            [('res_id', '=', mo.id), ('res_model', '=', 'mrp.production'), ('operation', '=', 'write')])
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(lines.data['state'], 'cancel')
         mocked_post.assert_not_called()  # no webhook_url/company_uid configured yet
 
     def test_unlink_enqueues_regardless_of_confirmed_state(self):
@@ -168,5 +178,6 @@ class TestNordSyncQueue(TransactionCase):
         self._configure()
         with patch(POST_TARGET):
             mo.unlink()
-        entry = self.env['nord.sync.queue'].search([('res_id', '=', mo_id), ('operation', '=', 'unlink')])
-        self.assertEqual(len(entry), 1)
+        line = self.env['nord.sync.queue.line'].search(
+            [('res_id', '=', mo_id), ('res_model', '=', 'mrp.production'), ('operation', '=', 'unlink')])
+        self.assertEqual(len(line), 1)

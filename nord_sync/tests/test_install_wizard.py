@@ -4,6 +4,8 @@ from unittest.mock import patch
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
+from odoo.addons.nord_sync.wizard.nord_sync_install_wizard import NORD_SYNC_SOURCE_ADDON_BY_MODEL
+
 CONFIG_GET = 'odoo.addons.nord_sync.wizard.nord_sync_install_wizard.config.get'
 VERSION_INFO = 'odoo.addons.nord_sync.wizard.nord_sync_install_wizard.release.version_info'
 
@@ -109,6 +111,8 @@ class TestNordSyncInstallWizard(TransactionCase):
         wizard.action_next_step()  # -> step_sources
         wizard.action_next_step()  # -> step_connection
         wizard.action_next_step()  # -> step_job_stages
+        wizard.action_next_step()  # -> step_mapping
+        wizard.action_next_step()  # -> step_job_naming
         wizard.action_next_step()  # -> step_finish
         self.assertEqual(wizard.state, 'step_finish')
         self.assertTrue(wizard.show_finish)
@@ -122,27 +126,19 @@ class TestNordSyncInstallWizard(TransactionCase):
 
     # ── Step 2: sources ──────────────────────────────────────────────────
 
-    def test_sources_discovered_by_naming_convention_only(self):
-        # Not a hardcoded list — any ir.module.module named nord_sync_* shows
-        # up, nord_sync itself never does.
+    def test_sources_default_to_full_catalog(self):
+        # source_ids has no per-row installed/selected state or module-name
+        # discovery — it's a plain Many2many against the fixed nord_sync.source
+        # catalog (data/nord_sync_sources.xml), everything checked by default.
         wizard = self._new_wizard()
-        names = wizard.available_source_ids.module_id.mapped('name')
-        self.assertNotIn('nord_sync', names)
-        self.assertTrue(all(name.startswith('nord_sync_') for name in names))
+        self.assertEqual(wizard.source_ids, self.env['nord_sync.source'].search([]))
 
-    def test_already_installed_source_is_preselected_and_locked(self):
-        wizard = self._new_wizard()
-        installed = wizard.available_source_ids.filtered('installed')
-        if not installed:
-            self.skipTest('no Nord Sync Source addon installed in this test DB')
-        self.assertTrue(all(installed.mapped('selected')))
-
-    def test_confirm_sources_advances_without_selection(self):
-        # Nothing checked (or only already-installed, locked rows) — behaves
-        # exactly like the generic Next, no install attempted.
+    def test_confirm_sources_advances_without_any_selected(self):
+        # Nothing selected — no addon to install, behaves exactly like the
+        # generic Next.
         wizard = self._new_wizard()
         wizard.action_next_step()  # -> step_sources
-        wizard.available_source_ids.selected = False
+        wizard.source_ids = [(5, 0, 0)]
         with patch.object(type(self.env['ir.module.module']), 'button_immediate_install') as mocked_install:
             wizard.action_confirm_sources()
         mocked_install.assert_not_called()
@@ -151,32 +147,29 @@ class TestNordSyncInstallWizard(TransactionCase):
     def test_confirm_sources_installs_selected_uninstalled_modules(self):
         wizard = self._new_wizard()
         wizard.action_next_step()  # -> step_sources
-        candidate = wizard.available_source_ids.filtered(lambda line: not line.installed)[:1]
+        Module = self.env['ir.module.module']
+        candidate = wizard.source_ids.filtered(
+            lambda source: NORD_SYNC_SOURCE_ADDON_BY_MODEL.get(source.model) and Module.search([
+                ('name', '=', NORD_SYNC_SOURCE_ADDON_BY_MODEL[source.model]),
+                ('state', 'not in', ('installed', 'to upgrade')),
+            ])
+        )[:1]
         if not candidate:
             self.skipTest('every discovered Nord Sync Source addon is already installed in this test DB')
-        candidate.selected = True
-        install_result = {'type': 'ir.actions.act_window', 'res_model': self.env.company._name}
-        with patch.object(
-            type(self.env['ir.module.module']), 'button_immediate_install', return_value=install_result,
-        ) as mocked_install:
+        wizard.source_ids = [(6, 0, candidate.ids)]
+        with patch.object(type(Module), 'button_immediate_install') as mocked_install:
             result = wizard.action_confirm_sources()
         mocked_install.assert_called_once()
-        # button_immediate_install()'s own return value comes back untouched
-        # — its result is whatever ir.module.module.next() decides (the
-        # resume todo's action, once installed for real), never something
-        # this method second-guesses or reinterprets.
-        self.assertEqual(result, install_result)
-        # Advanced before the install call, same as the generic Next would
-        # — so a client landing back on this record via the resume todo
-        # continues on Connection, never re-offered the Sources step for
-        # modules it just installed.
-        self.assertEqual(wizard.state, 'step_connection')
-        # The resume action/todo point at this exact record, ready for
-        # ir.module.module.next() to pick up.
-        resume_action = self.env.ref('nord_sync.action_nord_sync_install_wizard_resume')
-        self.assertEqual(resume_action.context, repr({'res_id': wizard.id}))
-        resume_todo = self.env.ref('nord_sync.todo_nord_sync_install_wizard_resume')
-        self.assertEqual(resume_todo.state, 'open')
+        # button_immediate_install() commits and rebuilds the whole registry
+        # synchronously — every recordset from before that point (including
+        # self) risks going stale, so this always reopens a genuinely fresh
+        # request instead of trusting that call's own return value.
+        self.assertEqual(result['res_model'], 'nord_sync.install.wizard')
+        self.assertEqual(result['res_id'], wizard.id)
+        # Deliberately does NOT advance past Sources when an install
+        # happened — the user clicks Next once more (a plain no-op install
+        # check) to actually advance, see action_confirm_sources's docstring.
+        self.assertEqual(wizard.state, 'step_sources')
 
     # ── Step 3: job stages ───────────────────────────────────────────────
     # 'own' mode only here — no dependency on any native source being registered.
@@ -195,31 +188,37 @@ class TestNordSyncInstallWizard(TransactionCase):
         # nothing installed meanwhile, must not silently discard a rename.
         wizard = self._new_wizard(company_uid='new-uid')
         wizard.action_next_step()  # -> step_sources
-        wizard.action_confirm_sources()  # -> step_connection (nothing selected to install)
+        wizard.source_ids = [(5, 0, 0)]  # nothing selected to install
+        wizard.action_confirm_sources()  # -> step_connection
         wizard.action_next_step()  # -> step_job_stages
         wizard.job_stage_line_ids[0].name = 'Renamed Stage'
         wizard.action_next_step()  # -> step_finish
         wizard.action_previous_step()  # -> step_job_stages again
         self.assertEqual(wizard.job_stage_line_ids[0].name, 'Renamed Stage')
 
-    def test_reentering_job_stages_refreshes_when_source_set_changed(self):
-        # A source installed via the Sources step earlier in this same
-        # wizard isn't reflected in mapping_line_ids until this step is
-        # (re-)entered — this is the mechanism, exercised with a stand-in
-        # source (res.partner.type, always present) rather than a real Nord
-        # Sync Source addon. Doesn't assume anything about what's already
-        # registered in this test DB (nord_sync_mrp may or may not be
-        # installed alongside this base suite) — only that the fake source
-        # is genuinely new, so the refresh must fire.
+    def test_reentering_sources_refreshes_job_stages_when_source_set_changed(self):
+        # _sync_available_sources() (the regenerate-mapping/job-stages step)
+        # only ever runs from action_confirm_sources() itself — walking
+        # forward/back through Connection/Job Stages afterwards does not
+        # re-trigger it, only going back to Sources and confirming again
+        # does. Exercised with a stand-in source (res.partner.type, always
+        # present) rather than a real Nord Sync Source addon — doesn't
+        # assume anything about what's already registered in this test DB
+        # (nord_sync_mrp may or may not be installed alongside this base
+        # suite) — only that the fake source is genuinely new, so the
+        # refresh must fire.
         wizard = self._new_wizard(company_uid='new-uid')
         wizard.action_next_step()  # -> step_sources
+        wizard.source_ids = [(5, 0, 0)]  # nothing selected to install
         wizard.action_confirm_sources()  # -> step_connection
         wizard.action_next_step()  # -> step_job_stages
         self.assertNotIn('res.partner', wizard.mapping_line_ids.mapped('source_model'))
         fake_source = [{'source_model': 'res.partner', 'source_field': 'type', 'label': 'Fake'}]
         with patch.object(type(wizard), '_nord_sync_available_native_sources', return_value=fake_source):
             wizard.action_previous_step()  # -> step_connection
-            wizard.action_next_step()  # -> step_job_stages, re-triggers the refresh
+            wizard.action_previous_step()  # -> step_sources
+            wizard.action_confirm_sources()  # -> step_connection, re-triggers the refresh
+        wizard.action_next_step()  # -> step_job_stages
         self.assertEqual(set(wizard.mapping_line_ids.mapped('source_model')), {'res.partner'})
 
     def test_mapping_line_source_value_label_keeps_each_sources_own_label_on_collision(self):
@@ -282,24 +281,31 @@ class TestNordSyncInstallWizard(TransactionCase):
     # ── Step 4: confirm ──────────────────────────────────────────────────────
 
     def test_confirm_writes_nord_sync_config(self):
-        wizard = self._new_wizard(company_uid='new-uid')
+        # Own company, like the other action_confirm() tests below — Confirm
+        # creates real nord_sync.job.stage rows, which collide by name on
+        # self.env.company if some other, unrelated wizard run already left
+        # stages there.
+        company = self.env['res.company'].create({'name': 'Confirm Writes Config Test Co'})
+        wizard = self._new_wizard(company_id=company.id, company_uid='new-uid')
         wizard.action_confirm()
-        config = self.env['nord_sync.config']._get_for_company(self.env.company)
+        config = self.env['nord_sync.config']._get_for_company(company)
         self.assertTrue(config.enabled)
         self.assertEqual(config.company_uid, 'new-uid')
 
     def test_confirm_updates_existing_config_instead_of_duplicating(self):
-        self.env['nord_sync.config'].create({'company_id': self.env.company.id, 'company_uid': 'old-uid'})
-        wizard = self._new_wizard(company_uid='new-uid')
+        company = self.env['res.company'].create({'name': 'Confirm Updates Config Test Co'})
+        self.env['nord_sync.config'].create({'company_id': company.id, 'company_uid': 'old-uid'})
+        wizard = self._new_wizard(company_id=company.id, company_uid='new-uid')
         wizard.action_confirm()
-        configs = self.env['nord_sync.config'].search([('company_id', '=', self.env.company.id)])
+        configs = self.env['nord_sync.config'].search([('company_id', '=', company.id)])
         self.assertEqual(len(configs), 1)
         self.assertEqual(configs.company_uid, 'new-uid')
 
     def test_confirm_hands_off_to_automation_rules_list(self):
         # The base wizard can't assume any one Nordwire Source's
         # automation rule exists.
-        wizard = self._new_wizard(company_uid='new-uid')
+        company = self.env['res.company'].create({'name': 'Confirm Hands Off Test Co'})
+        wizard = self._new_wizard(company_id=company.id, company_uid='new-uid')
         action = wizard.action_confirm()
         self.assertEqual(action['type'], 'ir.actions.act_window')
         self.assertEqual(action['res_model'], 'base.automation')
