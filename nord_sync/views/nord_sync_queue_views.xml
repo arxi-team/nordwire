@@ -73,9 +73,16 @@
                   web_icon="nord_sync,static/description/icon.png"
                   groups="group_nord_sync_user" sequence="120"/>
 
-        <!-- Sync Queue has no menu item of its own — it's opened from a
-             button on the Sync Overview page (action_nord_sync_queue is
-             kept for that, just not menu-bound anymore). -->
+        <!-- Folder for the technical/support lists (Sync Queue, Sync
+             Failures, Sync Inbox) — each keeps its own action, this is just
+             where they're grouped instead of each sitting loose at the
+             root or being reachable only from the Sync Overview buttons. -->
+        <menuitem id="menu_nord_sync_group" name="Sync"
+                  parent="menu_nord_sync_root" sequence="10"/>
+
+        <menuitem id="menu_nord_sync_queue" name="Sync Queue"
+                  parent="menu_nord_sync_group" action="action_nord_sync_queue"
+                  groups="group_nord_sync_user" sequence="10"/>
 
         <!-- Parent for the config screens (Settings, Job Stages, Job Stage
              Mapping, Payload Fields, Automation Rules) — each keeps its own

@@ -42,7 +42,7 @@
         </record>
 
         <record id="action_nord_sync_inbox" model="ir.actions.act_window">
-            <field name="name">Nordwire Inbox</field>
+            <field name="name">Sync Inbox</field>
             <field name="res_model">nord_sync.inbox</field>
             <field name="view_mode">list,form</field>
             <!-- Explicit empty domain, not omitted — see action_nord_sync_queue's
@@ -51,8 +51,9 @@
             <field name="domain">[]</field>
         </record>
 
-        <!-- No menu item — opened from the "Inbox" button on the Sync
-             Overview page, same pattern as Sync Queue/Sync Failures. -->
+        <menuitem id="menu_nord_sync_inbox" name="Sync Inbox"
+                  parent="menu_nord_sync_group" action="action_nord_sync_inbox"
+                  groups="group_nord_sync_user" sequence="30"/>
 
     </data>
 </odoo>

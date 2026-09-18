@@ -339,6 +339,21 @@ class NordSyncQueue(models.TransientModel):
         }
 
     @api.model
+    def action_open_queue_filtered(self, status=False, unsealed=False):
+        """Sync Overview KPI-card click-through — same action/views as the
+        plain Sync Queue menu, scoped to whichever slice was clicked
+        (status='pending'/'sent', or unsealed=True for "not yet served to
+        the Core") instead of dumping every header regardless of state."""
+        action = self.env['ir.actions.act_window']._for_xml_id('nord_sync.action_nord_sync_queue')
+        domain = []
+        if status:
+            domain.append(('status', '=', status))
+        if unsealed:
+            domain.append(('is_sealed', '=', False))
+        action['domain'] = domain
+        return action
+
+    @api.model
     def _nord_sync_format_age(self, create_date):
         """'Xh Ym ago' (or just 'Ym ago' under an hour) from a create_date to
         now — plain string math is enough for a field that only ever spans

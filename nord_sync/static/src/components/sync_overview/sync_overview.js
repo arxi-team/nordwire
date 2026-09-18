@@ -72,14 +72,18 @@ export class SyncOverview extends Component {
     }
 
     // Pending/sent/unsealed all live on the same nord.sync.queue list, so
-    // clicking any of those 3 KPI cards opens it too — only "failed" has a
-    // dedicated screen. Saves the click of first finding the right button.
-    onKpiClick(kind) {
+    // clicking any of those 3 KPI cards opens it too, filtered to just that
+    // slice (not the full queue the header button opens) — only "failed"
+    // has a dedicated screen already filtered server-side.
+    async onKpiClick(kind) {
         if (kind === "failed") {
-            this.onOpenFailures();
-        } else {
-            this.onOpenQueue();
+            return this.onOpenFailures();
         }
+        const kwargs = kind === "unsealed" ? { unsealed: true } : { status: kind };
+        const action = await this.orm.call(
+            "nord.sync.queue", "action_open_queue_filtered", [], kwargs,
+        );
+        this.action.doAction(action);
     }
 }
 

@@ -84,9 +84,9 @@
             <field name="act_window_id" ref="action_nord_sync_failures"/>
         </record>
 
-        <!-- Sync Failures has no menu item of its own either — opened from
-             the same Sync Overview button as Sync Queue
-             (action_nord_sync_failures is kept for that). -->
+        <menuitem id="menu_nord_sync_failures" name="Sync Failures"
+                  parent="menu_nord_sync_group" action="action_nord_sync_failures"
+                  groups="group_nord_sync_user" sequence="20"/>
 
         <!-- Manual resend — appears in the list view's Action (⚙)
              menu once one or more rows are selected. -->
