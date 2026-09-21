@@ -59,16 +59,24 @@ export class SyncOverview extends Component {
         await this._fetchData();
     }
 
+    // Grouped by model by default — the search_default_ prefix is what the
+    // web client's own search view reads to pre-apply a named <filter> (see
+    // group_by_model in nord_sync_queue_views.xml/nord_sync_inbox_views.xml)
+    // without needing the user to open the Group By menu first.
+    _groupedByModel() {
+        return { additionalContext: { search_default_group_by_model: 1 } };
+    }
+
     onOpenQueue() {
-        this.action.doAction("nord_sync.action_nord_sync_queue");
+        this.action.doAction("nord_sync.action_nord_sync_queue", this._groupedByModel());
     }
 
     onOpenFailures() {
-        this.action.doAction("nord_sync.action_nord_sync_failures");
+        this.action.doAction("nord_sync.action_nord_sync_failures", this._groupedByModel());
     }
 
     onOpenInbox() {
-        this.action.doAction("nord_sync.action_nord_sync_inbox");
+        this.action.doAction("nord_sync.action_nord_sync_inbox", this._groupedByModel());
     }
 
     // Pending/sent/unsealed all live on the same nord.sync.queue list, so
@@ -83,7 +91,7 @@ export class SyncOverview extends Component {
         const action = await this.orm.call(
             "nord.sync.queue", "action_open_queue_filtered", [], kwargs,
         );
-        this.action.doAction(action);
+        this.action.doAction(action, this._groupedByModel());
     }
 }
 

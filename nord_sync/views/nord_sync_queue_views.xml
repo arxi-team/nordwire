@@ -53,6 +53,28 @@
             </field>
         </record>
 
+        <!-- Shared by both the raw Sync Queue action and the Sync Failures
+             action below (same model, different domain) — Odoo picks it up
+             automatically for either since neither sets search_view_id. -->
+        <record id="view_nord_sync_queue_search" model="ir.ui.view">
+            <field name="name">nord.sync.queue.search</field>
+            <field name="model">nord.sync.queue</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="owner_res_model" string="Model"/>
+                    <field name="company_id"/>
+                    <filter string="Stuck (&gt;1h)" name="filter_stuck_1h"
+                            domain="[('create_date', '&lt;', (datetime.datetime.now() - datetime.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S'))]"
+                            help="Still here more than an hour after arriving — normal 2h-retention noise ages out well before this."/>
+                    <group>
+                        <filter string="Model" name="group_by_model" context="{'group_by': 'owner_res_model'}"/>
+                        <filter string="Status" name="group_by_status" context="{'group_by': 'status'}"/>
+                        <filter string="Company" name="group_by_company" context="{'group_by': 'company_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
         <record id="action_nord_sync_queue" model="ir.actions.act_window">
             <field name="name">Nordwire Queue</field>
             <field name="res_model">nord.sync.queue</field>

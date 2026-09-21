@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from collections import Counter
+
 from odoo import _, api, fields, models
 
 
@@ -21,8 +23,21 @@ class NordSyncFailureWizard(models.TransientModel):
     # of them, list rows included. create="0"/delete="0" on the list view
     # is what actually stops adding/removing lines, not this.
     line_ids = fields.One2many('nord_sync.failure.wizard.line', 'wizard_id', string='Failures')
+    model_breakdown = fields.Char(compute='_compute_model_breakdown')
 
-    def _action_open(self):
+    @api.depends('line_ids.res_model')
+    def _compute_model_breakdown(self):
+        """'mrp.workorder: 3, sale.order: 1' — a quick sense of which model is
+        actually on fire before scrolling the (record_name, message) list
+        below, which has no model column of its own. Skips the count
+        entirely once there's only one distinct model, since a breakdown of
+        one thing is just the total already shown by the line count."""
+        for wizard in self:
+            counts = Counter(wizard.line_ids.mapped('res_model'))
+            wizard.model_breakdown = (
+                ', '.join(f'{model}: {count}' for model, count in counts.most_common())
+                if len(counts) > 1 else False
+            )
         """views (not just view_mode) — action_open_for_current_failures
         below is called via a plain orm.call from the systray's JS, not a
         button (type="object"), so there's no call_button-side clean_action

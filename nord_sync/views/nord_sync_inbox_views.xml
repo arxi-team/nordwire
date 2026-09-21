@@ -41,6 +41,27 @@
             </field>
         </record>
 
+        <record id="view_nord_sync_inbox_search" model="ir.ui.view">
+            <field name="name">nord_sync.inbox.search</field>
+            <field name="model">nord_sync.inbox</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="res_model" string="Model"/>
+                    <field name="endpoint"/>
+                    <field name="company_id"/>
+                    <filter string="Stuck (&gt;1h)" name="filter_stuck_1h"
+                            domain="[('create_date', '&lt;', (datetime.datetime.now() - datetime.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S'))]"
+                            help="Still here more than an hour after arriving — the cron should have picked it up long before this."/>
+                    <group>
+                        <filter string="Endpoint" name="group_by_endpoint" context="{'group_by': 'endpoint'}"/>
+                        <filter string="Model" name="group_by_model" context="{'group_by': 'res_model'}"/>
+                        <filter string="Status" name="group_by_status" context="{'group_by': 'status'}"/>
+                        <filter string="Company" name="group_by_company" context="{'group_by': 'company_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
         <record id="action_nord_sync_inbox" model="ir.actions.act_window">
             <field name="name">Sync Inbox</field>
             <field name="res_model">nord_sync.inbox</field>
