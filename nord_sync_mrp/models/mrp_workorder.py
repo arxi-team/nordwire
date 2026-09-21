@@ -155,7 +155,14 @@ class MrpWorkorder(models.Model):
             except Exception as exc:
                 return False, str(exc)
         if self.state in ('done', 'cancel'):
-            return False, f'Workorder already {self.state}, event ignored.'
+            # Real bug, caught live: a delayed session_stop (retried after
+            # the workorder already reached 'done' through the deliberate
+            # Result Push) is a moot no-op, not a failure -- the target
+            # state was already reached by another path. Returning False
+            # here made _cron_process_pending's `if not applied: raise`
+            # surface it as a Sync Failures entry needing attention, when
+            # there is nothing to retry or fix.
+            return True, f'Workorder already {self.state}, event ignored.'
         try:
             if event_type == 'session_start':
                 self._nord_sync_button_start_bypassing_employee_check(payload)

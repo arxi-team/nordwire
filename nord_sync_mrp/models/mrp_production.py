@@ -327,7 +327,12 @@ class MrpProduction(models.Model):
         if event_type != 'job_cancel':
             return False, f'Unknown event_type: {event_type}'
         if self.state in ('done', 'cancel'):
-            return False, f'Production already {self.state}, event ignored.'
+            # Same fix as mrp.workorder._nord_sync_apply_granular_event: a
+            # delayed job_cancel arriving after the MO already reached
+            # done/cancel by another path is a moot no-op, not a failure --
+            # False here made _cron_process_pending surface it as a Sync
+            # Failures entry with nothing actually to retry or fix.
+            return True, f'Production already {self.state}, event ignored.'
         try:
             self.action_cancel()
         except Exception as exc:
