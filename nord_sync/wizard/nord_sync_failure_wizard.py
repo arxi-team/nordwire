@@ -38,6 +38,8 @@ class NordSyncFailureWizard(models.TransientModel):
                 ', '.join(f'{model}: {count}' for model, count in counts.most_common())
                 if len(counts) > 1 else False
             )
+
+    def _action_open(self):
         """views (not just view_mode) — action_open_for_current_failures
         below is called via a plain orm.call from the systray's JS, not a
         button (type="object"), so there's no call_button-side clean_action
