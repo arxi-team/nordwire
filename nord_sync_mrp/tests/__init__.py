@@ -9,3 +9,8 @@ from . import test_mrp_bom
 from . import test_install_wizard
 from . import test_nord_sync_state_mapping
 from . import test_sync_queue_failure_visibility
+from . import test_hr_employee
+from . import test_mrp_workorder
+from . import test_post_init_hook
+from . import test_quality_check
+from . import test_stock_move
