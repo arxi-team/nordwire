@@ -72,6 +72,14 @@ class MrpWorkcenter(models.Model):
              'This keeps Nord aligned when a job is confirmed, started, or completed in Odoo. '
              'Job cancellations are synchronized regardless of this setting.',
     )
+    nord_sync_close_notify_only = fields.Boolean(
+        string="Review Quantities Before Closing",
+        default=False,
+        help="When a job finishes on Nord, don't apply the declared quantities to this "
+             "production order automatically — just post a note here with how many "
+             "declarations were recorded, and leave marking it done to a person. Use this "
+             "when the quantities Nord declares for this resource can't be trusted yet.",
+    )
 
     # ── Automatic Idle/Tooling Segments ──────────────────────────────────────
     # Authored here purely for a familiar place to configure it — the Core
@@ -230,8 +238,9 @@ class MrpWorkcenter(models.Model):
         a way to choose yet.
 
         autonomous_close/granular_push/contention_policy/chain_close/mirror_mode/
-        auto_idle_segments/idle_segment_reason/auto_tooling_segments/tooling_segment_reason
-        stay hardcoded here, can't move to _nord_sync_configurable_payload() — the wire key
+        close_notify_only/auto_idle_segments/idle_segment_reason/auto_tooling_segments/
+        tooling_segment_reason stay hardcoded here, can't move to
+        _nord_sync_configurable_payload() — the wire key
         is a renamed shorthand of the real field
         (nord_sync_autonomous_close, etc.), and that mechanism only ever
         sends a field under its own real name. name is the one key here
@@ -258,6 +267,10 @@ class MrpWorkcenter(models.Model):
             mirror_mode (bool): let this resource's MOs' own state changes
                 (client-side) additionally drive the matching Core job
                 action — see nord_sync_mirror_mode's own help text.
+            close_notify_only (bool): skip applying the declared
+                quantities to this production order on close, posting
+                only a chatter note with the declaration count instead —
+                see nord_sync_close_notify_only's own help text.
             auto_idle_segments (bool): backfill the gap between two closed
                 sessions of the same job on this resource with an Idle
                 segment on the Core — see nord_sync_auto_idle_segments's
@@ -282,6 +295,7 @@ class MrpWorkcenter(models.Model):
             'contention_policy': self.nord_sync_contention_policy,
             'chain_close': self.nord_sync_chain_close,
             'mirror_mode': self.nord_sync_mirror_mode,
+            'close_notify_only': self.nord_sync_close_notify_only,
             'auto_idle_segments': self.nord_sync_auto_idle_segments,
             'idle_segment_reason': self.nord_sync_idle_segment_reason_name,
             'auto_tooling_segments': self.nord_sync_auto_tooling_segments,

@@ -36,6 +36,10 @@
                             <field name="nord_sync_mirror_mode"/>
                         </group>
                     </group>
+                    <separator string="Result Handling"/>
+                    <group>
+                        <field name="nord_sync_close_notify_only"/>
+                    </group>
                     <separator string="Automatic OEE Segments"/>
                     <group>
                         <field name="nord_sync_auto_idle_segments"/>

@@ -318,12 +318,44 @@ class MrpProduction(models.Model):
         no shortcut. Never raises, same best-effort posture as
         _nord_sync_apply_result above.
 
+        close_notify_only is the other event routed here: a resource with
+        nord_sync_close_notify_only set closed the job on Nord without
+        pushing the full result (see NordJobNordSyncMrp._nord_sync_push_result
+        on the Core) — this MO is left exactly as it was, just a chatter
+        note so a person knows to review and close it by hand. The
+        breakdown is per declaration_type (production/scrap/not_pass/
+        consumption) rather than a bare total — those types mean very
+        different things (e.g. scrap vs. good output), same distinction
+        _nord_sync_apply_result's own scrap_qty/not_pass_qty split makes
+        for the real push.
+
         Keys:
-            event_type (str): only 'job_cancel' is recognized today, any
+            event_type (str): 'job_cancel' or 'close_notify_only', any
                 other value is rejected.
-            payload (dict): unused today, always {} for 'job_cancel'.
+            payload (dict): unused for 'job_cancel' (always {}).
+                For 'close_notify_only': {declarations (dict):
+                {declaration_type: {count (int), quantity (float, always
+                positive)}}, one entry per type with at least one
+                declaration}.
         """
         self.ensure_one()
+        if event_type == 'close_notify_only':
+            declarations = (payload or {}).get('declarations') or {}
+            type_labels = {
+                'production': 'production', 'scrap': 'scrap',
+                'not_pass': 'not pass', 'consumption': 'consumption',
+            }
+            breakdown = ', '.join(
+                f"{info.get('count', 0)} {type_labels.get(d_type, d_type)} "
+                f"(qty {info.get('quantity', 0.0)})"
+                for d_type, info in declarations.items()
+            ) or 'no declarations'
+            total = sum(info.get('count', 0) for info in declarations.values())
+            self.message_post(
+                body=f'Nordwire: Nord closed this job with {total} declaration(s) — {breakdown}. '
+                     'Quantities were not applied automatically, review and close manually.',
+            )
+            return True, 'ok'
         if event_type != 'job_cancel':
             return False, f'Unknown event_type: {event_type}'
         if self.state in ('done', 'cancel'):
