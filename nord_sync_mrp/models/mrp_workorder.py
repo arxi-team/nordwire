@@ -318,7 +318,7 @@ class MrpWorkorder(models.Model):
                 id this workorder belongs to.
             workcenter_source_res_id (int): the client's own mrp.workcenter id.
             workcenter (dict): snapshot of the work center itself ({name,
-                nord_resource_uid, autonomous_close, granular_push,
+                nord_resource_uids, autonomous_close, granular_push,
                 contention_policy, chain_close, mirror_mode, auto_idle_segments,
                 idle_segment_reason, auto_tooling_segments, tooling_segment_reason})
                 — lets the Core lazily resolve/update the
@@ -335,7 +335,7 @@ class MrpWorkorder(models.Model):
             employee_source_res_id (int or False): the client's own
                 hr.employee id of the first assigned operator, False if none
                 assigned (only the first of employee_assigned_ids is carried).
-            employee (dict or False): {name, nord_resource_uid} snapshot of
+            employee (dict or False): {name, nord_resource_uids} snapshot of
                 that same employee, only present (non-False) when someone is
                 actually assigned — same lazy-resolution safety net as
                 'workcenter' above, but optional since an unresolved
@@ -357,7 +357,7 @@ class MrpWorkorder(models.Model):
             # this only helps once nord_resource_uid is actually set.
             'workcenter': {
                 'name': self.workcenter_id.name,
-                'nord_resource_uid': self.workcenter_id.resource_id.nord_sync_resource_id.uid or False,
+                'nord_resource_uids': self.workcenter_id.resource_id.nord_sync_resource_id.mapped('uid'),
                 'autonomous_close': self.workcenter_id.nord_sync_autonomous_close,
                 'granular_push': self.workcenter_id.nord_sync_granular_push,
                 'contention_policy': self.workcenter_id.nord_sync_contention_policy,
@@ -381,6 +381,6 @@ class MrpWorkorder(models.Model):
             # task (unlike the work center).
             'employee': {
                 'name': self.employee_assigned_ids[0].name,
-                'nord_resource_uid': self.employee_assigned_ids[0].resource_id.nord_sync_resource_id.uid or False,
+                'nord_resource_uids': self.employee_assigned_ids[0].resource_id.nord_sync_resource_id.mapped('uid'),
             } if self.employee_assigned_ids else False,
         }

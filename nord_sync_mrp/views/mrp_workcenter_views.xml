@@ -15,7 +15,7 @@
                                 help="Re-sends every session-loss reason and reason type to the Core, even ones already imported there — not specific to this work center, use after the Core's own copy was lost."/>
                     </div>
                     <group>
-                        <field name="nord_sync_resource_id" options="{'no_create': True}"/>
+                        <field name="nord_sync_resource_id" widget="many2many_tags" options="{'no_create': True}"/>
                     </group>
                     <div class="alert alert-warning" role="alert" invisible="nord_sync_resource_id">
                         Not mapped to a Nord Core resource yet — nothing below is sent to the Core

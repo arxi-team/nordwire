@@ -12,10 +12,13 @@ class ResourceResource(models.Model):
     """
     _inherit = 'resource.resource'
 
-    nord_sync_resource_id = fields.Many2one(
-        'nord_sync.resource', string='Nord Core Resource',
+    nord_sync_resource_id = fields.Many2many(
+        'nord_sync.resource', string='Nord Core Resources',
         domain="[('company_id', '=', company_id)]",
-        help='Which edge.resource on the Nord Core this resource is. The Resource/Employee '
-             'Bridge only ever updates an existing, already-mapped Core resource — it never '
-             'creates one, so nothing syncs for this resource until this is set.',
+        help='Which edge.resource(s) on the Nord Core this resource is. Several Core '
+             'resources can feed the same work center (e.g. more than one physical machine '
+             'reported as one Odoo resource) — any of them starting starts this resource\'s '
+             'own work here too. The Resource/Employee Bridge only ever updates existing, '
+             'already-mapped Core resources — it never creates one, so nothing syncs for '
+             'this resource until at least one is set.',
     )

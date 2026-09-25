@@ -24,11 +24,12 @@ class MrpWorkcenter(models.Model):
     # mapping mechanism is unchanged — this is only a second, more
     # convenient door onto the same field).
 
-    nord_sync_resource_id = fields.Many2one(
-        'nord_sync.resource', string='Connected Nord Resource',
+    nord_sync_resource_id = fields.Many2many(
+        'nord_sync.resource', string='Connected Nord Resources',
         related='resource_id.nord_sync_resource_id', readonly=False,
-        help='Select the Nord resource linked to this work center. '
-             'This connection is required for production data to be synchronized with Nord.',
+        help='Select the Nord resource(s) linked to this work center — more than one when '
+             'several physical Nord resources feed it. This connection is required for '
+             'production data to be synchronized with Nord.',
     )
 
     # ── Nordwire Autonomous Resource Policies ───────────────────────────────
@@ -249,12 +250,13 @@ class MrpWorkcenter(models.Model):
         behavior).
 
         Keys:
-            nord_resource_uid (str or False): the Core's edge.resource this
-                work center is mapped to — self.resource_id.nord_sync_resource_id.uid,
-                False when unmapped. The Core never creates/guesses a resource
-                from this payload; without this key it just skips the
-                entry, so nothing syncs for this work center until a human
-                maps it (Configuration > Technical > Resources).
+            nord_resource_uids (list[str]): the Core's edge.resource(s) this
+                work center is mapped to — self.resource_id.nord_sync_resource_id.
+                mapped('uid'), empty list when unmapped. The Core never
+                creates/guesses a resource from this payload; without at
+                least one uid it just skips the entry, so nothing syncs for
+                this work center until a human maps it (Configuration >
+                Technical > Resources).
             autonomous_close (bool): let a port-driven Nord Alert close jobs
                 on this resource without a human clicking "Mark Done".
             granular_push (bool): push work-session start/stop and job
@@ -289,7 +291,7 @@ class MrpWorkcenter(models.Model):
         self.ensure_one()
         return {
             **self._nord_sync_configurable_payload(),
-            'nord_resource_uid': self.resource_id.nord_sync_resource_id.uid or False,
+            'nord_resource_uids': self.resource_id.nord_sync_resource_id.mapped('uid'),
             'autonomous_close': self.nord_sync_autonomous_close,
             'granular_push': self.nord_sync_granular_push,
             'contention_policy': self.nord_sync_contention_policy,

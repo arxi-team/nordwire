@@ -56,10 +56,11 @@ class HrEmployee(models.Model):
         per-company selectable (default: name, unchanged behavior).
 
         Keys:
-            nord_resource_uid (str or False): the Core's edge.resource this
-                employee is mapped to — self.resource_id.nord_sync_resource_id.uid,
-                False when unmapped. Same "never create/guess, just skip" posture
-                as mrp.workcenter's own payload — see that docstring.
+            nord_resource_uids (list[str]): the Core's edge.resource(s) this
+                employee is mapped to — self.resource_id.nord_sync_resource_id.
+                mapped('uid'), empty list when unmapped. Same "never
+                create/guess, just skip" posture as mrp.workcenter's own
+                payload — see that docstring.
             (all other keys) — entirely per-company configurable, see
                 _nord_sync_configurable_payload(). resource_kind isn't sent
                 from here either: the Core fixes it to 'human' on its own for
@@ -69,5 +70,5 @@ class HrEmployee(models.Model):
         self.ensure_one()
         return {
             **self._nord_sync_configurable_payload(),
-            'nord_resource_uid': self.resource_id.nord_sync_resource_id.uid or False,
+            'nord_resource_uids': self.resource_id.nord_sync_resource_id.mapped('uid'),
         }
