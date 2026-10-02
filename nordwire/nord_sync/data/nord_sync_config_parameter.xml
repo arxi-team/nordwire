@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Pre-creates the row so it's discoverable in Settings > Technical >
+         Parameters > System Parameters without the admin having to know the
+         exact key by heart and use "New". noupdate="1" so a module upgrade
+         never overwrites whatever value has since been set here. -->
+    <data noupdate="1">
+        <record id="config_parameter_cloud_base_url" model="ir.config_parameter">
+            <field name="key">nord_sync.cloud_base_url</field>
+            <field name="value"></field>
+        </record>
+    </data>
+</odoo>

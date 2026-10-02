@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate="1" so a module upgrade doesn't overwrite whatever the
+         client has since changed here, same as nord_sync's own automation
+         rules. -->
+    <data noupdate="1">
+
+        <!-- No draft/confirmed state on maintenance.request, so this fires
+             on_create instead of a state transition (see
+             models/maintenance_request.py's docstring). -->
+        <record id="automation_maintenance_request_created" model="base.automation">
+            <field name="name">Nordwire: Maintenance Request created</field>
+            <field name="model_id" ref="maintenance.model_maintenance_request"/>
+            <field name="trigger">on_create</field>
+        </record>
+        <record id="automation_maintenance_request_created_action" model="ir.actions.server">
+            <field name="name">Nordwire: notify Cloud</field>
+            <field name="model_id" ref="maintenance.model_maintenance_request"/>
+            <field name="base_automation_id" ref="automation_maintenance_request_created"/>
+            <field name="state">nord_sync_notify</field>
+            <field name="nord_sync_operation">create</field>
+        </record>
+
+    </data>
+</odoo>

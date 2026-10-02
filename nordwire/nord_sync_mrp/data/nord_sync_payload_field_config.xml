@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Default nord_sync.payload.field.config rows for the main company,
+         shipped as static data instead of resolved at post_init_hook time
+         (nord_sync.models.nord_sync_payload_field_config._nord_sync_seed_defaults_for_company).
+         That Python path searches ir.model.fields by name at whatever point
+         nord_sync's own post_init_hook happens to run — nord_sync itself has
+         no business dependency, so it can (and does, in practice) run before
+         mrp/mrp_workorder are even installed, silently seeding this model
+         with zero fields (found live, 2026-08-27: mrp.production's row had
+         field_ids empty, so 'state' never went out in the payload, and Nord
+         Sync State Mapping/job stage resolution silently never fired for any
+         MO). Loading these as data records here instead ties them to
+         nord_sync_mrp's own dependency graph (mrp/mrp_workorder), so the
+         referenced fields are always guaranteed to exist by the time this
+         file loads. noupdate="1": a company that customizes its selection
+         afterwards must never have it silently reset by a later module
+         update.
+         nord_sync_mrp doesn't (need to) also fix
+         _nord_sync_seed_defaults_for_company's own per-company creation loop
+         — that still runs for any *other* company created after install, and
+         already skips a model once a row (this one included) exists for it. -->
+    <data noupdate="1">
+        <record id="payload_field_config_mrp_production" model="nord_sync.payload.field.config">
+            <field name="company_id" ref="base.main_company"/>
+            <field name="res_model">mrp.production</field>
+            <field name="field_ids" eval="[(6, 0, [
+                ref('mrp.field_mrp_production__name'),
+                ref('mrp.field_mrp_production__product_qty'),
+                ref('mrp.field_mrp_production__state'),
+            ])]"/>
+        </record>
+
+        <record id="payload_field_config_mrp_workcenter" model="nord_sync.payload.field.config">
+            <field name="company_id" ref="base.main_company"/>
+            <field name="res_model">mrp.workcenter</field>
+            <field name="field_ids" eval="[(6, 0, [ref('mrp.field_mrp_workcenter__name')])]"/>
+        </record>
+
+        <record id="payload_field_config_hr_employee" model="nord_sync.payload.field.config">
+            <field name="company_id" ref="base.main_company"/>
+            <field name="res_model">hr.employee</field>
+            <field name="field_ids" eval="[(6, 0, [ref('hr.field_hr_employee__name')])]"/>
+        </record>
+
+        <record id="payload_field_config_quality_check" model="nord_sync.payload.field.config">
+            <field name="company_id" ref="base.main_company"/>
+            <field name="res_model">quality.check</field>
+            <field name="field_ids" eval="[(6, 0, [ref('quality.field_quality_check__test_type')])]"/>
+        </record>
+
+        <!-- mrp.bom/mrp.workorder have no default fields (NORD_SYNC_PAYLOAD_DEFAULT_FIELDS
+             maps both to []) — still get their own row, empty on purpose, matching
+             _nord_sync_seed_defaults_for_company's own behavior for every registered model. -->
+        <record id="payload_field_config_mrp_bom" model="nord_sync.payload.field.config">
+            <field name="company_id" ref="base.main_company"/>
+            <field name="res_model">mrp.bom</field>
+        </record>
+
+        <record id="payload_field_config_mrp_workorder" model="nord_sync.payload.field.config">
+            <field name="company_id" ref="base.main_company"/>
+            <field name="res_model">mrp.workorder</field>
+        </record>
+    </data>
+</odoo>

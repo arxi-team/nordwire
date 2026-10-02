@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_nord_sync_payload_field_config_list" model="ir.ui.view">
+            <field name="name">nord_sync.payload.field.config.list</field>
+            <field name="model">nord_sync.payload.field.config</field>
+            <field name="arch" type="xml">
+                <tree editable="bottom">
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="res_model"/>
+                    <field name="field_ids" widget="many2many_tags"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="action_nord_sync_payload_field_config" model="ir.actions.act_window">
+            <field name="name">Payload Fields</field>
+            <field name="res_model">nord_sync.payload.field.config</field>
+            <field name="view_mode">tree</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No payload field configuration yet.
+                </p>
+                <p>
+                    Which of a model's own fields go out to the Nord Core when it
+                    syncs — one row per model. Only scalar fields are selectable;
+                    a model's constants, relational references, and nested
+                    snapshots (e.g. the BOM a Manufacturing Order used) are wired
+                    separately and always sent, they're not configured here.
+                    Removing a field a company relies on for Core-side behavior
+                    (e.g. Manufacturing Order's own "state") silently turns that
+                    behavior off — nothing here warns before that happens.
+                </p>
+            </field>
+        </record>
+
+        <!-- base.group_system only, no group_nord_sync_manager row here —
+             matches ir.model.access.csv (Manager has no access to this
+             model), unlike the other Settings submenus. -->
+        <menuitem id="menu_nord_sync_payload_field_config" name="Payload Fields"
+                  parent="nord_sync.menu_nord_sync_settings" action="action_nord_sync_payload_field_config"
+                  groups="base.group_system" sequence="30"/>
+
+    </data>
+</odoo>

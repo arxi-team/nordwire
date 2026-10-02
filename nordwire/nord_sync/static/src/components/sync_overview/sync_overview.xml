@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="nord_sync.SyncOverview">
+        <div class="o_nord_sync_overview p-4">
+            <div class="row mb-4 align-items-center">
+                <div class="col-md-6">
+                    <h2 class="h2 d-inline-block mb-0">Sync Overview</h2>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <button type="button" class="btn btn-outline-secondary me-2" t-on-click="onOpenQueue">
+                        <i class="fa fa-list me-1" role="img" aria-label=""/>Sync Queue
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary me-2" t-on-click="onOpenInbox">
+                        <i class="fa fa-inbox me-1" role="img" aria-label=""/>Sync Inbox
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary me-2" t-on-click="onOpenFailures">
+                        <i class="fa fa-exclamation-triangle me-1" role="img" aria-label=""/>Sync Failures
+                    </button>
+                    <button type="button" class="btn btn-primary" t-on-click="onRefresh" t-att-disabled="state.loading">
+                        <i t-attf-class="fa fa-refresh me-1 {{ state.loading ? 'fa-spin' : '' }}" role="img" aria-label=""/>Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div class="row mb-4 g-3">
+                <div class="col-sm-6 col-md-3">
+                    <div class="card text-center h-100 o_nord_sync_kpi_card" role="button" t-on-click="() => this.onKpiClick('pending')">
+                        <div class="card-body">
+                            <i class="fa fa-clock-o fa-2x text-secondary mb-2" role="img" aria-label=""/>
+                            <h4 class="card-title text-muted">Pending</h4>
+                            <p class="display-6 mb-0" t-esc="state.kpis.pending"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-md-3">
+                    <div class="card text-center h-100 o_nord_sync_kpi_card" role="button" t-on-click="() => this.onKpiClick('sent')">
+                        <div class="card-body">
+                            <i class="fa fa-check-circle fa-2x text-success mb-2" role="img" aria-label=""/>
+                            <h4 class="card-title text-muted">Sent</h4>
+                            <p class="display-6 mb-0" t-esc="state.kpis.sent"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-md-3">
+                    <div t-attf-class="card text-center h-100 o_nord_sync_kpi_card {{ state.kpis.failed ? 'border-danger' : '' }}" role="button" t-on-click="() => this.onKpiClick('failed')">
+                        <div class="card-body">
+                            <i class="fa fa-exclamation-triangle fa-2x text-danger mb-2" role="img" aria-label=""/>
+                            <h4 class="card-title text-muted">Failed</h4>
+                            <p t-attf-class="display-6 mb-0 {{ state.kpis.failed ? 'text-danger' : '' }}" t-esc="state.kpis.failed"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-md-3">
+                    <div class="card text-center h-100 o_nord_sync_kpi_card" role="button" t-on-click="() => this.onKpiClick('unsealed')">
+                        <div class="card-body">
+                            <i class="fa fa-cloud-upload fa-2x text-warning mb-2" role="img" aria-label=""/>
+                            <h4 class="card-title text-muted">Not Yet Served to Core</h4>
+                            <p class="display-6 mb-0" t-esc="state.kpis.unsealed"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-lg-4 col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h4 class="mb-0">Sync Queue</h4>
+                            <span class="badge text-bg-light text-muted" t-esc="state.queue.length"/>
+                        </div>
+                        <div class="card-body">
+                            <t t-if="state.queue.length">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Record</th>
+                                            <th>Status</th>
+                                            <th>Age</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.queue" t-as="entry" t-key="entry.key">
+                                            <td t-esc="entry.owner"/>
+                                            <td><span t-attf-class="badge {{ statusBadgeClass(entry.status) }}" t-esc="entry.status"/></td>
+                                            <td t-esc="entry.age"/>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </t>
+                            <t t-else="">
+                                <p class="text-muted mb-0 text-center py-3">
+                                    <i class="fa fa-check-circle-o fa-2x d-block mb-2" role="img" aria-label=""/>
+                                    Nothing in the queue right now.
+                                </p>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h4 class="mb-0">Sync Inbox</h4>
+                            <span class="badge text-bg-light text-muted" t-esc="state.inbox.length"/>
+                        </div>
+                        <div class="card-body">
+                            <t t-if="state.inbox.length">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Endpoint</th>
+                                            <th>Model</th>
+                                            <th>Status</th>
+                                            <th>Age</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.inbox" t-as="entry" t-key="entry.key">
+                                            <td t-esc="entry.endpoint"/>
+                                            <td t-esc="entry.res_model"/>
+                                            <td><span t-attf-class="badge {{ statusBadgeClass(entry.status) }}" t-esc="entry.status"/></td>
+                                            <td t-esc="entry.age"/>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </t>
+                            <t t-else="">
+                                <p class="text-muted mb-0 text-center py-3">
+                                    <i class="fa fa-check-circle-o fa-2x d-block mb-2" role="img" aria-label=""/>
+                                    Nothing in the inbox right now.
+                                </p>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h4 class="mb-0">Current Failures</h4>
+                            <span t-attf-class="badge {{ state.failures.length ? 'text-bg-danger' : 'text-bg-light text-muted' }}" t-esc="state.failures.length"/>
+                        </div>
+                        <div class="card-body">
+                            <t t-if="state.failures.length">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Owner</th>
+                                            <th>Error</th>
+                                            <th>Age</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.failures" t-as="failure"
+                                            t-key="failure.key">
+                                            <td t-esc="failure.owner"/>
+                                            <td>
+                                                <span class="d-inline-block text-truncate" style="max-width: 220px;"
+                                                      t-att-title="failure.last_error" t-esc="failure.last_error"/>
+                                            </td>
+                                            <td t-esc="failure.age"/>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </t>
+                            <t t-else="">
+                                <p class="text-muted mb-0 text-center py-3">
+                                    <i class="fa fa-check-circle-o fa-2x d-block mb-2" role="img" aria-label=""/>
+                                    No failures right now.
+                                </p>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>
