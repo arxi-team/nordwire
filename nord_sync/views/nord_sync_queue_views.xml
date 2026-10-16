@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_nord_sync_queue_list" model="ir.ui.view">
+            <field name="name">nord.sync.queue.list</field>
+            <field name="model">nord.sync.queue</field>
+            <field name="arch" type="xml">
+                <list create="0" edit="0" delete="0">
+                    <field name="id" string="Seq"/>
+                    <field name="company_id"/>
+                    <field name="owner_res_model" string="Model"/>
+                    <field name="owner_res_id" string="Record ID"/>
+                    <field name="is_sealed" widget="boolean_toggle"/>
+                    <field name="status" decoration-danger="status == 'failed'"
+                           decoration-muted="status == 'pending'"/>
+                    <field name="last_error" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_nord_sync_queue_form" model="ir.ui.view">
+            <field name="name">nord.sync.queue.form</field>
+            <field name="model">nord.sync.queue</field>
+            <field name="arch" type="xml">
+                <form create="0" edit="0" delete="0">
+                    <sheet>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="owner_res_model" string="Model"/>
+                            <field name="owner_res_id" string="Record ID"/>
+                            <field name="status"/>
+                            <field name="last_error"/>
+                            <field name="is_sealed"/>
+                        </group>
+                        <notebook>
+                            <page string="Payload">
+                                <field name="payload"/>
+                            </page>
+                            <page string="Changes">
+                                <field name="line_ids">
+                                    <list create="0" edit="0" delete="0">
+                                        <field name="id" string="Seq"/>
+                                        <field name="res_model"/>
+                                        <field name="res_id"/>
+                                        <field name="operation"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Shared by both the raw Sync Queue action and the Sync Failures
+             action below (same model, different domain) — Odoo picks it up
+             automatically for either since neither sets search_view_id. -->
+        <record id="view_nord_sync_queue_search" model="ir.ui.view">
+            <field name="name">nord.sync.queue.search</field>
+            <field name="model">nord.sync.queue</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="owner_res_model" string="Model"/>
+                    <field name="company_id"/>
+                    <filter string="Stuck (&gt;1h)" name="filter_stuck_1h"
+                            domain="[('create_date', '&lt;', (datetime.datetime.now() - datetime.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S'))]"
+                            help="Still here more than an hour after arriving — normal 2h-retention noise ages out well before this."/>
+                    <group>
+                        <filter string="Model" name="group_by_model" context="{'group_by': 'owner_res_model'}"/>
+                        <filter string="Status" name="group_by_status" context="{'group_by': 'status'}"/>
+                        <filter string="Company" name="group_by_company" context="{'group_by': 'company_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_nord_sync_queue" model="ir.actions.act_window">
+            <field name="name">Nordwire Queue</field>
+            <field name="res_model">nord.sync.queue</field>
+            <field name="view_mode">list,form</field>
+            <!-- Explicit empty domain, not omitted — an omitted field is
+                 never cleared on module update (Odoo's XML loader only
+                 writes fields actually listed), so a DB that went through
+                 an earlier revision of this action with a real domain here
+                 would keep that stale domain forever otherwise. -->
+            <field name="domain">[]</field>
+        </record>
+
+        <!-- Root app menu — no parent, so it shows as its own
+             top-level entry/App tile instead of nesting under Settings. Group is
+             Nordwire User only: Manager sees it too via implied_ids, so listing
+             both here would be redundant. -->
+        <menuitem id="menu_nord_sync_root" name="Nordwire"
+                  web_icon="nord_sync,static/description/icon.png"
+                  groups="group_nord_sync_user" sequence="120"/>
+
+        <!-- Folder for the technical/support lists (Sync Queue, Sync
+             Failures, Sync Inbox) — each keeps its own action, this is just
+             where they're grouped instead of each sitting loose at the
+             root or being reachable only from the Sync Overview buttons. -->
+        <menuitem id="menu_nord_sync_group" name="Sync"
+                  parent="menu_nord_sync_root" sequence="10"/>
+
+        <menuitem id="menu_nord_sync_queue" name="Sync Queue"
+                  parent="menu_nord_sync_group" action="action_nord_sync_queue"
+                  groups="group_nord_sync_user" sequence="10"/>
+
+        <!-- Parent for the config screens (Settings, Job Stages, Job Stage
+             Mapping, Payload Fields, Automation Rules) — each keeps its own
+             group on its menuitem (they don't all share the same access),
+             this is just the folder they live in. -->
+        <menuitem id="menu_nord_sync_settings" name="Configuration"
+                  parent="menu_nord_sync_root" sequence="40"/>
+
+    </data>
+</odoo>
