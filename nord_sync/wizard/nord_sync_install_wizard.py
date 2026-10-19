@@ -472,10 +472,10 @@ class NordSyncInstallWizard(models.TransientModel):
             'enabled_source_ids': [(6, 0, self.source_ids.ids)],
         })
         # A work center/employee/BOM created or already existing before this
-        # moment had nothing to notify (config wasn't enabled yet), and only
-        # an edit *after* now would ever trigger its own create/write hook
-        # again — this is the catch-up for that timing gap.
-        config_rec._nord_sync_backfill_existing_records()
+        # moment had nothing to notify (config wasn't enabled yet) and stays
+        # that way — backfilling them into the queue is a deliberate, separate
+        # action (nord_sync.config's "Backfill Existing Records" button), not
+        # something finishing this wizard does on its own.
         # Real records (and their push to the Core) only happen here, once
         # config.enabled is actually True — matches _nord_sync_notify's own
         # guard, and means nothing pushes for a wizard that gets cancelled.
