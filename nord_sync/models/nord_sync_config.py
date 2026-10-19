@@ -4,6 +4,7 @@ import logging
 import requests
 
 from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -134,14 +135,10 @@ class NordSyncConfig(models.Model):
                 was_enabled = was_enabled_by_id.get(config.id, False)
                 if config.enabled and not was_enabled:
                     _logger.info(
-                        'nord_sync: enabled for company_id=%s — backfilling pre-existing records',
+                        'nord_sync: enabled for company_id=%s — pre-existing records will NOT be '
+                        'pushed automatically, use "Backfill Existing Records" if that\'s wanted',
                         config.company_id.id,
                     )
-                    # Re-enabling outside the install wizard (its own Finish
-                    # step already does this) had no equivalent catch-up —
-                    # a record created/edited entirely during a disabled
-                    # window would otherwise never reach the Core.
-                    config._nord_sync_backfill_existing_records()
                 elif was_enabled and not config.enabled:
                     _logger.info(
                         'nord_sync: disabled for company_id=%s — every create/write on a '
@@ -339,6 +336,21 @@ class NordSyncConfig(models.Model):
         elapsed = fields.Datetime.now() - self.last_wake_sent
         return elapsed.total_seconds() >= (self.wake_throttle_minutes or 0) * 60
 
+    def action_nord_sync_backfill_existing_records(self):
+        """Explicit, user-triggered catch-up — the only caller of
+        _nord_sync_backfill_existing_records(). Never runs on its own:
+        neither enabling sync (write() above) nor installing a Nordwire
+        Source addon (post_init_hook) pushes anything by itself — a record
+        that already existed before sync was enabled stays unsent until
+        someone deliberately asks for it here, since pushing a client's
+        full history to the Core without being asked is exactly the
+        surprise this button exists to avoid.
+        """
+        self.ensure_one()
+        if not self.enabled:
+            raise UserError(_('Enable Nordwire for this company before backfilling existing records.'))
+        self._nord_sync_backfill_existing_records()
+
     def _nord_sync_backfill_existing_records(self):
         """Notify the Core about every pre-existing record a source's own
         create/write hooks would otherwise never catch — those only fire on
@@ -347,14 +359,9 @@ class NordSyncConfig(models.Model):
         overrides via _inherit and calls super(), same pattern as
         _apply_nord_sync_entry.
 
-        Called from two places, covering the two different timings a source
-        can start existing for a company: the install wizard's Finish step
-        (config only becomes enabled here — a source installed earlier in
-        the same wizard's Sources step had nothing to notify yet, since
-        _nord_sync_notify itself no-ops without an enabled config) and
-        nord_sync_mrp's own post_init_hook (covers adding a source to a
-        client that's already configured and enabled, where the wizard
-        never runs again).
+        Only ever called from action_nord_sync_backfill_existing_records
+        above — an explicit, user-initiated action, never automatically
+        from enabling sync or installing a source addon.
         """
         self.ensure_one()
 
