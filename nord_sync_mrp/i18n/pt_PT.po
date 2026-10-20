@@ -1,0 +1,737 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* nord_sync_mrp
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0+e\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-20 07:11+0000\n"
+"PO-Revision-Date: 2026-10-20 07:11+0000\n"
+"Last-Translator: \n"
+"Language-Team: Portuguese (Portugal)\n"
+"Language: pt_PT\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.res_config_settings_view_form_nord_sync_mrp
+msgid ""
+"Applied to a new work center's floor-event fields only when\n"
+"                            nothing about Control Mode is set at creation time. Left empty\n"
+"                            (default): a new work center keeps behaving as Odoo-controlled,\n"
+"                            unchanged. Never revisited once a work center exists, so\n"
+"                            changing this later never touches one already created."
+msgstr ""
+"Aplicado aos campos de eventos de chão-de-fábrica de um novo posto de trabalho apenas\n"
+"                            quando nada do Modo de Controlo está definido no momento da criação. Deixado vazio\n"
+"                            (predefinição): um novo posto de trabalho continua a comportar-se como controlado pelo Odoo,\n"
+"                            sem alterações. Nunca revisitado depois de um posto de trabalho existir, por isso\n"
+"                            alterar isto mais tarde nunca afeta um já criado."
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_view_nord_sync
+msgid "Automatic OEE Segments"
+msgstr "Segmentos de OEE Automáticos"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_chain_close
+msgid ""
+"Automatically finish the previous step when the next step of the same job "
+"starts on another resource. This is useful when operators move to the next "
+"step without manually stopping the previous one."
+msgstr ""
+"Termina automaticamente o passo anterior quando o passo seguinte da mesma "
+"tarefa começa noutro recurso. Útil quando os operadores avançam para o passo"
+" seguinte sem parar manualmente o anterior."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_auto_idle_segments
+msgid ""
+"Automatically record the time between work sessions as idle time. This helps"
+" account for periods when the resource is not actively working on a job. "
+"Idle time is not counted as worked time."
+msgstr ""
+"Regista automaticamente o tempo entre sessões de trabalho como tempo de "
+"inatividade. Isto ajuda a contabilizar períodos em que o recurso não está "
+"ativamente a trabalhar numa tarefa. O tempo de inatividade não conta como "
+"tempo trabalhado."
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_mrp_bom
+msgid "Bill of Material"
+msgstr "Lista de Materiais"
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_mrp_bom_line
+msgid "Bill of Material Line"
+msgstr "Linha da Lista de Materiais"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_res_company__co2e_factor_kg_kwh
+msgid "CO2e Factor (kg/kWh)"
+msgstr "Fator de CO2e (kg/kWh)"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.nord_sync_workorder_start_wizard_form
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.nord_sync_workorder_workcenter_change_wizard_form
+msgid "Cancel"
+msgstr "Cancelar"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_production_workorder_tree_editable_view_nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.nord_sync_workorder_start_wizard_form
+msgid "Change Work Center"
+msgstr "Mudar Posto de Trabalho"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_control_mode
+msgid ""
+"Choose how production activity is controlled for this resource. Odoo "
+"controls production keeps job activity under Odoo control. Nord controls "
+"production lets Nord manage production activity automatically. Custom "
+"settings lets you configure each production behavior individually."
+msgstr ""
+"Escolha como a atividade de produção é controlada para este recurso. Odoo "
+"controla a produção mantém a atividade de tarefas sob controlo do Odoo. Nord"
+" controla a produção deixa a Nord gerir a atividade de produção "
+"automaticamente. Definições personalizadas permite configurar cada "
+"comportamento de produção individualmente."
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_res_company
+msgid "Companies"
+msgstr "Empresas"
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_res_config_settings
+msgid "Config Settings"
+msgstr "Definições de Configuração"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.nord_sync_workorder_start_wizard_form
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.nord_sync_workorder_workcenter_change_wizard_form
+msgid "Confirm"
+msgstr "Confirmar"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_config__nord_sync_confirm_workcenter_on_start
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_res_config_settings__nord_sync_confirm_workcenter_on_start
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.res_config_settings_view_form_nord_sync_mrp
+msgid "Confirm Work Center on Start"
+msgstr "Confirmar Posto de Trabalho ao Iniciar"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_resource_id
+msgid "Connected Nord Resources"
+msgstr "Recursos Nord Ligados"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_view_nord_sync
+msgid "Control Mode"
+msgstr "Modo de Controlo"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_start_wizard__create_uid
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_workcenter_change_wizard__create_uid
+msgid "Created by"
+msgstr "Criado por"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_start_wizard__create_date
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_workcenter_change_wizard__create_date
+msgid "Created on"
+msgstr "Criado em"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__mrp_workcenter__nord_sync_control_mode__custom
+msgid "Custom settings"
+msgstr "Definições personalizadas"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_config__nord_sync_default_workcenter_control_mode
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_res_config_settings__nord_sync_default_workcenter_control_mode
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.res_config_settings_view_form_nord_sync_mrp
+msgid "Default Work Center Control Mode"
+msgstr "Modo de Controlo Predefinido do Posto de Trabalho"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_hr_employee__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_bom__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_bom_line__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_production__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_routing_workcenter__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter_productivity__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter_productivity_loss__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter_productivity_loss_type__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workorder__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_config__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_queue__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_start_wizard__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_workcenter_change_wizard__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_quality_check__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_res_company__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_res_config_settings__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_resource_resource__display_name
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_stock_move__display_name
+msgid "Display Name"
+msgstr "Nome Exibido"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__mrp_workcenter__nord_sync_contention_policy__block
+msgid "Don't Start Another Job"
+msgstr "Não Iniciar Outra Tarefa"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_production_workorder_form_view_nord_sync
+msgid "Electric (kWh)"
+msgstr "Elétrico (kWh)"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter_productivity__electric_consume
+msgid "Electric Consume"
+msgstr "Consumo Elétrico"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workorder__electric_consume
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_production_workorder_form_view_nord_sync
+msgid "Electric Consume (kWh)"
+msgstr "Consumo Elétrico (kWh)"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workorder__electric_consume_cost
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_production_workorder_form_view_nord_sync
+msgid "Electric Consume Cost"
+msgstr "Custo do Consumo Elétrico"
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_hr_employee
+msgid "Employee"
+msgstr "Funcionário"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_res_company__energy_tariff_eur_kwh
+msgid "Energy Tariff (€/kWh)"
+msgstr "Tarifa Energética (€/kWh)"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_chain_close
+msgid "Finish Previous Steps Automatically"
+msgstr "Terminar Passos Anteriores Automaticamente"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__mrp_workcenter__nord_sync_contention_policy__auto_close_previous
+msgid "Finish the Previous Job Automatically"
+msgstr "Terminar a Tarefa Anterior Automaticamente"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_view_nord_sync
+msgid "General Sync Behavior"
+msgstr "Comportamento Geral de Sincronização"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_hr_employee__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_bom__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_bom_line__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_production__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_routing_workcenter__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter_productivity__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter_productivity_loss__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter_productivity_loss_type__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workorder__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_config__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_queue__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_start_wizard__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_workcenter_change_wizard__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_quality_check__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_res_company__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_res_config_settings__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_resource_resource__id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_stock_move__id
+msgid "ID"
+msgstr "ID"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_idle_segment_reason_name
+msgid "Idle Time Reason"
+msgstr "Motivo do Tempo de Inatividade"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.res_config_settings_view_form_nord_sync_mrp
+msgid ""
+"Interrupts a human-clicked Start on a workorder with a wizard\n"
+"                            showing the work center already assigned, so it can be\n"
+"                            confirmed or changed before work actually begins. Off by\n"
+"                            default: Start begins work immediately."
+msgstr ""
+"Interrompe um Início clicado por um humano numa ordem de trabalho com um assistente\n"
+"                            que mostra o posto de trabalho já atribuído, para que possa ser\n"
+"                            confirmado ou alterado antes de o trabalho começar de facto. Desligado por\n"
+"                            predefinição: o Início começa o trabalho de imediato."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_start_wizard__write_uid
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_workcenter_change_wizard__write_uid
+msgid "Last Updated by"
+msgstr "Última Atualização por"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_start_wizard__write_date
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_workcenter_change_wizard__write_date
+msgid "Last Updated on"
+msgstr "Última Atualização em"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_autonomous_close
+msgid "Let Nord Finish Jobs Automatically"
+msgstr "Deixar a Nord Terminar Tarefas Automaticamente"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_autonomous_close
+msgid ""
+"Let a Nord sensor or alert finish the job on this resource by itself, "
+"without anyone pressing \"Mark Done\" on the Nord side first. Does not "
+"change what happens in Odoo: any job someone finishes on Nord, whether by "
+"hand or automatically, still closes this production order here."
+msgstr ""
+"Deixar um sensor ou alerta Nord terminar a tarefa neste recurso por si só, "
+"sem ninguém premir \"Marcar como Concluído\" primeiro do lado Nord. Não "
+"altera o que acontece no Odoo: qualquer tarefa que alguém termine na Nord, "
+"manual ou automaticamente, continua a fechar esta ordem de produção aqui."
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_mrp_workcenter_productivity_loss_type
+msgid "MRP Workorder productivity losses"
+msgstr "Perdas de produtividade da Ordem de Trabalho MRP"
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_mrp_production
+msgid "Manufacturing Order"
+msgstr "Ordem de Fabrico"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_workcenter_change_wizard__workcenter_id
+msgid "New Work Center"
+msgstr "Novo Posto de Trabalho"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__nord_sync_config__nord_sync_default_workcenter_control_mode__nord
+msgid "Nord"
+msgstr "Nord"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_resource_resource__nord_sync_resource_id
+msgid "Nord Core Resources"
+msgstr "Recursos do Core Nord"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.resource_resource_form_nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.resource_resource_tree_nord_sync
+msgid "Nord Resources"
+msgstr "Recursos Nord"
+
+#. module: nord_sync_mrp
+#: model:base.automation,name:nord_sync_mrp.automation_mrp_production_cancelled
+msgid "Nord Sync: MO cancelled"
+msgstr "Nord Sync: MO cancelada"
+
+#. module: nord_sync_mrp
+#: model:base.automation,name:nord_sync_mrp.automation_mrp_production_confirmed
+msgid "Nord Sync: MO confirmed"
+msgstr "Nord Sync: MO confirmada"
+
+#. module: nord_sync_mrp
+#: model:base.automation,name:nord_sync_mrp.automation_mrp_production_unlink
+msgid "Nord Sync: MO deleted"
+msgstr "Nord Sync: MO eliminada"
+
+#. module: nord_sync_mrp
+#: model:base.automation,name:nord_sync_mrp.automation_mrp_production_done
+msgid "Nord Sync: MO done"
+msgstr "Nord Sync: MO concluída"
+
+#. module: nord_sync_mrp
+#: model:base.automation,name:nord_sync_mrp.automation_mrp_production_progress
+msgid "Nord Sync: MO in progress"
+msgstr "Nord Sync: MO em curso"
+
+#. module: nord_sync_mrp
+#: model:base.automation,name:nord_sync_mrp.automation_mrp_production_to_close
+msgid "Nord Sync: MO to close"
+msgstr "Nord Sync: MO a fechar"
+
+#. module: nord_sync_mrp
+#: model:ir.actions.server,name:nord_sync_mrp.automation_mrp_production_cancelled_action
+#: model:ir.actions.server,name:nord_sync_mrp.automation_mrp_production_confirmed_action
+#: model:ir.actions.server,name:nord_sync_mrp.automation_mrp_production_done_action
+#: model:ir.actions.server,name:nord_sync_mrp.automation_mrp_production_progress_action
+#: model:ir.actions.server,name:nord_sync_mrp.automation_mrp_production_to_close_action
+#: model:ir.actions.server,name:nord_sync_mrp.automation_mrp_production_unlink_action
+msgid "Nord Sync: notify Cloud"
+msgstr "Nord Sync: notificar Cloud"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter_productivity__nord_sync_timesheet_id
+msgid "Nord Timesheet"
+msgstr "Folha de Horas Nord"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__mrp_workcenter__nord_sync_control_mode__nord
+msgid "Nord controls production"
+msgstr "Nord controla a produção"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_view_nord_sync
+msgid "Nordwire"
+msgstr "Nordwire"
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_nord_sync_config
+msgid "Nordwire Configuration"
+msgstr "Configuração Nordwire"
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_nord_sync_queue
+msgid "Nordwire Queue"
+msgstr "Fila Nordwire"
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_nord_sync_workorder_workcenter_change_wizard
+msgid "Nordwire: Change Work Center"
+msgstr "Nordwire: Mudar Posto de Trabalho"
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_nord_sync_workorder_start_wizard
+msgid "Nordwire: Confirm Work Center on Start"
+msgstr "Nordwire: Confirmar Posto de Trabalho ao Iniciar"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_view_nord_sync
+msgid ""
+"Not mapped to a Nord Core resource yet — nothing below is sent to the Core\n"
+"                        until this is set."
+msgstr ""
+"Ainda não mapeado para um recurso do Nord Core — nada abaixo é enviado para o Core\n"
+"                        até isto estar definido."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__nord_sync_config__nord_sync_default_workcenter_control_mode__odoo
+msgid "Odoo"
+msgstr "Odoo"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__mrp_workcenter__nord_sync_control_mode__odoo
+msgid "Odoo controls production"
+msgstr "Odoo controla a produção"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_nord_sync_config__nord_sync_confirm_workcenter_on_start
+#: model:ir.model.fields,help:nord_sync_mrp.field_res_config_settings__nord_sync_confirm_workcenter_on_start
+msgid ""
+"Off by default (today's behavior, unchanged): a workorder's \"Start\" button"
+" starts it immediately. On: interrupts a human-clicked Start (never an "
+"autonomous Nord Core one) with a lightweight wizard showing the work center "
+"already assigned, so it can be confirmed or changed before work actually "
+"begins."
+msgstr ""
+"Desligado por predefinição (comportamento atual, sem alterações): o botão "
+"\"Iniciar\" de uma ordem de trabalho inicia-a de imediato. Ligado: "
+"interrompe um Início clicado por um humano (nunca um autónomo do Nord Core) "
+"com um assistente leve que mostra o posto de trabalho já atribuído, para que"
+" possa ser confirmado ou alterado antes de o trabalho começar de facto."
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_view_nord_sync
+msgid "Port & Sensor Behavior"
+msgstr "Comportamento de Portas e Sensores"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_nord_sync_config__nord_sync_default_workcenter_control_mode
+#: model:ir.model.fields,help:nord_sync_mrp.field_res_config_settings__nord_sync_default_workcenter_control_mode
+msgid ""
+"Preset applied to the four floor-event fields (Control Mode's own fields on "
+"mrp.workcenter) of a new work center that leaves Control Mode and all four "
+"of those fields unset — left empty (the default), a new work center keeps "
+"behaving exactly as it always has, implicitly \"Odoo\" via those fields' own"
+" defaults. Purely a starting point: once a work center exists it never "
+"revisits this setting again, so changing it later never touches a work "
+"center already created, and any field explicitly given at creation time (its"
+" own value or Control Mode itself) always wins over this default."
+msgstr ""
+"Predefinição aplicada aos quatro campos de eventos de chão-de-fábrica (os "
+"próprios campos do Modo de Controlo em mrp.workcenter) de um novo posto de "
+"trabalho que deixa o Modo de Controlo e todos esses quatro campos por "
+"definir — deixado vazio (a predefinição), um novo posto de trabalho continua"
+" a comportar-se exatamente como sempre, implicitamente \"Odoo\" através das "
+"predefinições desses campos. Apenas um ponto de partida: assim que um posto "
+"de trabalho existe, nunca mais revisita esta definição, por isso alterá-la "
+"mais tarde nunca afeta um posto de trabalho já criado, e qualquer campo "
+"explicitamente dado no momento da criação (o seu próprio valor ou o Modo de "
+"Controlo em si) tem sempre prioridade sobre esta predefinição."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_start_wizard__production_id
+msgid "Production"
+msgstr "Produção"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_control_mode
+msgid "Production Control"
+msgstr "Controlo de Produção"
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_quality_check
+msgid "Quality Check"
+msgstr "Qualidade (Verificação)"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_view_nord_sync
+msgid ""
+"Re-sends every session-loss reason and reason type to the Core, even ones "
+"already imported there — not specific to this work center, use after the "
+"Core's own copy was lost."
+msgstr ""
+"Reenvia todos os motivos de perda de sessão e tipos de motivo para o Core, "
+"mesmo os já importados lá — não específico deste posto de trabalho, usar "
+"depois de a própria cópia do Core se ter perdido."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_auto_idle_segments
+msgid "Record Idle Time Automatically"
+msgstr "Registar Tempo de Inatividade Automaticamente"
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_resource_resource
+#: model:ir.ui.menu,name:nord_sync_mrp.menu_nord_sync_resources
+msgid "Resources"
+msgstr "Recursos"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_view_nord_sync
+msgid "Result Handling"
+msgstr "Tratamento de Resultado"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_view_nord_sync
+msgid "Resync Reasons to Core"
+msgstr "Ressincronizar Motivos para o Core"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_close_notify_only
+msgid "Review Quantities Before Closing"
+msgstr "Rever Quantidades Antes de Fechar"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_resource_id
+msgid ""
+"Select the Nord resource(s) linked to this work center — more than one when "
+"several physical Nord resources feed it. This connection is required for "
+"production data to be synchronized with Nord."
+msgstr ""
+"Selecione o(s) recurso(s) Nord associado(s) a este posto de trabalho — mais "
+"de um quando vários recursos físicos Nord o alimentam. Esta ligação é "
+"obrigatória para que os dados de produção sejam sincronizados com a Nord."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_granular_push
+msgid ""
+"Send job progress from Nord to Odoo as it happens, not just the final "
+"result. This includes starting and stopping work and cancelling jobs, so "
+"changes made in Nord are reflected in Odoo while the job is still being "
+"worked on."
+msgstr ""
+"Envia o progresso da tarefa da Nord para o Odoo à medida que acontece, não "
+"apenas o resultado final. Inclui iniciar e parar trabalho e cancelar "
+"tarefas, para que as alterações feitas na Nord se reflitam no Odoo enquanto "
+"a tarefa ainda está a ser trabalhada."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_nord_sync_workorder_start_wizard__production_id
+msgid ""
+"Set only when this checkpoint was raised by the MO header's own Start button"
+" (mrp.production.action_start) rather than the workorder's — picks which "
+"record action_confirm re-enters below. workorder_id/workcenter_id above "
+"still point at the production's next-up workorder either way, purely for "
+"display."
+msgstr ""
+"Definido apenas quando este ponto de verificação foi levantado pelo próprio "
+"botão Iniciar do cabeçalho da MO (mrp.production.action_start) em vez do da "
+"ordem de trabalho — escolhe que registo o action_confirm volta a introduzir "
+"abaixo. workorder_id/workcenter_id acima continuam a apontar para a próxima "
+"ordem de trabalho da produção de qualquer forma, apenas para exibição."
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_stock_move
+msgid "Stock Move"
+msgstr "Movimento de Stock"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workorder__electric_consume
+msgid ""
+"Sum of this workorder's own real work sessions' electric_consume -- "
+"compatible with the field shape of known external manufacturing systems for "
+"data portability."
+msgstr ""
+"Soma do electric_consume das próprias sessões de trabalho reais desta ordem "
+"de trabalho -- compatível com o formato de campo de sistemas de fabrico "
+"externos conhecidos, para portabilidade de dados."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_mirror_mode
+msgid "Sync Job Status from Odoo"
+msgstr "Sincronizar Estado da Tarefa a partir do Odoo"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_granular_push
+msgid "Sync Work Progress to Odoo"
+msgstr "Sincronizar Progresso de Trabalho para o Odoo"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter_productivity__nord_sync_timesheet_id
+msgid ""
+"The nord.timesheet id on the Core this session came from -- the only stable "
+"reference to find this exact row again for a later loss-reason correction; a"
+" workorder can have several sessions."
+msgstr ""
+"O id do nord.timesheet no Core de onde esta sessão veio -- a única "
+"referência estável para encontrar de novo exatamente esta linha, para uma "
+"correção posterior do motivo de perda; uma ordem de trabalho pode ter várias"
+" sessões."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_tooling_segment_reason_name
+msgid "Tooling Time Reason"
+msgstr "Motivo do Tempo de Preparação de Ferramenta"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_auto_tooling_segments
+msgid "Track Tooling Time Automatically"
+msgstr "Registar Tempo de Preparação de Ferramenta Automaticamente"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter_productivity__electric_consume
+msgid ""
+"Tracks electric consumption for this session, using the same field shape as "
+"known external manufacturing systems for data compatibility -- filled from "
+"the Core's own nord.timesheet.energy_kwh_used for this exact session "
+"(Nordwire Result Push)."
+msgstr ""
+"Regista o consumo elétrico desta sessão, usando o mesmo formato de campo de "
+"sistemas de fabrico externos conhecidos para compatibilidade de dados -- "
+"preenchido a partir do próprio nord.timesheet.energy_kwh_used do Core para "
+"esta sessão exata (Envio de Resultado do Nordwire)."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_idle_segment_reason_name
+msgid "Unused for now — downtime segments open without a reason."
+msgstr ""
+"Não utilizado por agora — os segmentos de inatividade abrem sem motivo."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_auto_tooling_segments
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_tooling_segment_reason_name
+msgid "Unused for now."
+msgstr "Não utilizado por agora."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_contention_policy
+msgid ""
+"What happens when someone tries to start a new job on this resource while "
+"another one is still being worked."
+msgstr ""
+"O que acontece quando alguém tenta iniciar uma nova tarefa neste recurso "
+"enquanto outra ainda está a ser trabalhada."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_contention_policy
+msgid "When This Resource Is Already in Use"
+msgstr "Quando Este Recurso Já Está em Uso"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_close_notify_only
+msgid ""
+"When a job finishes on Nord, don't apply the declared quantities to this "
+"production order automatically — just post a note here with how many "
+"declarations were recorded, and leave marking it done to a person. Use this "
+"when the quantities Nord declares for this resource can't be trusted yet."
+msgstr ""
+"Quando uma tarefa termina na Nord, não aplicar automaticamente as "
+"quantidades declaradas a esta ordem de produção — apenas publicar aqui uma "
+"nota com quantas declarações foram registadas, deixando a marcação como "
+"concluída a cargo de uma pessoa. Use isto quando as quantidades que a Nord "
+"declara para este recurso ainda não são de confiança."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_mirror_mode
+msgid ""
+"When enabled, job status changes made in Odoo are also sent to Nord. This "
+"keeps Nord aligned when a job is confirmed, started, or completed in Odoo. "
+"Job cancellations are synchronized regardless of this setting."
+msgstr ""
+"Quando ativado, as alterações de estado de tarefas feitas no Odoo também são"
+" enviadas para a Nord. Isto mantém a Nord alinhada quando uma tarefa é "
+"confirmada, iniciada ou concluída no Odoo. Os cancelamentos de tarefas são "
+"sempre sincronizados, independentemente desta definição."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_resource_resource__nord_sync_resource_id
+msgid ""
+"Which edge.resource(s) on the Nord Core this resource is. Several Core "
+"resources can feed the same work center (e.g. more than one physical machine"
+" reported as one Odoo resource) — any of them starting starts this "
+"resource's own work here too. The Resource/Employee Bridge only ever updates"
+" existing, already-mapped Core resources — it never creates one, so nothing "
+"syncs for this resource until at least one is set."
+msgstr ""
+"Qual(ais) edge.resource(s) no Nord Core este recurso é. Vários recursos do "
+"Core podem alimentar o mesmo posto de trabalho (ex.: mais do que uma máquina"
+" física reportada como um único recurso Odoo) — qualquer um deles a iniciar "
+"também inicia o trabalho deste recurso aqui. A Ponte Recurso/Funcionário só "
+"atualiza recursos já existentes e já mapeados no Core — nunca cria um, por "
+"isso nada sincroniza para este recurso até que pelo menos um esteja "
+"definido."
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_mrp_workcenter
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_start_wizard__workcenter_id
+msgid "Work Center"
+msgstr "Posto de Trabalho"
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_mrp_routing_workcenter
+msgid "Work Center Usage"
+msgstr "Utilização do Posto de Trabalho"
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_mrp_workorder
+msgid "Work Order"
+msgstr "Ordem de Trabalho"
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_mrp_workcenter_productivity
+msgid "Workcenter Productivity Log"
+msgstr "Registo de Produtividade do Posto de Trabalho"
+
+#. module: nord_sync_mrp
+#: model:ir.model,name:nord_sync_mrp.model_mrp_workcenter_productivity_loss
+msgid "Workcenter Productivity Losses"
+msgstr "Perdas de Produtividade do Posto de Trabalho"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_start_wizard__workorder_id
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_workorder_workcenter_change_wizard__workorder_id
+msgid "Workorder"
+msgstr "Ordem de Trabalho"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workorder__electric_consume_cost
+msgid ""
+"electric_consume x this company's energy_tariff_eur_kwh (res.company, Nord "
+"Sync-synced to the Core -- see res_company.py)."
+msgstr ""
+"electric_consume x o energy_tariff_eur_kwh desta empresa (res.company, "
+"sincronizado com o Core via Nord Sync -- ver res_company.py)."
