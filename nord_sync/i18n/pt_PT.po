@@ -1,0 +1,1760 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* nord_sync
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0+e\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-20 07:11+0000\n"
+"PO-Revision-Date: 2026-10-20 07:11+0000\n"
+"Last-Translator: \n"
+"Language-Team: Portuguese (Portugal)\n"
+"Language: pt_PT\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_queue__owner_res_model
+msgid ""
+"(res_model, res_id) this header represents — resolved once, at creation, via"
+" _nord_sync_resolve_owner. Every further related change folds its own line "
+"under this same header instead of opening a new one, until it seals."
+msgstr ""
+"(res_model, res_id) que este cabeçalho representa — resolvido uma vez, na "
+"criação, via _nord_sync_resolve_owner. Cada alteração relacionada seguinte "
+"junta a sua própria linha sob este mesmo cabeçalho em vez de abrir um novo, "
+"até ele selar."
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.res_config_settings_view_form_nord_sync
+msgid "<span invisible=\"nord_sync_wake_mode != 'throttled'\">minutes</span>"
+msgstr "<span invisible=\"nord_sync_wake_mode != 'throttled'\">minutos</span>"
+
+#. module: nord_sync
+#: model:ir.model.constraint,message:nord_sync.constraint_nord_sync_resource_company_uid_unique
+msgid "A Nordwire Resource with this uid already exists for this company."
+msgstr "Já existe um Recurso Nordwire com este uid para esta empresa."
+
+#. module: nord_sync
+#: model:ir.model.constraint,message:nord_sync.constraint_nord_sync_source_model_unique
+msgid "A Nordwire Source for this model already exists."
+msgstr "Já existe uma Origem Nordwire para este modelo."
+
+#. module: nord_sync
+#: model:ir.model.constraint,message:nord_sync.constraint_nord_sync_job_stage_company_name_unique
+msgid "A job stage with this name already exists for this company."
+msgstr "Já existe uma fase de tarefa com este nome para esta empresa."
+
+#. module: nord_sync
+#: model:ir.model.constraint,message:nord_sync.constraint_nord_sync_state_mapping_company_source_unique
+msgid "A mapping already exists for this source model/value in this company."
+msgstr ""
+"Já existe um mapeamento para este modelo/valor de origem nesta empresa."
+
+#. module: nord_sync
+#: model:ir.model.constraint,message:nord_sync.constraint_nord_sync_payload_field_config_company_model_unique
+msgid "A payload field config already exists for this model in this company."
+msgstr ""
+"Já existe uma configuração de campo de payload para este modelo nesta "
+"empresa."
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "ACME-JOB/2026/"
+msgstr "ACME-JOB/2026/"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_resource__active
+msgid "Active"
+msgstr "Ativo"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard_line__activity_note
+msgid "Activity Note"
+msgstr "Nota da Atividade"
+
+#. module: nord_sync
+#. odoo-python
+#: code:addons/nord_sync/wizard/nord_sync_failure_wizard_line.py:0
+msgid "Activity created."
+msgstr "Atividade criada."
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+msgid "Age"
+msgstr "Idade"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard_line__assignee_id
+msgid "Assign Activity To"
+msgstr "Atribuir Atividade A"
+
+#. module: nord_sync
+#: model:ir.ui.menu,name:nord_sync.menu_nord_sync_automation_rules
+msgid "Automation Rules"
+msgstr "Regras de Automação"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_payload_field_config__res_model__mrp_bom
+msgid "Bill of Materials"
+msgstr "Lista de Materiais"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_install_wizard__job_stage_mode__both
+msgid "Both"
+msgstr "Ambos"
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_queue_line__data
+msgid ""
+"Business payload snapshot taken at enqueue time — captured before unlink, "
+"since the record is gone afterwards."
+msgstr ""
+"Fotografia do payload de negócio capturada no momento do enfileiramento — "
+"captada antes do unlink, já que o registo deixa de existir depois disso."
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Cancel"
+msgstr "Cancelar"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue__line_ids
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_failures_form
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_queue_form
+msgid "Changes"
+msgstr "Alterações"
+
+#. module: nord_sync
+#. odoo-python
+#: code:addons/nord_sync/wizard/nord_sync_failure_wizard_line.py:0
+msgid "Choose someone to assign the activity to first."
+msgstr "Escolha primeiro alguém a quem atribuir a atividade."
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_failure_wizard_form
+msgid "Close"
+msgstr "Fechar"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__company_id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_inbox__company_id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__company_id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_job_stage__company_id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_payload_field_config__company_id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue__company_id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_resource__company_id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_state_mapping__company_id
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_inbox_search
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_queue_search
+msgid "Company"
+msgstr "Empresa"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_resource__complete_name
+msgid "Complete Name"
+msgstr "Nome Completo"
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_res_config_settings
+msgid "Config Settings"
+msgstr "Definições de Configuração"
+
+#. module: nord_sync
+#: model:ir.actions.act_window,name:nord_sync.action_nord_sync_config
+#: model:ir.ui.menu,name:nord_sync.menu_nord_sync_settings
+msgid "Configuration"
+msgstr "Configuração"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Confirm"
+msgstr "Confirmar"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Confirming activates Nordwire for this company."
+msgstr "Confirmar ativa o Nordwire para esta empresa."
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_config__job_naming_mode__sequence
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_install_wizard__job_naming_mode__sequence
+msgid "Core Sequence"
+msgstr "Sequência do Core"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_queue_line__operation__create
+msgid "Create"
+msgstr "Criar"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_failure_wizard_form
+msgid "Create Activity"
+msgstr "Criar Atividade"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__create_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard__create_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard_line__create_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_inbox__create_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__create_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_mapping_line__create_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_stage_line__create_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_job_stage__create_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_payload_field_config__create_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue__create_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue_line__create_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_resource__create_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_source__create_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_state_mapping__create_uid
+msgid "Created by"
+msgstr "Criado por"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__create_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard__create_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard_line__create_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_inbox__create_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__create_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_mapping_line__create_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_stage_line__create_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_job_stage__create_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_payload_field_config__create_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue__create_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue_line__create_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_resource__create_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_source__create_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_state_mapping__create_date
+msgid "Created on"
+msgstr "Criado em"
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+msgid "Current Failures"
+msgstr "Falhas Atuais"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__job_naming_custom_prefix
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__job_naming_custom_prefix
+#: model:ir.model.fields,field_description:nord_sync.field_res_config_settings__nord_sync_job_naming_custom_prefix
+msgid "Custom Job Naming Prefix"
+msgstr "Prefixo Personalizado de Nomeação de Tarefas"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_config__job_naming_mode__custom_prefix
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_install_wizard__job_naming_mode__custom_prefix
+msgid "Custom Prefix"
+msgstr "Prefixo Personalizado"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard_line__activity_deadline
+msgid "Deadline"
+msgstr "Prazo"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_install_wizard__job_stage_mode__own
+msgid "Define my own"
+msgstr "Definir a minha própria"
+
+#. module: nord_sync
+#: model_terms:ir.actions.act_window,help:nord_sync.action_nord_sync_job_stage
+msgid "Define the job stages this company uses."
+msgstr "Defina as fases de tarefa que esta empresa utiliza."
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_ir_actions_server__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_ir_http__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard_line__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_inbox__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_mapping_line__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_stage_line__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_job_stage__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_notify_mixin__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_payload_field_config__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue_line__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_resource__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_source__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_state_mapping__display_name
+#: model:ir.model.fields,field_description:nord_sync.field_res_config_settings__display_name
+msgid "Display Name"
+msgstr "Nome Exibido"
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_source__name
+msgid "Display label, e.g. \"Manufacturing\"."
+msgstr "Rótulo de exibição, ex.: \"Manufacturing\"."
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_inbox__status__done
+msgid "Done"
+msgstr "Concluído"
+
+#. module: nord_sync
+#: model_terms:ir.actions.act_window,help:nord_sync.action_nord_sync_state_mapping
+msgid ""
+"Each row says which job stage a source value (e.g. a\n"
+"                    Manufacturing Order state) should set on the matching job\n"
+"                    on the Nord Core. Job state itself is never configured\n"
+"                    anywhere on this client — it's exclusive to the job,\n"
+"                    resolved entirely on the Nord Core. A value with no\n"
+"                    matching row here just leaves its job stage alone."
+msgstr ""
+"Cada linha indica a fase de tarefa que um valor de origem (ex.: um\n"
+"                    estado de uma Ordem de Fabrico) deve definir na tarefa correspondente\n"
+"                    no Nord Core. O estado da tarefa em si nunca é configurado\n"
+"                    em nenhum local neste cliente — é exclusivo da tarefa,\n"
+"                    resolvido inteiramente no Nord Core. Um valor sem\n"
+"                    linha correspondente aqui simplesmente deixa a sua fase de tarefa inalterada."
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_payload_field_config__res_model__hr_employee
+msgid "Employee"
+msgstr "Funcionário"
+
+#. module: nord_sync
+#. odoo-python
+#: code:addons/nord_sync/models/nord_sync_config.py:0
+msgid "Enable Nordwire for this company before backfilling existing records."
+msgstr ""
+"Ative o Nordwire para esta empresa antes de preencher retroativamente "
+"registos existentes."
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__enabled_source_ids
+msgid "Enabled Sources"
+msgstr "Origens Ativadas"
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_inbox__endpoint
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_inbox_search
+msgid "Endpoint"
+msgstr "Endpoint"
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+msgid "Error"
+msgstr "Erro"
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_queue__line_ids
+msgid ""
+"Every real change folded under this header, in arrival order — debug-only, "
+"never independently fetched by the Core (see _nord_sync_aggregate_payload "
+"for how the Core actually gets this data, merged into the header's own "
+"served payload)."
+msgstr ""
+"Cada alteração real agrupada sob este cabeçalho, por ordem de chegada — "
+"apenas para depuração, nunca obtida de forma independente pelo Core (ver "
+"_nord_sync_aggregate_payload para perceber como o Core realmente obtém estes"
+" dados, integrados no próprio payload servido do cabeçalho)."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_queue__last_error
+msgid ""
+"Exception message from the most recent failed webhook attempt for this "
+"header — cleared on success."
+msgstr ""
+"Mensagem de exceção da tentativa de webhook falhada mais recente para este "
+"cabeçalho — limpa quando há sucesso."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_inbox__last_error
+msgid ""
+"Exception/failure message from the most recent cron attempt — cleared on "
+"success."
+msgstr ""
+"Mensagem de exceção/falha da tentativa de cron mais recente — limpa quando "
+"há sucesso."
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_inbox__status__failed
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_queue__status__failed
+msgid "Failed"
+msgstr "Falhou"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard__line_ids
+msgid "Failures"
+msgstr "Falhas"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_payload_field_config__field_ids
+msgid "Fields"
+msgstr "Campos"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid ""
+"For each native state value (Manufacturing Orders, and every\n"
+"                            other source Nordwire bridges), choose which Job Stage its\n"
+"                            job lands in on the Nord Core, or leave it blank to not map\n"
+"                            that value at all. You decide which values matter; nothing\n"
+"                            here is forced."
+msgstr ""
+"Para cada valor de estado nativo (Ordens de Fabrico, e qualquer\n"
+"                            outra origem com que o Nordwire faz a ponte), escolha a Fase de Tarefa onde a sua\n"
+"                            tarefa fica no Nord Core, ou deixe em branco para não mapear\n"
+"                            esse valor de todo. Você decide que valores importam; nada\n"
+"                            aqui é obrigatório."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_resource__complete_name
+msgid ""
+"Full hierarchical path (e.g. \"Line 1 / Motor\"), not just the bare name — "
+"edge.resource.name is not unique per company, complete_name is what tells "
+"two same-named resources apart in the mapping pick list."
+msgstr ""
+"Caminho hierárquico completo (ex.: \"Line 1 / Motor\"), não apenas o nome "
+"simples — edge.resource.name não é único por empresa, complete_name é o que "
+"distingue dois recursos com o mesmo nome na lista de seleção de mapeamento."
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_ir_http
+msgid "HTTP Routing"
+msgstr "Encaminhamento HTTP"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.res_config_settings_view_form_nord_sync
+msgid ""
+"How jobs created on the Nord Core from this company's synced\n"
+"                                        records get their name/reference."
+msgstr ""
+"Como as tarefas criadas no Nord Core a partir dos registos\n"
+"                                        sincronizados desta empresa obtêm o seu nome/referência."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_config__job_naming_mode
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_install_wizard__job_naming_mode
+#: model:ir.model.fields,help:nord_sync.field_res_config_settings__nord_sync_job_naming_mode
+msgid ""
+"How jobs created on the Nord Core from this company's synced records get "
+"their name/reference — the Core's own sequence, the originating document's "
+"own name (e.g. a Manufacturing Order's WH/MO/00019), or a custom prefix on "
+"the Core sequence."
+msgstr ""
+"Como as tarefas criadas no Nord Core a partir dos registos sincronizados "
+"desta empresa obtêm o seu nome/referência — a própria sequência do Core, o "
+"nome do documento de origem (ex.: o WH/MO/00019 de uma Ordem de Fabrico), ou"
+" um prefixo personalizado sobre a sequência do Core."
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid ""
+"How should jobs created on the Nord Core from your synced\n"
+"                            records be named?"
+msgstr ""
+"Como devem ser nomeadas as tarefas criadas no Nord Core a partir dos seus\n"
+"                            registos sincronizados?"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_resource__resource_kind__human
+msgid "Human"
+msgstr "Humano"
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_install_wizard_mapping_line__source_label
+msgid "Human label for source_model (e.g. \"Manufacturing Orders\")."
+msgstr "Rótulo legível para source_model (ex.: \"Manufacturing Orders\")."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_install_wizard_mapping_line__source_value_label
+msgid "Human label for source_value (e.g. \"Confirmed\")."
+msgstr "Rótulo legível para source_value (ex.: \"Confirmed\")."
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_ir_actions_server__id
+#: model:ir.model.fields,field_description:nord_sync.field_ir_http__id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard__id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard_line__id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_inbox__id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_mapping_line__id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_stage_line__id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_job_stage__id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_notify_mixin__id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_payload_field_config__id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue__id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue_line__id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_resource__id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_source__id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_state_mapping__id
+#: model:ir.model.fields,field_description:nord_sync.field_res_config_settings__id
+msgid "ID"
+msgstr "ID"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_config__wake_mode__immediate
+msgid "Immediate"
+msgstr "Imediato"
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_config__wake_mode
+#: model:ir.model.fields,help:nord_sync.field_res_config_settings__nord_sync_wake_mode
+msgid ""
+"Immediate (default): every change pings the Nord Cloud wake webhook right "
+"away, same as today. Throttled: at most one wake ping every Wake Throttle "
+"field below, however many changes happen in between — the changes themselves"
+" still land in the queue immediately either way, this only paces how soon "
+"the Core is nudged to come get them (its own periodic reconciliation is "
+"always the upper bound regardless of this setting)."
+msgstr ""
+"Imediato (predefinição): cada alteração aciona de imediato o webhook de wake"
+" do Nord Cloud, como hoje. Limitado: no máximo um ping de wake por cada "
+"período do campo Limite de Wake abaixo, independentemente de quantas "
+"alterações ocorram entretanto — as próprias alterações continuam a entrar na"
+" fila de imediato de qualquer forma, isto apenas regula a rapidez com que o "
+"Core é avisado para as ir buscar (a sua própria reconciliação periódica é "
+"sempre o limite máximo, independentemente desta definição)."
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.res_config_settings_view_form_nord_sync
+msgid ""
+"Immediate: every change pings the Nord Cloud wake webhook right\n"
+"                                        away. Throttled: at most one wake ping every Wake Throttle\n"
+"                                        below, however many changes happen in between."
+msgstr ""
+"Imediato: cada alteração aciona de imediato o webhook de wake do Nord\n"
+"                                        Cloud. Limitado: no máximo um ping de wake por cada Limite de Wake\n"
+"                                        abaixo, independentemente de quantas alterações ocorram entretanto."
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__job_naming_mode
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__job_naming_mode
+#: model:ir.model.fields,field_description:nord_sync.field_res_config_settings__nord_sync_job_naming_mode
+#: model_terms:ir.ui.view,arch_db:nord_sync.res_config_settings_view_form_nord_sync
+msgid "Job Naming"
+msgstr "Nomeação de Tarefas"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_mapping_line__target_job_stage_line_id
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Job Stage"
+msgstr "Fase da Tarefa"
+
+#. module: nord_sync
+#: model:ir.actions.act_window,name:nord_sync.action_nord_sync_state_mapping
+#: model:ir.ui.menu,name:nord_sync.menu_nord_sync_state_mapping
+msgid "Job Stage Mapping"
+msgstr "Mapeamento de Fase de Tarefa"
+
+#. module: nord_sync
+#: model:ir.actions.act_window,name:nord_sync.action_nord_sync_job_stage
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__job_stage_mode
+#: model:ir.ui.menu,name:nord_sync.menu_nord_sync_job_stage
+msgid "Job Stages"
+msgstr "Fases de Tarefa"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_inbox__last_error
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue__last_error
+msgid "Last Error"
+msgstr "Último Erro"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__write_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard__write_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard_line__write_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_inbox__write_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__write_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_mapping_line__write_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_stage_line__write_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_job_stage__write_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_payload_field_config__write_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue__write_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue_line__write_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_resource__write_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_source__write_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_state_mapping__write_uid
+msgid "Last Updated by"
+msgstr "Última Atualização por"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__write_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard__write_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard_line__write_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_inbox__write_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__write_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_mapping_line__write_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_stage_line__write_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_job_stage__write_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_payload_field_config__write_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue__write_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue_line__write_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_resource__write_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_source__write_date
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_state_mapping__write_date
+msgid "Last Updated on"
+msgstr "Última Atualização em"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__last_wake_sent
+#: model:ir.model.fields,field_description:nord_sync.field_res_config_settings__nord_sync_last_wake_sent
+msgid "Last Wake Attempt"
+msgstr "Última Tentativa de Wake"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_resource__resource_kind__machine
+msgid "Machine"
+msgstr "Máquina"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_payload_field_config__res_model__maintenance_request
+msgid "Maintenance Request"
+msgstr "Pedido de Manutenção"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_payload_field_config__res_model__mrp_production
+msgid "Manufacturing Order"
+msgstr "Ordem de Fabrico"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_install_wizard__job_stage_mode__native
+msgid "Map native states"
+msgstr "Mapear estados nativos"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__mapping_line_ids
+msgid "Mapping"
+msgstr "Mapeamento"
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_payload_field_config__res_model
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue_line__res_model
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_source__model
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_failures_form
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_failures_list
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_inbox_form
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_inbox_list
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_inbox_search
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_queue_form
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_queue_list
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_queue_search
+msgid "Model"
+msgstr "Modelo"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard__model_breakdown
+msgid "Model Breakdown"
+msgstr "Discriminação por Modelo"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_stage_line__name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_job_stage__name
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_source__name
+msgid "Name"
+msgstr "Nome"
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_install_wizard__job_stage_mode
+msgid ""
+"Native: one stage per state this Odoo already tracks on Manufacturing "
+"Orders, no typing needed. Own: a free list you define from scratch. Both: "
+"the native ones, plus whatever you add on top."
+msgstr ""
+"Nativo: uma fase por cada estado que este Odoo já acompanha nas Ordens de "
+"Fabrico, sem necessidade de digitar. Próprio: uma lista livre definida por "
+"si de raiz. Ambos: as nativas, mais o que adicionar por cima."
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Next"
+msgstr "Seguinte"
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+msgid "No failures right now."
+msgstr "Sem falhas neste momento."
+
+#. module: nord_sync
+#: model_terms:ir.actions.act_window,help:nord_sync.action_nord_sync_state_mapping
+msgid "No mapping configured yet."
+msgstr "Ainda não há mapeamento configurado."
+
+#. module: nord_sync
+#: model_terms:ir.actions.act_window,help:nord_sync.action_nord_sync_payload_field_config
+msgid "No payload field configuration yet."
+msgstr "Ainda não há configuração de campos de payload."
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__cloud_base_url
+msgid "Nord Cloud URL"
+msgstr "URL do Nord Cloud"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__company_uid
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__company_uid
+#: model:ir.model.fields,field_description:nord_sync.field_res_config_settings__nord_sync_company_uid
+msgid "Nord Company UID"
+msgstr "UID da Empresa Nord"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_res_config_settings__nord_sync_config_id
+msgid "Nord Sync Config"
+msgstr "Configuração do Nord Sync"
+
+#. module: nord_sync
+#: model:ir.actions.server,name:nord_sync.ir_cron_retry_failed_webhooks_ir_actions_server
+msgid "Nord Sync: Retry Failed Webhooks"
+msgstr "Nord Sync: Repetir Webhooks Falhados"
+
+#. module: nord_sync
+#: model:ir.actions.server,name:nord_sync.ir_cron_send_throttled_wakes_ir_actions_server
+msgid "Nord Sync: Send Throttled Wakes"
+msgstr "Nord Sync: Enviar Wakes Limitados"
+
+#. module: nord_sync
+#: model:ir.ui.menu,name:nord_sync.menu_nord_sync_root
+#: model_terms:ir.ui.view,arch_db:nord_sync.res_config_settings_view_form_nord_sync
+msgid "Nordwire"
+msgstr "Nordwire"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_ir_actions_server__nord_sync_operation
+#: model:ir.model.fields,field_description:nord_sync.field_ir_cron__nord_sync_operation
+msgid "Nordwire Change Type"
+msgstr "Tipo de Alteração Nordwire"
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_nord_sync_config
+msgid "Nordwire Configuration"
+msgstr "Configuração Nordwire"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__enabled
+#: model:ir.model.fields,field_description:nord_sync.field_res_config_settings__nord_sync_enabled
+#: model_terms:ir.ui.view,arch_db:nord_sync.res_config_settings_view_form_nord_sync
+msgid "Nordwire Enabled"
+msgstr "Nordwire Ativado"
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_nord_sync_inbox
+msgid "Nordwire Inbox"
+msgstr "Caixa de Entrada Nordwire"
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_nord_sync_install_wizard_stage_line
+msgid "Nordwire Install Wizard — Job Stage Line"
+msgstr "Assistente de Instalação Nordwire — Linha de Fase de Tarefa"
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_nord_sync_install_wizard_mapping_line
+msgid "Nordwire Install Wizard — Mapping Line"
+msgstr "Assistente de Instalação Nordwire — Linha de Mapeamento"
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_nord_sync_install_wizard
+msgid "Nordwire Installation Wizard"
+msgstr "Assistente de Instalação Nordwire"
+
+#. module: nord_sync
+#: model:res.groups,name:nord_sync.group_nord_sync_integration
+msgid "Nordwire Integration"
+msgstr "Integração Nordwire"
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_nord_sync_job_stage
+msgid "Nordwire Job Stage"
+msgstr "Fase de Tarefa Nordwire"
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_nord_sync_state_mapping
+msgid "Nordwire Job Stage Mapping"
+msgstr "Mapeamento de Fase de Tarefa Nordwire"
+
+#. module: nord_sync
+#: model:res.groups,name:nord_sync.group_nord_sync_manager
+msgid "Nordwire Manager"
+msgstr "Gestor Nordwire"
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_nord_sync_notify_mixin
+msgid "Nordwire Notify Mixin"
+msgstr "Mixin de Notificação Nordwire"
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_nord_sync_payload_field_config
+msgid "Nordwire Payload Field Config"
+msgstr "Configuração de Campo de Payload Nordwire"
+
+#. module: nord_sync
+#: model:ir.actions.act_window,name:nord_sync.action_nord_sync_queue
+#: model:ir.model,name:nord_sync.model_nord_sync_queue
+msgid "Nordwire Queue"
+msgstr "Fila Nordwire"
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_nord_sync_queue_line
+msgid "Nordwire Queue Line"
+msgstr "Linha da Fila Nordwire"
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_nord_sync_resource
+msgid "Nordwire Resource"
+msgstr "Recurso Nordwire"
+
+#. module: nord_sync
+#: model:ir.actions.act_window,name:nord_sync.action_nord_sync_res_config_settings
+msgid "Nordwire Settings"
+msgstr "Definições Nordwire"
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_nord_sync_source
+msgid "Nordwire Source"
+msgstr "Origem Nordwire"
+
+#. module: nord_sync
+#: model:res.groups,name:nord_sync.group_nord_sync_user
+msgid "Nordwire User"
+msgstr "Utilizador Nordwire"
+
+#. module: nord_sync
+#: model:res.groups,comment:nord_sync.group_nord_sync_manager
+msgid ""
+"Nordwire User, plus Configuration (enabled/company UID per company), the\n"
+"                Install Wizard, and the nord_sync-tagged Automation Rules (never other modules')."
+msgstr ""
+"Utilizador Nordwire, mais Configuração (ativado/UID de empresa por empresa), o\n"
+"                Assistente de Instalação, e as Regras de Automação com a etiqueta nord_sync (nunca as de outros módulos)."
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/nord_sync_systray/nord_sync_systray.xml:0
+msgid "Nordwire failures"
+msgstr "Falhas do Nordwire"
+
+#. module: nord_sync
+#. odoo-python
+#: code:addons/nord_sync/models/nord_sync_inbox.py:0
+msgid "Nordwire not configured for company %s"
+msgstr "Nordwire não configurado para a empresa %s"
+
+#. module: nord_sync
+#: model:ir.actions.act_window,name:nord_sync.action_nord_sync_install_wizard
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Nordwire — Install"
+msgstr "Nordwire — Instalar"
+
+#. module: nord_sync
+#: model:ir.actions.act_window,name:nord_sync.action_nord_sync_automation_rules
+msgid "Nordwire: Automation Rules"
+msgstr "Nordwire: Regras de Automação"
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_nord_sync_failure_wizard_line
+msgid "Nordwire: Failure Action Line"
+msgstr "Nordwire: Linha de Ação de Falha"
+
+#. module: nord_sync
+#. odoo-python
+#: code:addons/nord_sync/wizard/nord_sync_failure_wizard.py:0
+#: model:ir.model,name:nord_sync.model_nord_sync_failure_wizard
+msgid "Nordwire: Failures"
+msgstr "Nordwire: Falhas"
+
+#. module: nord_sync
+#: model:ir.actions.server,name:nord_sync.ir_cron_process_nord_sync_inbox_ir_actions_server
+msgid "Nordwire: Process Inbox"
+msgstr "Nordwire: Processar Caixa de Entrada"
+
+#. module: nord_sync
+#: model:ir.actions.server,name:nord_sync.action_server_retry_now
+msgid "Nordwire: Retry Now"
+msgstr "Nordwire: Repetir Agora"
+
+#. module: nord_sync
+#: model:ir.actions.act_window,name:nord_sync.action_nord_sync_failures
+msgid "Nordwire: Sync Failures"
+msgstr "Nordwire: Falhas de Sincronização"
+
+#. module: nord_sync
+#. odoo-python
+#: code:addons/nord_sync/models/sync_queue.py:0
+msgid ""
+"Nordwire: could not reach the Nord Cloud — check the network connection."
+msgstr ""
+"Nordwire: não foi possível contactar o Nord Cloud — verifique a ligação de "
+"rede."
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/nord_sync_systray/nord_sync_systray.xml:0
+msgid "Nordwire: failed synchronizations"
+msgstr "Nordwire: sincronizações falhadas"
+
+#. module: nord_sync
+#. odoo-python
+#: code:addons/nord_sync/wizard/nord_sync_failure_wizard_line.py:0
+msgid "Nordwire: follow-up requested"
+msgstr "Nordwire: seguimento solicitado"
+
+#. module: nord_sync
+#. odoo-python
+#: code:addons/nord_sync/models/sync_queue.py:0
+msgid "Nordwire: synchronization failed for an unknown reason."
+msgstr "Nordwire: a sincronização falhou por motivo desconhecido."
+
+#. module: nord_sync
+#. odoo-python
+#: code:addons/nord_sync/models/sync_queue.py:0
+msgid "Nordwire: the Nord Cloud rejected the request."
+msgstr "Nordwire: o Nord Cloud rejeitou o pedido."
+
+#. module: nord_sync
+#. odoo-python
+#: code:addons/nord_sync/models/sync_queue.py:0
+msgid "Nordwire: the Nord Cloud reported a server error."
+msgstr "Nordwire: o Nord Cloud reportou um erro de servidor."
+
+#. module: nord_sync
+#. odoo-python
+#: code:addons/nord_sync/models/sync_queue.py:0
+msgid "Nordwire: the Nord Cloud took too long to respond."
+msgstr "Nordwire: o Nord Cloud demorou demasiado tempo a responder."
+
+#. module: nord_sync
+#. odoo-python
+#: code:addons/nord_sync/wizard/nord_sync_failure_wizard_line.py:0
+msgid "Nordwire: this record is not syncing to the Nord Cloud."
+msgstr "Nordwire: este registo não está a sincronizar com o Nord Cloud."
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+msgid "Not Yet Served to Core"
+msgstr "Ainda Não Servido ao Core"
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+msgid "Nothing in the inbox right now."
+msgstr "Nada na caixa de entrada neste momento."
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+msgid "Nothing in the queue right now."
+msgstr "Nada na fila neste momento."
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__ir_actions_server__state__nord_sync_notify
+msgid "Notify Nord Cloud"
+msgstr "Notificar Nord Cloud"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__odoo_version_supported
+msgid "Odoo Version Supported"
+msgstr "Versão do Odoo Suportada"
+
+#. module: nord_sync
+#: model:ir.model.constraint,message:nord_sync.constraint_nord_sync_config_company_unique
+msgid "Only one Nordwire configuration per company is allowed."
+msgstr "Só é permitida uma configuração Nordwire por empresa."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_payload_field_config__field_ids
+msgid ""
+"Only scalar fields are selectable — relational/binary fields need their own "
+"dedicated resolution and are never sent through this mechanism."
+msgstr ""
+"Só os campos escalares são selecionáveis — campos relacionais/binários "
+"precisam da sua própria resolução dedicada e nunca são enviados através "
+"deste mecanismo."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_config__job_naming_custom_prefix
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_install_wizard__job_naming_custom_prefix
+#: model:ir.model.fields,help:nord_sync.field_res_config_settings__nord_sync_job_naming_custom_prefix
+msgid ""
+"Only used when Job Naming is Custom Prefix — Core ir.sequence prefix syntax,"
+" e.g. \"ACME-JOB/%(year)s/\"."
+msgstr ""
+"Só usado quando a Nomeação de Tarefas é Prefixo Personalizado — sintaxe de "
+"prefixo de ir.sequence do Core, ex.: \"ACME-JOB/%(year)s/\"."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_config__wake_throttle_minutes
+#: model:ir.model.fields,help:nord_sync.field_res_config_settings__nord_sync_wake_throttle_minutes
+msgid "Only used when Wake Mode is Throttled."
+msgstr "Só usado quando o Modo de Wake é Limitado."
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.res_config_settings_view_form_nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_config_form
+msgid "Open Install Wizard"
+msgstr "Abrir Assistente de Instalação"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_failure_wizard_form
+msgid "Open Related Record"
+msgstr "Abrir Registo Relacionado"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue_line__operation
+msgid "Operation"
+msgstr "Operação"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid ""
+"Optional — leave empty for no stage granularity (a job's\n"
+"                            state alone still works)."
+msgstr ""
+"Opcional — deixe vazio para não ter granularidade de fase (o estado\n"
+"                            da tarefa por si só continua a funcionar)."
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+msgid "Owner"
+msgstr "Proprietário"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue__owner_res_model
+msgid "Owner Model"
+msgstr "Modelo do Proprietário"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue__owner_res_id
+msgid "Owner Record ID"
+msgstr "ID do Registo do Proprietário"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_inbox__payload
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue__payload
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue_line__data
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_failures_form
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_inbox_form
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_queue_form
+msgid "Payload"
+msgstr "Payload"
+
+#. module: nord_sync
+#: model:ir.actions.act_window,name:nord_sync.action_nord_sync_payload_field_config
+#: model:ir.ui.menu,name:nord_sync.menu_nord_sync_payload_field_config
+msgid "Payload Fields"
+msgstr "Campos de Payload"
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_inbox__status__pending
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_queue__status__pending
+msgid "Pending"
+msgstr "Pendente"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid ""
+"Pick the parts of your business that should produce jobs on\n"
+"                            the Nord Core. Everything is checked by default."
+msgstr ""
+"Escolha as partes do seu negócio que devem produzir tarefas\n"
+"                            no Nord Core. Tudo vem assinalado por predefinição."
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__preflight_message
+msgid "Preflight Message"
+msgstr "Mensagem de Pré-Verificação"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__preflight_ok
+msgid "Preflight Ok"
+msgstr "Pré-Verificação Ok"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Previous"
+msgstr "Anterior"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_payload_field_config__res_model__purchase_order
+msgid "Purchase Order"
+msgstr "Ordem de Compra"
+
+#. module: nord_sync
+#: model_terms:ir.actions.act_window,help:nord_sync.action_nord_sync_job_stage
+msgid ""
+"Pushed to the Nord Core automatically — reference them from\n"
+"                    a Job Stage Mapping row below to control which stage a job\n"
+"                    lands in."
+msgstr ""
+"Enviadas para o Nord Core automaticamente — referencie-as a partir de\n"
+"                    uma linha de Mapeamento de Fase de Tarefa abaixo para controlar em que fase uma tarefa\n"
+"                    fica."
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_payload_field_config__res_model__quality_check
+msgid "Quality Check"
+msgstr "Qualidade (Verificação)"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue_line__queue_id
+msgid "Queue"
+msgstr "Fila"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.res_config_settings_view_form_nord_sync
+msgid "Queue changes selected and notify the Nord Cloud webhook."
+msgstr ""
+"Enfileira as alterações selecionadas e notifica o webhook do Nord Cloud."
+
+#. module: nord_sync
+#: model:res.groups,comment:nord_sync.group_nord_sync_user
+msgid ""
+"Read-only: Sync Queue, Sync Failures, and manual retry of failed webhooks."
+msgstr ""
+"Apenas leitura: Fila de Sincronização, Falhas de Sincronização, e repetição "
+"manual de webhooks falhados."
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard_line__message
+msgid "Reason"
+msgstr "Motivo"
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard_line__record_name
+msgid "Record"
+msgstr "Registo"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__ir_actions_server__nord_sync_operation__create
+msgid "Record Created"
+msgstr "Registo Criado"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__ir_actions_server__nord_sync_operation__unlink
+msgid "Record Deleted"
+msgstr "Registo Eliminado"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue_line__res_id
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_failures_form
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_failures_list
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_queue_form
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_queue_list
+msgid "Record ID"
+msgstr "ID do Registo"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__ir_actions_server__nord_sync_operation__write
+msgid "Record Updated"
+msgstr "Registo Atualizado"
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+msgid "Refresh"
+msgstr "Atualizar"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Refresh Preflight Check"
+msgstr "Atualizar Pré-Verificação"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard_line__res_id
+msgid "Res"
+msgstr "Res"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard_line__res_model
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_inbox__res_model
+msgid "Res Model"
+msgstr "Modelo do Res"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_inbox__endpoint__resources
+msgid "Resources"
+msgstr "Recursos"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_inbox__endpoint__result
+msgid "Result"
+msgstr "Resultado"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_failure_wizard_form
+msgid "Retry Now"
+msgstr "Repetir Agora"
+
+#. module: nord_sync
+#. odoo-python
+#: code:addons/nord_sync/wizard/nord_sync_failure_wizard.py:0
+msgid "Retry requested."
+msgstr "Repetição solicitada."
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.res_config_settings_view_form_nord_sync
+msgid ""
+"Run the install wizard for environment pre-flight checks\n"
+"                                        (scheduler active, Odoo version) before configuring."
+msgstr ""
+"Execute o assistente de instalação para verificações de pré-requisitos do ambiente\n"
+"                                        (agendador ativo, versão do Odoo) antes de configurar."
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_payload_field_config__res_model__sale_order
+msgid "Sale Order"
+msgstr "Ordem de Venda"
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_install_wizard__cloud_base_url
+msgid ""
+"Same value as the nord_sync.cloud_base_url system parameter — editable from "
+"either place. Set here too (not just in Settings > Technical > System "
+"Parameters) because every push this wizard makes from Job Stages onward "
+"needs it already in place: without it, the wake webhook is silently skipped "
+"(nord.sync.queue entries land 'pending') and, once the pull cursor moves "
+"past them, nothing retries them automatically."
+msgstr ""
+"Mesmo valor que o parâmetro de sistema nord_sync.cloud_base_url — editável a"
+" partir de qualquer um dos dois locais. Definido também aqui (não só em "
+"Definições > Técnico > Parâmetros de Sistema) porque todo o envio que este "
+"assistente faz a partir das Fases de Tarefa em diante precisa dele já "
+"definido: sem isso, o webhook de wake é ignorado silenciosamente (as "
+"entradas de nord.sync.queue ficam 'pending') e, assim que o cursor de "
+"leitura as ultrapassa, nada as repete automaticamente."
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__cron_active
+msgid "Scheduler Active"
+msgstr "Agendador Ativo"
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_queue__status__sent
+msgid "Sent"
+msgstr "Enviado"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue__is_sealed
+msgid "Sent to Core"
+msgstr "Enviado ao Core"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_failures_form
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_failures_list
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_inbox_list
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_queue_form
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_queue_list
+msgid "Seq"
+msgstr "Seq"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_mapping_line__sequence
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_stage_line__sequence
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_job_stage__sequence
+msgid "Sequence"
+msgstr "Sequência"
+
+#. module: nord_sync
+#: model:ir.model,name:nord_sync.model_ir_actions_server
+msgid "Server Action"
+msgstr "Ação de Servidor"
+
+#. module: nord_sync
+#: model:ir.ui.menu,name:nord_sync.menu_nord_sync_general_settings
+msgid "Settings"
+msgstr "Definições"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__show_finish
+msgid "Show Finish"
+msgstr "Mostrar Concluir"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__show_next
+msgid "Show Next"
+msgstr "Mostrar Seguinte"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__show_previous
+msgid "Show Previous"
+msgstr "Mostrar Anterior"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Source"
+msgstr "Origem"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_config__job_naming_mode__source_document
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_install_wizard__job_naming_mode__source_document
+msgid "Source Document Name"
+msgstr "Nome do Documento de Origem"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_mapping_line__source_label
+msgid "Source Label"
+msgstr "Rótulo de Origem"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_mapping_line__source_model
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_state_mapping__source_model
+msgid "Source Model"
+msgstr "Modelo de Origem"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_mapping_line__source_value
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_state_mapping__source_value
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Source Value"
+msgstr "Valor de Origem"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_mapping_line__source_value_label
+msgid "Source Value Label"
+msgstr "Rótulo do Valor de Origem"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__source_ids
+msgid "Sources"
+msgstr "Origens"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__job_stage_line_ids
+msgid "Stages"
+msgstr "Fases"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__state
+msgid "State"
+msgstr "Estado"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard__state_index
+msgid "State Index"
+msgstr "Índice de Estado"
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_inbox__status
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_queue__status
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_inbox_search
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_queue_search
+msgid "Status"
+msgstr "Estado"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Step 1. Environment Pre-flight"
+msgstr "Passo 1. Pré-Verificação do Ambiente"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Step 2. What do you want to sync?"
+msgstr "Passo 2. O que pretende sincronizar?"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Step 3. Connection"
+msgstr "Passo 3. Ligação"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Step 4. Job Stages"
+msgstr "Passo 4. Fases de Tarefa"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Step 5. Mapping"
+msgstr "Passo 5. Mapeamento"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Step 6. Job Naming"
+msgstr "Passo 6. Nomeação de Tarefas"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_install_wizard_form
+msgid "Step 7. Confirm"
+msgstr "Passo 7. Confirmar"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_queue_search
+msgid ""
+"Still here more than an hour after arriving — normal 2h-retention noise ages"
+" out well before this."
+msgstr ""
+"Ainda aqui há mais de uma hora — o ruído normal de retenção de 2h extingue-"
+"se bem antes disto."
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_inbox_search
+msgid ""
+"Still here more than an hour after arriving — the cron should have picked it"
+" up long before this."
+msgstr ""
+"Ainda aqui há mais de uma hora — o cron já devia ter processado isto há "
+"muito."
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_inbox_search
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_queue_search
+msgid "Stuck (>1h)"
+msgstr "Encravado (>1h)"
+
+#. module: nord_sync
+#: model:ir.ui.menu,name:nord_sync.menu_nord_sync_group
+msgid "Sync"
+msgstr "Sincronizar"
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+#: model:ir.ui.menu,name:nord_sync.menu_nord_sync_failures
+msgid "Sync Failures"
+msgstr "Falhas de Sincronização"
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+#: model:ir.actions.act_window,name:nord_sync.action_nord_sync_inbox
+#: model:ir.ui.menu,name:nord_sync.menu_nord_sync_inbox
+msgid "Sync Inbox"
+msgstr "Caixa de Entrada de Sincronização"
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+#: model:ir.actions.client,name:nord_sync.action_nord_sync_sync_overview
+#: model:ir.ui.menu,name:nord_sync.menu_nord_sync_overview
+msgid "Sync Overview"
+msgstr "Visão Geral de Sincronização"
+
+#. module: nord_sync
+#. odoo-javascript
+#: code:addons/nord_sync/static/src/components/sync_overview/sync_overview.xml:0
+#: model:ir.ui.menu,name:nord_sync.menu_nord_sync_queue
+msgid "Sync Queue"
+msgstr "Fila de Sincronização"
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.view_nord_sync_failures_form
+msgid "Take Action"
+msgstr "Agir"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_state_mapping__target_job_stage_id
+msgid "Target Job Stage"
+msgstr "Fase de Tarefa Alvo"
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_source__model
+msgid ""
+"Technical source model, e.g. \"mrp.production\" — matched against a source's"
+" own _nord_sync_payload()-producing model."
+msgstr ""
+"Modelo técnico de origem, ex.: \"mrp.production\" — cruzado com o próprio "
+"modelo produtor de payload (_nord_sync_payload()) de uma origem."
+
+#. module: nord_sync
+#: model:res.groups,comment:nord_sync.group_nord_sync_integration
+msgid ""
+"Technical users authenticating as the Nord Core (API key, scope=rpc) belong "
+"here."
+msgstr ""
+"Pertencem aqui os utilizadores técnicos que se autenticam como o Nord Core "
+"(chave API, scope=rpc)."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_config__company_uid
+#: model:ir.model.fields,help:nord_sync.field_res_config_settings__nord_sync_company_uid
+msgid ""
+"Tenant UID assigned by Nord (matches a res.company.uid on the Nord "
+"Cloud/Core side). Sent in the wake webhook payload and used to identify this"
+" company on queue pulls."
+msgstr ""
+"UID do inquilino atribuído pela Nord (corresponde a um res.company.uid do "
+"lado Nord Cloud/Core). Enviado no payload do webhook de wake e usado para "
+"identificar esta empresa nas leituras da fila."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_resource__uid
+msgid "The edge.resource.uid on the Core — the join key."
+msgstr "O edge.resource.uid no Core — a chave de junção."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_inbox__payload
+msgid "The full raw request body, verbatim."
+msgstr "O corpo completo do pedido em bruto, tal e qual."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_queue__payload
+msgid ""
+"The payload actually served to the Core for this header — read-only preview "
+"of _nord_sync_aggregate_payload, so a human inspecting this record sees the "
+"same merge the Core does without needing to call the API."
+msgstr ""
+"O payload efetivamente servido ao Core para este cabeçalho — pré-"
+"visualização apenas de leitura de _nord_sync_aggregate_payload, para que uma"
+" pessoa a inspecionar este registo veja a mesma fusão que o Core vê, sem "
+"precisar de chamar a API."
+
+#. module: nord_sync
+#. odoo-python
+#: code:addons/nord_sync/wizard/nord_sync_failure_wizard_line.py:0
+msgid "This record no longer exists."
+msgstr "Este registo já não existe."
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_config__wake_mode__throttled
+msgid "Throttled"
+msgstr "Limitado"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_resource__resource_kind__tool
+msgid "Tool"
+msgstr "Ferramenta"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_payload_field_config__res_model__stock_picking
+msgid "Transfer"
+msgstr "Transferência"
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_queue__is_sealed
+msgid ""
+"True the moment this header is actually served in a /queue response to the "
+"Core — not whether the wake webhook to the Cloud succeeded (see status "
+"below), and not whether the Core went on to apply it successfully (see the "
+"Core's own logs for that). A sealed header never accepts a new line, the "
+"next related change for the same owner opens a fresh header instead."
+msgstr ""
+"Torna-se verdadeiro no momento em que este cabeçalho é efetivamente servido "
+"numa resposta /queue ao Core — não se o webhook de wake para a Cloud teve "
+"sucesso (ver estado abaixo), nem se o Core chegou a aplicá-lo com sucesso "
+"(ver os próprios logs do Core para isso). Um cabeçalho selado nunca aceita "
+"uma nova linha, a próxima alteração relacionada para o mesmo proprietário "
+"abre um cabeçalho novo."
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_ir_actions_server__state
+#: model:ir.model.fields,field_description:nord_sync.field_ir_cron__state
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_resource__resource_kind
+msgid "Type"
+msgstr "Tipo"
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_ir_actions_server__state
+#: model:ir.model.fields,help:nord_sync.field_ir_cron__state
+msgid ""
+"Type of server action. The following values are available:\n"
+"- 'Update a Record': update the values of a record\n"
+"- 'Create Activity': create an activity (Discuss)\n"
+"- 'Send Email': post a message, a note or send an email (Discuss)\n"
+"- 'Send SMS': send SMS, log them on documents (SMS)- 'Add/Remove Followers': add or remove followers to a record (Discuss)\n"
+"- 'Create Record': create a new record with new values\n"
+"- 'Execute Code': a block of Python code that will be executed\n"
+"- 'Send Webhook Notification': send a POST request to an external system, also known as a Webhook\n"
+"- 'Multi Actions': define an action that triggers several other server actions\n"
+msgstr ""
+"Tipo de ação de servidor. Estão disponíveis os seguintes valores:\n"
+"- 'Atualizar um Registo': atualiza os valores de um registo\n"
+"- 'Criar Atividade': cria uma atividade (Discuss)\n"
+"- 'Enviar Email': publica uma mensagem, uma nota ou envia um email (Discuss)\n"
+"- 'Enviar SMS': envia SMS, regista-os nos documentos (SMS)- 'Adicionar/Remover Seguidores': adiciona ou remove seguidores de um registo (Discuss)\n"
+"- 'Criar Registo': cria um novo registo com novos valores\n"
+"- 'Executar Código': um bloco de código Python que será executado\n"
+"- 'Enviar Notificação de Webhook': envia um pedido POST para um sistema externo, também conhecido como Webhook\n"
+"- 'Múltiplas Ações': define uma ação que aciona várias outras ações de servidor\n"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_resource__uid
+msgid "Uid"
+msgstr "Uid"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_queue_line__operation__unlink
+msgid "Unlink"
+msgstr "Desligar"
+
+#. module: nord_sync
+#. odoo-python
+#: code:addons/nord_sync/models/nord_sync_config.py:0
+msgid "Unsupported res_model: %s"
+msgstr "res_model não suportado: %s"
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_state_mapping__source_value
+msgid ""
+"Value as this model itself tracks it — picked from a real list, never typed."
+msgstr ""
+"Valor tal como este modelo o acompanha por si só — escolhido de uma lista "
+"real, nunca digitado."
+
+#. module: nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync.res_config_settings_view_form_nord_sync
+msgid "Wake Behavior"
+msgstr "Comportamento de Wake"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__wake_mode
+#: model:ir.model.fields,field_description:nord_sync.field_res_config_settings__nord_sync_wake_mode
+msgid "Wake Mode"
+msgstr "Modo de Wake"
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_config__wake_throttle_minutes
+#: model:ir.model.fields,field_description:nord_sync.field_res_config_settings__nord_sync_wake_throttle_minutes
+msgid "Wake Throttle (minutes)"
+msgstr "Limite de Wake (minutos)"
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_queue__status
+msgid ""
+"Wake webhook delivery to the Nord Cloud for this header — not the Core's "
+"downstream processing of it (the Core pulls by seq/last_seq regardless of "
+"this field). Stays \"pending\" when the webhook is not yet configured "
+"(nothing attempted); \"failed\" headers are what the client-side "
+"reconciliation cron retries."
+msgstr ""
+"Entrega do webhook de wake ao Nord Cloud para este cabeçalho — não o "
+"processamento a jusante do Core (o Core lê por seq/last_seq "
+"independentemente deste campo). Permanece \"pending\" enquanto o webhook não"
+" estiver configurado (nada foi tentado); os cabeçalhos \"failed\" são os que"
+" o cron de reconciliação do lado cliente repete."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_ir_actions_server__nord_sync_operation
+#: model:ir.model.fields,help:nord_sync.field_ir_cron__nord_sync_operation
+msgid ""
+"What happened to the record — sent to the Nord Cloud/Core so they know "
+"whether to create, update, or remove the corresponding job."
+msgstr ""
+"O que aconteceu ao registo — enviado ao Nord Cloud/Core para que saibam se "
+"devem criar, atualizar ou remover a tarefa correspondente."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_config__last_wake_sent
+#: model:ir.model.fields,help:nord_sync.field_res_config_settings__nord_sync_last_wake_sent
+msgid ""
+"When the last wake webhook attempt (success or failure) happened — paces "
+"Throttled mode only, never affects whether data actually syncs."
+msgstr ""
+"Quando ocorreu a última tentativa de webhook de wake (sucesso ou falha) — só"
+" regula o modo Limitado, nunca afeta se os dados realmente sincronizam."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_config__enabled_source_ids
+msgid ""
+"Which Nordwire Sources actually produce jobs for this company — every source"
+" is always installed together now (they all live in this one addon), this is"
+" what used to be a per-source addon install/uninstall. Defaults to every "
+"known source, so an existing config from before this field existed keeps "
+"behaving exactly as it did before."
+msgstr ""
+"Quais Origens Nordwire produzem efetivamente tarefas para esta empresa — "
+"todas as origens estão agora sempre instaladas em conjunto (vivem todas "
+"neste único addon), isto é o que costumava ser um addon por origem para "
+"instalar/desinstalar. Por predefinição inclui todas as origens conhecidas, "
+"para que uma configuração existente anterior a este campo continue a "
+"comportar-se exatamente como antes."
+
+#. module: nord_sync
+#: model_terms:ir.actions.act_window,help:nord_sync.action_nord_sync_payload_field_config
+msgid ""
+"Which of a model's own fields go out to the Nord Core when it\n"
+"                    syncs — one row per model. Only scalar fields are selectable;\n"
+"                    a model's constants, relational references, and nested\n"
+"                    snapshots (e.g. the BOM a Manufacturing Order used) are wired\n"
+"                    separately and always sent, they're not configured here.\n"
+"                    Removing a field a company relies on for Core-side behavior\n"
+"                    (e.g. Manufacturing Order's own \"state\") silently turns that\n"
+"                    behavior off — nothing here warns before that happens."
+msgstr ""
+"Quais os próprios campos de um modelo que saem para o Nord Core quando\n"
+"                    sincroniza — uma linha por modelo. Só os campos escalares são selecionáveis;\n"
+"                    as constantes, referências relacionais e instantâneos aninhados\n"
+"                    de um modelo (ex.: a lista de materiais usada por uma Ordem de Fabrico) são\n"
+"                    tratados em separado e enviados sempre, não são configurados aqui.\n"
+"                    Remover um campo de que uma empresa depende para comportamento do lado Core\n"
+"                    (ex.: o próprio \"state\" de uma Ordem de Fabrico) desativa silenciosamente esse\n"
+"                    comportamento — nada aqui avisa antes disso acontecer."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_inbox__endpoint
+msgid ""
+"Which of the 3 inbound routes this entry came from — picks the cron's own "
+"dispatch branch (see _cron_process_pending). Not the same axis as res_model "
+"below: one endpoint can carry different res_model values (/result carries "
+"both mrp.production and future source models), while /resources always "
+"carries the same fixed one."
+msgstr ""
+"De qual das 3 rotas de entrada esta entrada veio — escolhe o ramo de "
+"despacho do próprio cron (ver _cron_process_pending). Não é o mesmo eixo que"
+" res_model abaixo: um endpoint pode transportar vários valores de res_model "
+"(/result transporta tanto mrp.production como futuros modelos de origem), "
+"enquanto /resources transporta sempre o mesmo valor fixo."
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_install_wizard__source_ids
+msgid ""
+"Which parts of your business should produce jobs on the Nord Core. "
+"Everything is checked by default — uncheck what this company doesn't use."
+msgstr ""
+"Que partes do seu negócio devem produzir tarefas no Nord Core. Tudo vem "
+"assinalado por predefinição — desmarque o que esta empresa não usa."
+
+#. module: nord_sync
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_failure_wizard_line__wizard_id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_mapping_line__wizard_id
+#: model:ir.model.fields,field_description:nord_sync.field_nord_sync_install_wizard_stage_line__wizard_id
+msgid "Wizard"
+msgstr "Assistente"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_payload_field_config__res_model__mrp_workcenter
+msgid "Work Center"
+msgstr "Posto de Trabalho"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_payload_field_config__res_model__mrp_workorder
+msgid "Work Order"
+msgstr "Ordem de Trabalho"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_inbox__endpoint__workorder_event
+msgid "Workorder Event"
+msgstr "Evento de Ordem de Trabalho"
+
+#. module: nord_sync
+#: model:ir.model.fields.selection,name:nord_sync.selection__nord_sync_queue_line__operation__write
+msgid "Write"
+msgstr "Escrever"
+
+#. module: nord_sync
+#: model:ir.model.fields,help:nord_sync.field_nord_sync_inbox__res_model
+msgid ""
+"body[\"res_model\"] verbatim for result/workorder_event. For resources, "
+"there is no res_model key in that route's body at all — the controller sets "
+"this to the fixed literal 'nord_sync.resource', the model that endpoint "
+"always upserts into."
+msgstr ""
+"body[\"res_model\"] tal e qual para result/workorder_event. Para resources, "
+"não existe sequer chave res_model no corpo dessa rota — o controlador define"
+" isto para o literal fixo 'nord_sync.resource', o modelo em que esse "
+"endpoint sempre faz upsert."
