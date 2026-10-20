@@ -57,6 +57,27 @@
             <field name="groups" eval="[(4, ref('group_nord_sync_manager'))]"/>
             <field name="domain_force" eval="['|', '|', ('name', 'like', 'Nordwire'), ('name', 'like', 'Nord Sync'), ('id', '=', ref('base_automation.ir_cron_data_base_automation_check_ir_actions_server'))]"/>
         </record>
+        <!-- Real bug, found live 2026-10-20: the rule above is the only
+             ir.rule on ir.actions.server in this database, so it's the only
+             one consulted for ANY user in group_nord_sync_manager — even one
+             who is ALSO base.group_system (a real Odoo administrator), since
+             group_system has no rule of its own on this model to OR against
+             it. nord_sync_mrp's post_init_hook auto-grants Nordwire Manager
+             to every Manufacturing admin, so a plain Odoo administrator who
+             also manages Manufacturing got silently locked out of creating
+             any Server Action unrelated to Nordwire unless they typed
+             "Nordwire"/"Nord Sync" in its name — nonsensical for someone who
+             already has full administrator rights. ir.rule from different
+             groups combines with OR, so this unrestricted rule for
+             group_system cancels the restrictive one above for anyone in
+             both groups, while a Nordwire Manager who isn't a real
+             administrator keeps the original restriction. -->
+        <record id="rule_ir_actions_server_group_system" model="ir.rule">
+            <field name="name">Administrator: unrestricted Server Actions</field>
+            <field name="model_id" ref="base.model_ir_actions_server"/>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+            <field name="domain_force" eval="[(1, '=', 1)]"/>
+        </record>
 
         <!-- Real bug, found 2026-08-18: none of this addon's 4 own
              company-owned models had a multi-company ir.rule at all — Odoo
