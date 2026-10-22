@@ -10,10 +10,10 @@ class MrpWorkorder(models.Model):
     resource_id from its own workcenter_id instead of relying on the BOM
     template's — real MOs can deviate from their BOM's routing (a
     workcenter reassignment), which the template alone could never reflect.
-    Also carries employee_assigned_ids (Shop Floor) as a second, optional
-    resource reference — the workplace (workcenter_id) and the person
-    allocated to the work are two distinct resources on the Core side,
-    each with its own real work session.
+    Also carries the real operator (see _nord_sync_current_operator) as a
+    second, optional resource reference — the workplace (workcenter_id)
+    and the person allocated to the work are two distinct resources on
+    the Core side, each with its own real work session.
 
     No result side anymore (reverted 2026-08-13): a real work session's
     start/end only ever existed on the Core, and nothing about it —
@@ -111,6 +111,31 @@ class MrpWorkorder(models.Model):
             'target': 'new',
             'context': {'default_workorder_id': self.id},
         }
+
+    def _nord_sync_current_operator(self):
+        """The real operator for this workorder — never
+        employee_assigned_ids: real clients' Shop Floor usage never
+        populates that field (a separate "pre-assigned via planning"
+        concept), they just click Start, which only ever fills
+        employee_ids/time_ids (real bug, caught live 2026-10-22: SK
+        Coffee's own data has 0 employee_assigned_ids rows across 457
+        worked workorders, so the Workorder Bridge never carried an
+        operator for any of them). Whoever has a currently open time_ids
+        session wins (the one actually working right now); next, the
+        legacy employee_assigned_ids, for any company that does use that
+        planning field; last, the most recently active employee_ids entry,
+        for a workorder that's already finished its only session.
+        """
+        self.ensure_one()
+        open_session = self.time_ids.filtered(lambda t: not t.date_end).sorted('date_start', reverse=True)
+        if open_session:
+            return open_session[0].employee_id
+        if self.employee_assigned_ids:
+            return self.employee_assigned_ids[0]
+        last_session = self.time_ids.sorted('date_start', reverse=True)
+        if last_session:
+            return last_session[0].employee_id
+        return self.env['hr.employee']
 
     def _nord_sync_source_key(self):
         return 'mrp.production'
@@ -333,15 +358,17 @@ class MrpWorkorder(models.Model):
                 find this job's earlier operations, not a display/list
                 ordering concern on the Core side.
             employee_source_res_id (int or False): the client's own
-                hr.employee id of the first assigned operator, False if none
-                assigned (only the first of employee_assigned_ids is carried).
+                hr.employee id of the real operator (see
+                _nord_sync_current_operator), False if there's none to
+                report.
             employee (dict or False): {name, nord_resource_uids} snapshot of
-                that same employee, only present (non-False) when someone is
-                actually assigned — same lazy-resolution safety net as
-                'workcenter' above, but optional since an unresolved
-                operator never blocks the task.
+                that same employee, only present (non-False) when there is
+                one — same lazy-resolution safety net as 'workcenter'
+                above, but optional since an unresolved operator never
+                blocks the task.
         """
         self.ensure_one()
+        operator = self._nord_sync_current_operator()
         return {
             **self._nord_sync_configurable_payload(),
             'production_source_res_id': self.production_id.id,
@@ -371,16 +398,13 @@ class MrpWorkorder(models.Model):
             # duration_expected is in minutes; nord.timesheet.expected_duration is hours.
             'expected_duration': self.duration_expected / 60.0,
             'sequence': self.sequence,
-            # employee_assigned_ids (Shop Floor) can hold several people —
-            # only the first is carried over, one operator per task on the
-            # Core side today.
-            'employee_source_res_id': self.employee_assigned_ids[:1].id or False,
+            'employee_source_res_id': operator.id or False,
             # Same lazy-resolution safety net as 'workcenter' above, for the
-            # same reason — only sent when someone is actually assigned,
-            # since an unresolved operator is optional and never blocks the
-            # task (unlike the work center).
+            # same reason — only sent when there's an actual operator,
+            # since an unresolved one is optional and never blocks the task
+            # (unlike the work center).
             'employee': {
-                'name': self.employee_assigned_ids[0].name,
-                'nord_resource_uids': self.employee_assigned_ids[0].resource_id.nord_sync_resource_id.mapped('uid'),
-            } if self.employee_assigned_ids else False,
+                'name': operator.name,
+                'nord_resource_uids': operator.resource_id.nord_sync_resource_id.mapped('uid'),
+            } if operator else False,
         }
