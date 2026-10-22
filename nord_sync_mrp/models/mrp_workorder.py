@@ -318,7 +318,15 @@ class MrpWorkorder(models.Model):
         except TypeError:
             self.button_start()
             return
-        employee = self.employee_assigned_ids[:1]
+        # Same gap _nord_sync_payload() had (see _nord_sync_current_operator):
+        # employee_assigned_ids alone is almost always empty on a real
+        # install, which silently routed every Core-initiated start to the
+        # autonomous placeholder below even when this exact workorder had
+        # a real human on its last session (e.g. a paused job the Core is
+        # resuming) -- _nord_sync_current_operator() also falls back
+        # through employee_assigned_ids, then the most recent past
+        # session's employee, before finally coming up empty here.
+        employee = self._nord_sync_current_operator()
         if not employee:
             employee = self.env['hr.employee']._nord_sync_get_or_create_autonomous_employee(self.company_id)
         already_open = self.time_ids.filtered(lambda t: not t.date_end and t.employee_id == employee)
