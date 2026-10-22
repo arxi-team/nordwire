@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="demo_action_generate_job" model="ir.actions.server">
+        <field name="name">Nordwire Demo: generate SK Coffee job</field>
+        <field name="model_id" ref="mrp.model_mrp_production"/>
+        <field name="state">code</field>
+        <field name="code"><![CDATA[
+Bom = env["mrp.bom"]
+boms = Bom.search([("type", "=", "normal"), ("operation_ids", "!=", False)])
+if not boms:
+    raise UserError("Nordwire Demo: no BoM with operations found.")
+pick = datetime.datetime.now().microsecond
+bom = boms[pick % len(boms)]
+product = bom.product_tmpl_id.product_variant_id
+
+employees = env["hr.employee"].search([("company_id", "=", env.company.id)])
+employee = employees[pick % len(employees)] if employees else env["hr.employee"]
+
+mo = env["mrp.production"].create({
+    "product_id": product.id,
+    "product_qty": 1.0,
+    "bom_id": bom.id,
+    "company_id": env.company.id,
+})
+mo.action_confirm()
+
+for wo in mo.workorder_ids:
+    wo.workcenter_id.write({"working_state": "normal"})
+    wo.button_start()
+    if employee:
+        wo.start_employee(employee.id)
+    for qc in wo.check_ids.filtered(lambda c: c.quality_state == "none"):
+        qc.do_pass()
+    wo.button_finish()
+    if employee:
+        wo.stop_employee(employee.ids)
+
+mo.write({"qty_producing": mo.product_qty})
+mo.button_mark_done()
+_logger.info("Nordwire Demo: generated %s (%s) worked by %s", mo.name, product.display_name, employee.name if employee else "no employee")
+]]></field>
+    </record>
+
+    <record id="demo_cron_generate_job" model="ir.cron">
+        <field name="name">Nordwire Demo: generate SK Coffee job</field>
+        <field name="ir_actions_server_id" ref="demo_action_generate_job"/>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+</odoo>
