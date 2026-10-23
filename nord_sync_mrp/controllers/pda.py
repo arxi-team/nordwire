@@ -130,6 +130,7 @@ class NordSyncPda(Controller):
                 'message': f'{mo_name} não tem nenhuma operação por fazer em {workcenter.name}.',
             }
         workorder._nord_sync_notify_floor_event('setup')
+        workorder.production_id._nord_sync_ensure_delivery()
         return {
             'success': True,
             'message': f'{mo_name} em setup em {workcenter.name}. Carregue no botão para iniciar.',

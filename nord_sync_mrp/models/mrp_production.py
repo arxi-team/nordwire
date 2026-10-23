@@ -32,6 +32,47 @@ class MrpProduction(models.Model):
              'machine before the machine itself starts it.',
     )
 
+    def _nord_sync_ensure_delivery(self):
+        """The customer delivery this MO ends in, for the Core to queue after
+        its last operation: the open delivery of the sale it came from (same
+        origin), else a simulated one to a placeholder customer. Pushed to
+        the Core either way (the Inventory source only notifies on create,
+        and a sale delivery may predate it). No-op without the Inventory
+        source installed."""
+        self.ensure_one()
+        Picking = self.env['stock.picking'].sudo()
+        if not hasattr(Picking, '_nord_sync_productions'):
+            return Picking
+        origins = [o for o in (self.origin, self.name) if o]
+        picking = Picking.search([
+            ('company_id', '=', self.company_id.id), ('picking_type_code', '=', 'outgoing'),
+            ('origin', 'in', origins), ('state', 'not in', ('done', 'cancel')),
+        ], limit=1)
+        if not picking:
+            picking_type = self.env['stock.picking.type'].sudo().search([
+                ('code', '=', 'outgoing'), ('company_id', '=', self.company_id.id),
+            ], limit=1)
+            partner = self.env['res.partner'].sudo().search([('name', '=', 'Cliente Feira (simulado)')], limit=1) \
+                or self.env['res.partner'].sudo().create({'name': 'Cliente Feira (simulado)'})
+            picking = Picking.create({
+                'picking_type_id': picking_type.id,
+                'partner_id': partner.id,
+                'origin': self.name,
+                'location_id': picking_type.default_location_src_id.id,
+                'location_dest_id': picking_type.default_location_dest_id.id,
+                'move_ids': [(0, 0, {
+                    'product_id': self.product_id.id,
+                    'product_uom_qty': self.product_qty,
+                    'product_uom': self.product_uom_id.id,
+                    'location_id': picking_type.default_location_src_id.id,
+                    'location_dest_id': picking_type.default_location_dest_id.id,
+                })],
+            })
+            picking.action_confirm()
+        else:
+            picking._nord_sync_notify('write')
+        return picking
+
     def _compute_nord_sync_qr_code(self):
         # Rendered with qrcode (an Odoo dependency) rather than /report/barcode,
         # which needs reportlab's optional renderPM backend.
