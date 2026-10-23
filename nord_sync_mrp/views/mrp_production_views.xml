@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- QR code of the MO's name, for the Nord PDA to scan (sets the MO up
+         on its machine before the machine's own port starts it). -->
+    <record id="mrp_production_form_view_nord_sync_qr" model="ir.ui.view">
+        <field name="name">mrp.production.form.nord.sync.qr</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="after">
+                <div class="float-end" invisible="not nord_sync_qr_code">
+                    <field name="nord_sync_qr_code" widget="image" nolabel="1" readonly="1"
+                           options="{'size': [120, 120]}"/>
+                </div>
+            </div>
+        </field>
+    </record>
+
+</odoo>
