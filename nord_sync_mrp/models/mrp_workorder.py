@@ -215,6 +215,13 @@ class MrpWorkorder(models.Model):
                 return self._nord_sync_apply_session_loss_justified(payload)
             except Exception as exc:
                 return False, str(exc)
+        if event_type == 'session_setup':
+            # Historical too, like session_loss_justified: logged even when
+            # the work order already finished by the time it arrives.
+            try:
+                return self._nord_sync_apply_session_setup(payload)
+            except Exception as exc:
+                return False, str(exc)
         if self.state in ('done', 'cancel'):
             # Real bug, caught live: a delayed session_stop (retried after
             # the workorder already reached 'done' through the deliberate
@@ -302,6 +309,41 @@ class MrpWorkorder(models.Model):
             reason_name, payload.get('reason_type'),
         )
         line.loss_id = loss.id
+        return True, 'ok'
+
+    def _nord_sync_apply_session_setup(self, payload):
+        """Logs the machine's setup time for this work order (the MO was
+        scanned on the PDA, the machine waited for it until its own start)
+        as a closed time line with a setup loss reason. Idempotent on
+        nord_timesheet_id, so a retried delivery logs it once.
+
+        Keys:
+            start_date (str, required) / end_date (str, required).
+            nord_timesheet_id (int, required).
+            reason_name (str, optional): defaults to 'Setup and Adjustments',
+                Odoo's own setup loss. reason_type (str, optional): see
+                session_loss_justified.
+        """
+        self.ensure_one()
+        nord_timesheet_id = payload.get('nord_timesheet_id')
+        start_date, end_date = payload.get('start_date'), payload.get('end_date')
+        if not nord_timesheet_id or not start_date or not end_date:
+            return False, 'Missing nord_timesheet_id/start_date/end_date'
+        Productivity = self.env['mrp.workcenter.productivity'].sudo()
+        if Productivity.search_count([('nord_sync_timesheet_id', '=', nord_timesheet_id)]):
+            return True, 'Setup already logged.'
+        loss = self.env['mrp.workcenter.productivity.loss']._nord_sync_get_or_create(
+            payload.get('reason_name') or 'Setup and Adjustments', payload.get('reason_type') or 'Availability',
+        )
+        Productivity.create({
+            'workorder_id': self.id,
+            'workcenter_id': self.workcenter_id.id,
+            'date_start': start_date,
+            'date_end': end_date,
+            'loss_id': loss.id,
+            'description': 'Setup',
+            'nord_sync_timesheet_id': nord_timesheet_id,
+        })
         return True, 'ok'
 
     def _nord_sync_button_start_bypassing_employee_check(self, payload=None):
