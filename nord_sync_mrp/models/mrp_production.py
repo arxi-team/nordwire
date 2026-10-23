@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+import base64
+import io
 import logging
 from datetime import timedelta
+
+import qrcode
 
 from odoo import fields, models
 from odoo.exceptions import UserError
@@ -21,6 +25,24 @@ class MrpProduction(models.Model):
     nord_sync.notify.mixin, shared by every source.
     """
     _inherit = ['mrp.production', 'nord_sync.notify.mixin']
+
+    nord_sync_qr_code = fields.Binary(
+        string='MO QR Code', compute='_compute_nord_sync_qr_code',
+        help="QR code of this MO's name, scanned by the Nord PDA to set the MO up on its "
+             'machine before the machine itself starts it.',
+    )
+
+    def _compute_nord_sync_qr_code(self):
+        # Rendered with qrcode (an Odoo dependency) rather than /report/barcode,
+        # which needs reportlab's optional renderPM backend.
+        for production in self:
+            name = production.name
+            if not name or name == '/':
+                production.nord_sync_qr_code = False
+                continue
+            buffer = io.BytesIO()
+            qrcode.make(name, box_size=6, border=2).save(buffer, format='PNG')
+            production.nord_sync_qr_code = base64.b64encode(buffer.getvalue())
 
     def action_start(self):
         """Interrupts a human-clicked Start on the MO header the same way
