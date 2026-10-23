@@ -93,7 +93,43 @@ class MrpWorkorder(models.Model):
                     'target': 'new',
                     'context': {'default_workorder_id': self.id},
                 }
-        return super().button_start(*args, **kwargs)
+        result = super().button_start(*args, **kwargs)
+        if not kwargs.get('bypass'):
+            self._nord_sync_notify_floor_event('start')
+        return result
+
+    def button_pending(self):
+        result = super().button_pending()
+        self._nord_sync_notify_floor_event('stop')
+        return result
+
+    def button_finish(self):
+        result = super().button_finish()
+        self._nord_sync_notify_floor_event('stop')
+        return result
+
+    def start_employee(self, employee_id):
+        # Shop Floor starts a work order per employee, not through button_start
+        result = super().start_employee(employee_id)
+        self._nord_sync_notify_floor_event('start')
+        return result
+
+    def stop_employee(self, employee_ids):
+        result = super().stop_employee(employee_ids)
+        for workorder in self:
+            if not workorder.time_ids.filtered(lambda t: not t.date_end):
+                workorder._nord_sync_notify_floor_event('stop')
+        return result
+
+    def _nord_sync_notify_floor_event(self, event):
+        """Tells the Core a human started ('start') or paused/finished
+        ('stop') this work order here, so the machine's session follows —
+        the reverse of the Core's own granular push (session_start/
+        session_stop), which applies through bypass=True/end_previous and so
+        never comes back through here."""
+        if self.env.context.get('nord_sync_from_core'):
+            return
+        self.with_context(nord_sync_floor_event=event)._nord_sync_notify('write')
 
     def action_nord_sync_change_workcenter(self):
         """Standalone button, visible once this workorder is already
@@ -190,7 +226,16 @@ class MrpWorkorder(models.Model):
             return True, f'Workorder already {self.state}, event ignored.'
         try:
             if event_type == 'session_start':
-                self._nord_sync_button_start_bypassing_employee_check(payload)
+                already_open = self.time_ids.filtered(lambda t: not t.date_end)
+                self.with_context(nord_sync_from_core=True)._nord_sync_button_start_bypassing_employee_check(payload)
+                # Same correction session_stop makes for end_date below: the
+                # line just opened is stamped with delivery time, the Core
+                # sends the machine's real start.
+                start_date = payload.get('start_date')
+                if start_date:
+                    (self.time_ids.filtered(lambda t: not t.date_end) - already_open).write(
+                        {'date_start': start_date},
+                    )
             elif event_type == 'session_stop':
                 # Not button_pending(): its end_previous(doall=False) only
                 # closes a timer started by the *calling* user, and the Nord
@@ -200,7 +245,7 @@ class MrpWorkorder(models.Model):
                 # who/what started it — the right primitive for a
                 # machine-driven event.
                 still_open = self.time_ids.filtered(lambda t: not t.date_end)
-                self.end_previous(doall=True)
+                self.with_context(nord_sync_from_core=True).end_previous(doall=True)
                 # _close() (base mrp) always stamps date_end with ITS OWN
                 # fields.Datetime.now() -- real gap, found live 2026-09-14:
                 # on a delayed retry (the granular push queue's own retry
@@ -415,4 +460,8 @@ class MrpWorkorder(models.Model):
                 'name': operator.name,
                 'nord_resource_uids': operator.resource_id.nord_sync_resource_id.mapped('uid'),
             } if operator else False,
+            # Only on the line a human start/pause/finish enqueues
+            # (_nord_sync_notify_floor_event), never on a plain write.
+            **({'floor_event': self.env.context['nord_sync_floor_event']}
+               if self.env.context.get('nord_sync_floor_event') else {}),
         }
