@@ -73,7 +73,15 @@ async function setup() {
 }
 $('send').onclick = setup;
 $('code').addEventListener('keydown', (e) => { if (e.key === 'Enter') setup(); });
-$('resource').onchange = refresh;
+// Each PDA sits at one machine: remember the work center it was set to
+try {
+  const saved = localStorage.getItem('nord_pda_workcenter');
+  if (saved && [...$('resource').options].some((o) => o.value === saved)) $('resource').value = saved;
+} catch (e) {}
+$('resource').onchange = () => {
+  try { localStorage.setItem('nord_pda_workcenter', $('resource').value); } catch (e) {}
+  refresh();
+};
 refresh(); setInterval(refresh, 3000);
 </script>
 </body>
@@ -96,7 +104,10 @@ class NordSyncPda(Controller):
     @route('/nord_sync/pda', type='http', auth='user', methods=['GET'])
     def pda_page(self, workcenter_id=None, **kwargs):
         workcenters = self._workcenters()
-        selected = int(workcenter_id) if workcenter_id else (workcenters[:1].id or 0)
+        # Default to a machine Nord drives (its own port starts the work),
+        # not just the alphabetically first work center
+        default = workcenters.filtered('nord_sync_autonomous_close')[:1] or workcenters[:1]
+        selected = int(workcenter_id) if workcenter_id else default.id
         options = ''.join(
             f'<option value="{wc.id}"{" selected" if wc.id == selected else ""}>{escape(wc.display_name)}</option>'
             for wc in workcenters
