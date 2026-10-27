@@ -23,6 +23,7 @@ class MrpWorkorder(models.Model):
     A support model of the mrp.production source, not a toggle-able source
     of its own — see _nord_sync_source_key below.
     """
+    _name = 'mrp.workorder'
     _inherit = ['mrp.workorder', 'nord_sync.notify.mixin']
 
     electric_consume = fields.Float(

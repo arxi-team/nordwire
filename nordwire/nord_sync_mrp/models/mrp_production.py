@@ -25,6 +25,7 @@ class MrpProduction(models.Model):
     tag/warehouse/category. The create/enqueue plumbing itself is
     nord_sync.notify.mixin, shared by every source.
     """
+    _name = 'mrp.production'
     _inherit = ['mrp.production', 'nord_sync.notify.mixin']
 
     nord_sync_qr_code = fields.Binary(
@@ -53,20 +54,26 @@ class MrpProduction(models.Model):
             picking_type = self.env['stock.picking.type'].sudo().search([
                 ('code', '=', 'outgoing'), ('company_id', '=', self.company_id.id),
             ], limit=1)
+            # v17's outgoing picking type has no default_location_dest_id (a
+            # delivery's destination is resolved at the view layer) -- fall
+            # back to the Customers virtual location, and Stock for the source.
+            location_src = picking_type.default_location_src_id or picking_type.warehouse_id.lot_stock_id
+            location_dest = picking_type.default_location_dest_id or self.env.ref('stock.stock_location_customers')
             partner = self.env['res.partner'].sudo().search([('name', '=', 'Cliente Feira (simulado)')], limit=1) \
                 or self.env['res.partner'].sudo().create({'name': 'Cliente Feira (simulado)'})
             picking = Picking.create({
                 'picking_type_id': picking_type.id,
                 'partner_id': partner.id,
                 'origin': self.name,
-                'location_id': picking_type.default_location_src_id.id,
-                'location_dest_id': picking_type.default_location_dest_id.id,
+                'location_id': location_src.id,
+                'location_dest_id': location_dest.id,
                 'move_ids': [(0, 0, {
+                    'name': self.product_id.display_name,
                     'product_id': self.product_id.id,
                     'product_uom_qty': self.product_qty,
                     'product_uom': self.product_uom_id.id,
-                    'location_id': picking_type.default_location_src_id.id,
-                    'location_dest_id': picking_type.default_location_dest_id.id,
+                    'location_id': location_src.id,
+                    'location_dest_id': location_dest.id,
                 })],
             })
             picking.action_confirm()

@@ -25,7 +25,7 @@ def post_init_hook(env):
     back apart — this grant doesn't make sense for a client that never
     installs this addon at all.
     """
-    manufacturing_admins = env.ref('mrp.group_mrp_manager').sudo().all_user_ids
-    manufacturing_admins.write({'group_ids': [(4, env.ref('nord_sync.group_nord_sync_manager').id)]})
-    manufacturing_users = env.ref('mrp.group_mrp_user').sudo().all_user_ids - manufacturing_admins
-    manufacturing_users.write({'group_ids': [(4, env.ref('nord_sync.group_nord_sync_user').id)]})
+    manufacturing_admins = env.ref('mrp.group_mrp_manager').sudo().users
+    manufacturing_admins.write({'groups_id': [(4, env.ref('nord_sync.group_nord_sync_manager').id)]})
+    manufacturing_users = env.ref('mrp.group_mrp_user').sudo().users - manufacturing_admins
+    manufacturing_users.write({'groups_id': [(4, env.ref('nord_sync.group_nord_sync_user').id)]})

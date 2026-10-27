@@ -10,6 +10,7 @@ class StockPicking(models.Model):
     in the payload is what tells the Core which nord.job.type to use — never
     hardcoded Core-side.
     """
+    _name = 'stock.picking'
     _inherit = ['stock.picking', 'nord_sync.notify.mixin']
 
     def _nord_sync_payload(self):
