@@ -23,6 +23,9 @@
                         <button name="%(action_nord_sync_install_wizard)d" type="action"
                                 string="Open Install Wizard" class="btn-primary"
                                 context="{'default_company_id': company_id}"/>
+                        <button name="action_nord_sync_backfill_existing_records" type="object"
+                                string="Backfill Existing Records" invisible="not enabled"
+                                confirm="Push every pre-existing record (work centers, employees, BOMs, manufacturing orders, ...) for this company to the Nord Core. This is a one-off catch-up, not something you need to do again — continue?"/>
                     </header>
                     <sheet>
                         <group>

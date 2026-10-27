@@ -495,13 +495,11 @@ class NordSyncInstallWizard(models.TransientModel):
             'job_naming_custom_prefix': self.job_naming_custom_prefix,
             'enabled_source_ids': [(6, 0, self.source_ids.ids)],
         })
-        # Job stages/state mapping created BEFORE the backfill below — both
-        # also push their own sync entries, and the Core processes the queue
-        # in enqueue order. Backfilling first (real bug, found live: a
-        # client with production history) left its entries ahead of the
-        # mapping the Core needs to resolve their state/name, so the first
-        # page of backfilled jobs landed with no mapping yet ("no Nord Sync
-        # State Mapping for source_value=done") and the wrong job name.
+        # A work center/employee/BOM created or already existing before this
+        # moment had nothing to notify (config wasn't enabled yet) and stays
+        # that way — backfilling them into the queue is a deliberate, separate
+        # action (nord_sync.config's "Backfill Existing Records" button), not
+        # something finishing this wizard does on its own.
         # Real records (and their push to the Core) only happen here, once
         # config.enabled is actually True — matches _nord_sync_notify's own
         # guard, and means nothing pushes for a wizard that gets cancelled.
@@ -525,15 +523,6 @@ class NordSyncInstallWizard(models.TransientModel):
                 map_line.source_model, map_line.source_value,
                 target_job_stage_id=real_stage_id_by_line_id.get(map_line.target_job_stage_line_id.id, False),
             )
-        # A work center/employee/BOM created or already existing before this
-        # moment had nothing to notify (config wasn't enabled yet), and only
-        # an edit *after* now would ever trigger its own create/write hook
-        # again — this is the catch-up for that timing gap.
-        # nord_sync_skip_wake: a client with a large history can backfill
-        # thousands of records — one synchronous HTTP wake per record would
-        # block this request for minutes instead of one consolidated ping.
-        config_rec.with_context(nord_sync_skip_wake=True)._nord_sync_backfill_existing_records()
-        config_rec._retry_failed_webhooks()
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'base.automation',

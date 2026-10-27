@@ -42,6 +42,18 @@
                             </div>
                             <div class="col-12 col-lg-6 o_setting_box" invisible="not nord_sync_enabled">
                                 <div class="o_setting_right_pane">
+                                    <div class="text-muted mb-3">
+                                        Push every pre-existing record (work centers, employees, BOMs,
+                                        manufacturing orders, ...) for this company to the Nord Core — a
+                                        one-off catch-up, never done automatically on its own.
+                                    </div>
+                                    <button name="action_nord_sync_backfill_existing_records" type="object"
+                                            string="Backfill Existing Records" class="btn btn-outline-primary"
+                                            confirm="Push every pre-existing record for this company to the Nord Core now?"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box" invisible="not nord_sync_enabled">
+                                <div class="o_setting_right_pane">
                                     <label for="nord_sync_job_naming_mode" string="Job Naming"/>
                                     <div class="text-muted">
                                         How jobs created on the Nord Core from this company's synced

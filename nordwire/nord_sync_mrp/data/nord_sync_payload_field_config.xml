@@ -12,7 +12,8 @@
          Sync State Mapping/job stage resolution silently never fired for any
          MO). Loading these as data records here instead ties them to
          nord_sync_mrp's own dependency graph (mrp/mrp_workorder), so the
-         referenced fields are always guaranteed to exist by the time this
+         referenced fields — including mrp_workorder's own log_note, not a
+         base mrp field — are always guaranteed to exist by the time this
          file loads. noupdate="1": a company that customizes its selection
          afterwards must never have it silently reset by a later module
          update.
@@ -28,6 +29,7 @@
                 ref('mrp.field_mrp_production__name'),
                 ref('mrp.field_mrp_production__product_qty'),
                 ref('mrp.field_mrp_production__state'),
+                ref('mrp_workorder.field_mrp_production__log_note'),
             ])]"/>
         </record>
 

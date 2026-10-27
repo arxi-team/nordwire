@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+import base64
+import io
 import logging
 from datetime import timedelta
+
+import qrcode
 
 from odoo import fields, models
 from odoo.exceptions import UserError
@@ -21,13 +25,66 @@ class MrpProduction(models.Model):
     tag/warehouse/category. The create/enqueue plumbing itself is
     nord_sync.notify.mixin, shared by every source.
     """
-    _name = 'mrp.production'
     _inherit = ['mrp.production', 'nord_sync.notify.mixin']
 
-    # No action_start override in v17 — the MO header has no Start button of
-    # its own here (that's a later Odoo version's addition); a human always
-    # starts through mrp.workorder.button_start, already intercepted the
-    # same way in mrp_workorder.py.
+    nord_sync_qr_code = fields.Binary(
+        string='MO QR Code', compute='_compute_nord_sync_qr_code',
+        help="QR code of this MO's name, scanned by the Nord PDA to set the MO up on its "
+             'machine before the machine itself starts it.',
+    )
+
+    def _nord_sync_ensure_delivery(self):
+        """The customer delivery this MO ends in, for the Core to queue after
+        its last operation: the open delivery of the sale it came from (same
+        origin), else a simulated one to a placeholder customer. Pushed to
+        the Core either way (the Inventory source only notifies on create,
+        and a sale delivery may predate it). No-op without the Inventory
+        source installed."""
+        self.ensure_one()
+        Picking = self.env['stock.picking'].sudo()
+        if not hasattr(Picking, '_nord_sync_productions'):
+            return Picking
+        origins = [o for o in (self.origin, self.name) if o]
+        picking = Picking.search([
+            ('company_id', '=', self.company_id.id), ('picking_type_code', '=', 'outgoing'),
+            ('origin', 'in', origins), ('state', 'not in', ('done', 'cancel')),
+        ], limit=1)
+        if not picking:
+            picking_type = self.env['stock.picking.type'].sudo().search([
+                ('code', '=', 'outgoing'), ('company_id', '=', self.company_id.id),
+            ], limit=1)
+            partner = self.env['res.partner'].sudo().search([('name', '=', 'Cliente Feira (simulado)')], limit=1) \
+                or self.env['res.partner'].sudo().create({'name': 'Cliente Feira (simulado)'})
+            picking = Picking.create({
+                'picking_type_id': picking_type.id,
+                'partner_id': partner.id,
+                'origin': self.name,
+                'location_id': picking_type.default_location_src_id.id,
+                'location_dest_id': picking_type.default_location_dest_id.id,
+                'move_ids': [(0, 0, {
+                    'product_id': self.product_id.id,
+                    'product_uom_qty': self.product_qty,
+                    'product_uom': self.product_uom_id.id,
+                    'location_id': picking_type.default_location_src_id.id,
+                    'location_dest_id': picking_type.default_location_dest_id.id,
+                })],
+            })
+            picking.action_confirm()
+        else:
+            picking._nord_sync_notify('write')
+        return picking
+
+    def _compute_nord_sync_qr_code(self):
+        # Rendered with qrcode (an Odoo dependency) rather than /report/barcode,
+        # which needs reportlab's optional renderPM backend.
+        for production in self:
+            name = production.name
+            if not name or name == '/':
+                production.nord_sync_qr_code = False
+                continue
+            buffer = io.BytesIO()
+            qrcode.make(name, box_size=6, border=2).save(buffer, format='PNG')
+            production.nord_sync_qr_code = base64.b64encode(buffer.getvalue())
 
     def _nord_sync_payload(self):
         """Business payload for this MO, captured at enqueue time.

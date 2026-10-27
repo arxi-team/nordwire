@@ -10,10 +10,10 @@ class MrpWorkorder(models.Model):
     resource_id from its own workcenter_id instead of relying on the BOM
     template's — real MOs can deviate from their BOM's routing (a
     workcenter reassignment), which the template alone could never reflect.
-    Also carries employee_assigned_ids (Shop Floor) as a second, optional
-    resource reference — the workplace (workcenter_id) and the person
-    allocated to the work are two distinct resources on the Core side,
-    each with its own real work session.
+    Also carries the real operator (see _nord_sync_current_operator) as a
+    second, optional resource reference — the workplace (workcenter_id)
+    and the person allocated to the work are two distinct resources on
+    the Core side, each with its own real work session.
 
     No result side anymore (reverted 2026-08-13): a real work session's
     start/end only ever existed on the Core, and nothing about it —
@@ -23,7 +23,6 @@ class MrpWorkorder(models.Model):
     A support model of the mrp.production source, not a toggle-able source
     of its own — see _nord_sync_source_key below.
     """
-    _name = 'mrp.workorder'
     _inherit = ['mrp.workorder', 'nord_sync.notify.mixin']
 
     electric_consume = fields.Float(
@@ -94,7 +93,43 @@ class MrpWorkorder(models.Model):
                     'target': 'new',
                     'context': {'default_workorder_id': self.id},
                 }
-        return super().button_start(*args, **kwargs)
+        result = super().button_start(*args, **kwargs)
+        if not kwargs.get('bypass'):
+            self._nord_sync_notify_floor_event('start')
+        return result
+
+    def button_pending(self):
+        result = super().button_pending()
+        self._nord_sync_notify_floor_event('stop')
+        return result
+
+    def button_finish(self):
+        result = super().button_finish()
+        self._nord_sync_notify_floor_event('stop')
+        return result
+
+    def start_employee(self, employee_id):
+        # Shop Floor starts a work order per employee, not through button_start
+        result = super().start_employee(employee_id)
+        self._nord_sync_notify_floor_event('start')
+        return result
+
+    def stop_employee(self, employee_ids):
+        result = super().stop_employee(employee_ids)
+        for workorder in self:
+            if not workorder.time_ids.filtered(lambda t: not t.date_end):
+                workorder._nord_sync_notify_floor_event('stop')
+        return result
+
+    def _nord_sync_notify_floor_event(self, event):
+        """Tells the Core a human started ('start') or paused/finished
+        ('stop') this work order here, so the machine's session follows —
+        the reverse of the Core's own granular push (session_start/
+        session_stop), which applies through bypass=True/end_previous and so
+        never comes back through here."""
+        if self.env.context.get('nord_sync_from_core'):
+            return
+        self.with_context(nord_sync_floor_event=event)._nord_sync_notify('write')
 
     def action_nord_sync_change_workcenter(self):
         """Standalone button, visible once this workorder is already
@@ -112,6 +147,31 @@ class MrpWorkorder(models.Model):
             'target': 'new',
             'context': {'default_workorder_id': self.id},
         }
+
+    def _nord_sync_current_operator(self):
+        """The real operator for this workorder — never
+        employee_assigned_ids: real clients' Shop Floor usage never
+        populates that field (a separate "pre-assigned via planning"
+        concept), they just click Start, which only ever fills
+        employee_ids/time_ids (real bug, caught live 2026-10-22: SK
+        Coffee's own data has 0 employee_assigned_ids rows across 457
+        worked workorders, so the Workorder Bridge never carried an
+        operator for any of them). Whoever has a currently open time_ids
+        session wins (the one actually working right now); next, the
+        legacy employee_assigned_ids, for any company that does use that
+        planning field; last, the most recently active employee_ids entry,
+        for a workorder that's already finished its only session.
+        """
+        self.ensure_one()
+        open_session = self.time_ids.filtered(lambda t: not t.date_end).sorted('date_start', reverse=True)
+        if open_session:
+            return open_session[0].employee_id
+        if self.employee_assigned_ids:
+            return self.employee_assigned_ids[0]
+        last_session = self.time_ids.sorted('date_start', reverse=True)
+        if last_session:
+            return last_session[0].employee_id
+        return self.env['hr.employee']
 
     def _nord_sync_source_key(self):
         return 'mrp.production'
@@ -155,6 +215,13 @@ class MrpWorkorder(models.Model):
                 return self._nord_sync_apply_session_loss_justified(payload)
             except Exception as exc:
                 return False, str(exc)
+        if event_type == 'session_setup':
+            # Historical too, like session_loss_justified: logged even when
+            # the work order already finished by the time it arrives.
+            try:
+                return self._nord_sync_apply_session_setup(payload)
+            except Exception as exc:
+                return False, str(exc)
         if self.state in ('done', 'cancel'):
             # Real bug, caught live: a delayed session_stop (retried after
             # the workorder already reached 'done' through the deliberate
@@ -166,7 +233,16 @@ class MrpWorkorder(models.Model):
             return True, f'Workorder already {self.state}, event ignored.'
         try:
             if event_type == 'session_start':
-                self._nord_sync_button_start_bypassing_employee_check(payload)
+                already_open = self.time_ids.filtered(lambda t: not t.date_end)
+                self.with_context(nord_sync_from_core=True)._nord_sync_button_start_bypassing_employee_check(payload)
+                # Same correction session_stop makes for end_date below: the
+                # line just opened is stamped with delivery time, the Core
+                # sends the machine's real start.
+                start_date = payload.get('start_date')
+                if start_date:
+                    (self.time_ids.filtered(lambda t: not t.date_end) - already_open).write(
+                        {'date_start': start_date},
+                    )
             elif event_type == 'session_stop':
                 # Not button_pending(): its end_previous(doall=False) only
                 # closes a timer started by the *calling* user, and the Nord
@@ -176,7 +252,7 @@ class MrpWorkorder(models.Model):
                 # who/what started it — the right primitive for a
                 # machine-driven event.
                 still_open = self.time_ids.filtered(lambda t: not t.date_end)
-                self.end_previous(doall=True)
+                self.with_context(nord_sync_from_core=True).end_previous(doall=True)
                 # _close() (base mrp) always stamps date_end with ITS OWN
                 # fields.Datetime.now() -- real gap, found live 2026-09-14:
                 # on a delayed retry (the granular push queue's own retry
@@ -233,6 +309,41 @@ class MrpWorkorder(models.Model):
             reason_name, payload.get('reason_type'),
         )
         line.loss_id = loss.id
+        return True, 'ok'
+
+    def _nord_sync_apply_session_setup(self, payload):
+        """Logs the machine's setup time for this work order (the MO was
+        scanned on the PDA, the machine waited for it until its own start)
+        as a closed time line with a setup loss reason. Idempotent on
+        nord_timesheet_id, so a retried delivery logs it once.
+
+        Keys:
+            start_date (str, required) / end_date (str, required).
+            nord_timesheet_id (int, required).
+            reason_name (str, optional): defaults to 'Setup and Adjustments',
+                Odoo's own setup loss. reason_type (str, optional): see
+                session_loss_justified.
+        """
+        self.ensure_one()
+        nord_timesheet_id = payload.get('nord_timesheet_id')
+        start_date, end_date = payload.get('start_date'), payload.get('end_date')
+        if not nord_timesheet_id or not start_date or not end_date:
+            return False, 'Missing nord_timesheet_id/start_date/end_date'
+        Productivity = self.env['mrp.workcenter.productivity'].sudo()
+        if Productivity.search_count([('nord_sync_timesheet_id', '=', nord_timesheet_id)]):
+            return True, 'Setup already logged.'
+        loss = self.env['mrp.workcenter.productivity.loss']._nord_sync_get_or_create(
+            payload.get('reason_name') or 'Setup and Adjustments', payload.get('reason_type') or 'Availability',
+        )
+        Productivity.create({
+            'workorder_id': self.id,
+            'workcenter_id': self.workcenter_id.id,
+            'date_start': start_date,
+            'date_end': end_date,
+            'loss_id': loss.id,
+            'description': 'Setup',
+            'nord_sync_timesheet_id': nord_timesheet_id,
+        })
         return True, 'ok'
 
     def _nord_sync_button_start_bypassing_employee_check(self, payload=None):
@@ -294,7 +405,15 @@ class MrpWorkorder(models.Model):
         except TypeError:
             self.button_start()
             return
-        employee = self.employee_assigned_ids[:1]
+        # Same gap _nord_sync_payload() had (see _nord_sync_current_operator):
+        # employee_assigned_ids alone is almost always empty on a real
+        # install, which silently routed every Core-initiated start to the
+        # autonomous placeholder below even when this exact workorder had
+        # a real human on its last session (e.g. a paused job the Core is
+        # resuming) -- _nord_sync_current_operator() also falls back
+        # through employee_assigned_ids, then the most recent past
+        # session's employee, before finally coming up empty here.
+        employee = self._nord_sync_current_operator()
         if not employee:
             employee = self.env['hr.employee']._nord_sync_get_or_create_autonomous_employee(self.company_id)
         already_open = self.time_ids.filtered(lambda t: not t.date_end and t.employee_id == employee)
@@ -330,20 +449,21 @@ class MrpWorkorder(models.Model):
             expected_duration (float): expected duration in hours (converted
                 from duration_expected, which is in minutes).
             sequence (int): this workorder's own routing order within its
-                MO (self.operation_id.sequence — v17's mrp.workorder has no
-                sequence field of its own) — consulted by Nordwire Chain
-                Close to find this job's earlier operations, not a
-                display/list ordering concern on the Core side.
+                MO (self.operation_id.sequence) — consulted by Nordwire Chain Close to
+                find this job's earlier operations, not a display/list
+                ordering concern on the Core side.
             employee_source_res_id (int or False): the client's own
-                hr.employee id of the first assigned operator, False if none
-                assigned (only the first of employee_assigned_ids is carried).
+                hr.employee id of the real operator (see
+                _nord_sync_current_operator), False if there's none to
+                report.
             employee (dict or False): {name, nord_resource_uids} snapshot of
-                that same employee, only present (non-False) when someone is
-                actually assigned — same lazy-resolution safety net as
-                'workcenter' above, but optional since an unresolved
-                operator never blocks the task.
+                that same employee, only present (non-False) when there is
+                one — same lazy-resolution safety net as 'workcenter'
+                above, but optional since an unresolved operator never
+                blocks the task.
         """
         self.ensure_one()
+        operator = self._nord_sync_current_operator()
         return {
             **self._nord_sync_configurable_payload(),
             'production_source_res_id': self.production_id.id,
@@ -372,20 +492,20 @@ class MrpWorkorder(models.Model):
             },
             # duration_expected is in minutes; nord.timesheet.expected_duration is hours.
             'expected_duration': self.duration_expected / 60.0,
-            # v17's mrp.workorder has no sequence field of its own (added in a
-            # later Odoo version) — its BOM operation (operation_id) always has
-            # one, same ordering semantics.
+            # v17's mrp.workorder has no sequence field of its own — its BOM
+            # operation (operation_id) always has one, same ordering semantics.
             'sequence': self.operation_id.sequence,
-            # employee_assigned_ids (Shop Floor) can hold several people —
-            # only the first is carried over, one operator per task on the
-            # Core side today.
-            'employee_source_res_id': self.employee_assigned_ids[:1].id or False,
+            'employee_source_res_id': operator.id or False,
             # Same lazy-resolution safety net as 'workcenter' above, for the
-            # same reason — only sent when someone is actually assigned,
-            # since an unresolved operator is optional and never blocks the
-            # task (unlike the work center).
+            # same reason — only sent when there's an actual operator,
+            # since an unresolved one is optional and never blocks the task
+            # (unlike the work center).
             'employee': {
-                'name': self.employee_assigned_ids[0].name,
-                'nord_resource_uids': self.employee_assigned_ids[0].resource_id.nord_sync_resource_id.mapped('uid'),
-            } if self.employee_assigned_ids else False,
+                'name': operator.name,
+                'nord_resource_uids': operator.resource_id.nord_sync_resource_id.mapped('uid'),
+            } if operator else False,
+            # Only on the line a human start/pause/finish enqueues
+            # (_nord_sync_notify_floor_event), never on a plain write.
+            **({'floor_event': self.env.context['nord_sync_floor_event']}
+               if self.env.context.get('nord_sync_floor_event') else {}),
         }
