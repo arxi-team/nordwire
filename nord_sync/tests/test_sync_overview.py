@@ -5,7 +5,7 @@ from odoo.tests import TransactionCase, tagged
 @tagged('post_install', '-at_install')
 class TestSyncOverview(TransactionCase):
     """get_overview_data() backs the Sync Overview client action (cards row +
-    by-model/failures panels) — plain @api.model ORM calls, no controller
+    queue/inbox/failures panels) — plain @api.model ORM calls, no controller
     route, matching this addon's own nord_sync_systray.js convention.
     """
 
@@ -36,15 +36,27 @@ class TestSyncOverview(TransactionCase):
         expected_unsealed = self.Queue.search_count(domain + [('is_sealed', '=', False)])
         self.assertEqual(data['kpis']['unsealed'], expected_unsealed)
 
-    def test_by_model_breakdown_groups_by_owner_res_model(self):
-        self._create('nord_sync_overview.test_model_a', 10)
-        self._create('nord_sync_overview.test_model_a', 11)
-        self._create('nord_sync_overview.test_model_c', 12)
+    def test_queue_panel_lists_one_row_per_header(self):
+        h1 = self._create('nord_sync_overview.test_model_a', 10, status='pending')
+        h2 = self._create('nord_sync_overview.test_model_a', 11, status='sent')
 
         data = self.Queue.get_overview_data()
-        by_model = {row['owner_res_model']: row['count'] for row in data['by_model']}
-        self.assertEqual(by_model.get('nord_sync_overview.test_model_a'), 2)
-        self.assertEqual(by_model.get('nord_sync_overview.test_model_c'), 1)
+        rows = {row['key']: row for row in data['queue']}
+        self.assertEqual(rows[f'queue-{h1.id}']['owner'], 'nord_sync_overview.test_model_a #10')
+        self.assertEqual(rows[f'queue-{h1.id}']['status'], 'pending')
+        self.assertEqual(rows[f'queue-{h2.id}']['status'], 'sent')
+
+    def test_inbox_panel_lists_current_inbox_entries(self):
+        entry = self.env['nord_sync.inbox'].create({
+            'endpoint': 'result', 'res_model': 'res.partner',
+            'payload': {'res_id': 1}, 'company_id': self.env.company.id,
+        })
+
+        data = self.Queue.get_overview_data()
+        rows = {row['key']: row for row in data['inbox']}
+        self.assertEqual(rows[f'inbox-{entry.id}']['endpoint'], 'result')
+        self.assertEqual(rows[f'inbox-{entry.id}']['res_model'], 'res.partner')
+        self.assertEqual(rows[f'inbox-{entry.id}']['status'], 'pending')
 
     def test_failures_panel_shows_raw_error_and_cheap_owner_form(self):
         self._create('nord_sync_overview.test_model_d', 99, status='failed', last_error='boom: timeout')
@@ -63,6 +75,14 @@ class TestSyncOverview(TransactionCase):
         data = self.Queue.get_overview_data()
         self.assertFalse([f for f in data['failures'] if f['owner_res_model'] == 'nord_sync_overview.test_model_e'])
 
+    def test_action_open_queue_filtered_builds_domain_per_kpi(self):
+        action = self.Queue.action_open_queue_filtered(status='pending')
+        self.assertEqual(action['res_model'], 'nord.sync.queue')
+        self.assertEqual(action['domain'], [('status', '=', 'pending')])
+
+        action = self.Queue.action_open_queue_filtered(unsealed=True)
+        self.assertEqual(action['domain'], [('is_sealed', '=', False)])
+
     def test_empty_queue_returns_zeroed_kpis_and_empty_breakdowns(self):
         # A fresh company, isolated via allowed_company_ids so this test
         # never depends on no other test/signal in this DB having left a
@@ -70,5 +90,6 @@ class TestSyncOverview(TransactionCase):
         company = self.env['res.company'].create({'name': 'Sync Overview Empty Co'})
         data = self.Queue.with_context(allowed_company_ids=[company.id]).get_overview_data()
         self.assertEqual(data['kpis'], {'pending': 0, 'sent': 0, 'failed': 0, 'unsealed': 0})
-        self.assertEqual(data['by_model'], [])
+        self.assertEqual(data['queue'], [])
+        self.assertEqual(data['inbox'], [])
         self.assertEqual(data['failures'], [])

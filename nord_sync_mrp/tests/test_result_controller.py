@@ -30,10 +30,10 @@ class TestNordSyncResultController(HttpCase):
         cls.tech_user = cls.env['res.users'].create({
             'name': 'Nord Core Result Technical User',
             'login': 'test_nord_core_result_tech',
-            'group_ids': [(4, cls.env.ref('nord_sync.group_nord_sync_integration').id)],
+            'groups_id': [(4, cls.env.ref('nord_sync.group_nord_sync_integration').id)],
         })
         cls.api_key = cls.env['res.users.apikeys'].with_user(cls.tech_user).sudo()._generate(
-            'rpc', 'nord core result test key', None,
+            'rpc', 'nord core result test key',
         )
         cls.product = cls.env['product.product'].create({'name': 'Nord Sync Result Test Product'})
 
@@ -66,10 +66,10 @@ class TestNordSyncResultController(HttpCase):
             'login': 'test_other_company_result_tech',
             'company_id': other_company.id,
             'company_ids': [(4, other_company.id)],
-            'group_ids': [(4, self.env.ref('nord_sync.group_nord_sync_integration').id)],
+            'groups_id': [(4, self.env.ref('nord_sync.group_nord_sync_integration').id)],
         })
         other_key = self.env['res.users.apikeys'].with_user(other_user).sudo()._generate(
-            'rpc', 'other company result test key', None,
+            'rpc', 'other company result test key',
         )
         response = self._post(
             {'res_model': 'mrp.production', 'res_id': 1, 'qty_produced': 1},

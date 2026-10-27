@@ -13,6 +13,7 @@ class MrpWorkcenter(models.Model):
     mrp.production source, not a toggle-able source of its own — see
     _nord_sync_source_key below.
     """
+    _name = 'mrp.workcenter'
     _inherit = ['mrp.workcenter', 'nord_sync.notify.mixin']
 
     # ── Nordwire Resource Mapping ───────────────────────────────────────────

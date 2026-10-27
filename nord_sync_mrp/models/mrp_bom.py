@@ -11,6 +11,7 @@ class MrpBom(models.Model):
     themselves). A support model of the mrp.production source, not a
     toggle-able source of its own — see _nord_sync_source_key below.
     """
+    _name = 'mrp.bom'
     _inherit = ['mrp.bom', 'nord_sync.notify.mixin']
 
     @api.model_create_multi

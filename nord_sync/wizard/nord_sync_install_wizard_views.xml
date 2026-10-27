@@ -8,6 +8,10 @@
             <field name="arch" type="xml">
                 <form string="Nordwire — Install">
                     <field name="state" invisible="1"/>
+                    <field name="preflight_ok" invisible="1"/>
+                    <field name="show_previous" invisible="1"/>
+                    <field name="show_next" invisible="1"/>
+                    <field name="show_finish" invisible="1"/>
 
                     <div invisible="state != 'step_preflight'">
                         <h3>Step 1. Environment Pre-flight</h3>
@@ -49,10 +53,10 @@
                             <field name="job_stage_mode" widget="radio"/>
                         </group>
                         <field name="job_stage_line_ids">
-                            <list editable="bottom">
+                            <tree editable="bottom">
                                 <field name="sequence" widget="handle"/>
                                 <field name="name"/>
-                            </list>
+                            </tree>
                         </field>
                         <p class="text-muted">
                             Optional — leave empty for no stage granularity (a job's
@@ -78,14 +82,15 @@
                                  (assigned block-by-block in _mapping_line_vals), told
                                  apart by the Source column since a Transient wizard list
                                  can't render one sub-section per source. -->
-                            <list editable="bottom" create="0" delete="0">
+                            <tree editable="bottom" create="0" delete="0">
                                 <field name="sequence" column_invisible="1"/>
+                                <field name="wizard_id" column_invisible="1"/>
                                 <field name="source_model" column_invisible="1"/>
                                 <field name="source_value" column_invisible="1"/>
                                 <field name="source_label" readonly="1" string="Source"/>
                                 <field name="source_value_label" readonly="1" string="Source Value"/>
                                 <field name="target_job_stage_line_id" string="Job Stage"/>
-                            </list>
+                            </tree>
                         </field>
                     </div>
 

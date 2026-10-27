@@ -10,7 +10,7 @@
         <field name="model">resource.resource</field>
         <field name="inherit_id" ref="resource.resource_resource_tree"/>
         <field name="arch" type="xml">
-            <xpath expr="//list" position="attributes">
+            <xpath expr="//tree" position="attributes">
                 <attribute name="editable">bottom</attribute>
             </xpath>
             <field name="name" position="after">

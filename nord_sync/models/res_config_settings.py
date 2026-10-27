@@ -44,3 +44,16 @@ class ResConfigSettings(models.TransientModel):
             'target': 'new',
             'context': {'default_company_id': (self.company_id or self.env.company).id},
         }
+
+    def action_nord_sync_backfill_existing_records(self):
+        """Delegates to nord_sync.config's own action — this transient
+        wizard has no persistent record of its own to act on, just
+        nord_sync_config_id (computed, see above). Real bug, found live
+        2026-10-20: the button was first added straight onto nord_sync.config's
+        own form view, but that form lost its menu entry when Configuration
+        got absorbed into this Settings page (see test_settings_consolidation)
+        — unreachable from the UI ever since, so nobody could actually click
+        it.
+        """
+        self.ensure_one()
+        return self.nord_sync_config_id.action_nord_sync_backfill_existing_records()

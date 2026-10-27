@@ -8,7 +8,7 @@ VERSION_INFO = 'odoo.addons.nord_sync.wizard.nord_sync_install_wizard.release.ve
 POST_TARGET = 'odoo.addons.nord_sync.models.nord_sync_config.requests.post'
 
 
-def _patch_env(cron_threads=2, major_version=19):
+def _patch_env(cron_threads=2, major_version=17):
     return patch(CONFIG_GET, return_value=cron_threads), patch(VERSION_INFO, (major_version, 0, 0, 'final', 0, ''))
 
 
@@ -19,7 +19,7 @@ class TestNordSyncInstallWizardMrp(TransactionCase):
     without any source addon installed.
     """
 
-    def _new_wizard(self, cron_threads=2, major_version=19, **vals):
+    def _new_wizard(self, cron_threads=2, major_version=17, **vals):
         cron_patch, version_patch = _patch_env(cron_threads, major_version)
         with cron_patch, version_patch:
             return self.env['nord_sync.install.wizard'].create(vals)

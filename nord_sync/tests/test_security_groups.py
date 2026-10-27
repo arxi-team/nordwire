@@ -17,12 +17,12 @@ class TestNordSyncSecurityGroups(TransactionCase):
         cls.user = cls.env['res.users'].create({
             'name': 'Nord Sync User Test',
             'login': 'test_nord_sync_user',
-            'group_ids': [(4, cls.env.ref('nord_sync.group_nord_sync_user').id)],
+            'groups_id': [(4, cls.env.ref('nord_sync.group_nord_sync_user').id)],
         })
         cls.manager = cls.env['res.users'].create({
             'name': 'Nord Sync Manager Test',
             'login': 'test_nord_sync_manager',
-            'group_ids': [(4, cls.env.ref('nord_sync.group_nord_sync_manager').id)],
+            'groups_id': [(4, cls.env.ref('nord_sync.group_nord_sync_manager').id)],
         })
         cls.config = cls.env['nord_sync.config'].create({
             'company_id': cls.env.company.id, 'company_uid': 'sec-test-uid',

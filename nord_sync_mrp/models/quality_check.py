@@ -18,6 +18,7 @@ class QualityCheck(models.Model):
     the mrp.production source, not a toggle-able source of its own — see
     _nord_sync_source_key below.
     """
+    _name = 'quality.check'
     _inherit = ['quality.check', 'nord_sync.notify.mixin']
 
     @api.model_create_multi

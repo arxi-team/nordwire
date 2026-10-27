@@ -18,6 +18,7 @@ class MaintenanceRequest(models.Model):
     "confirm" step in the base `maintenance` module), so its Automation Rule
     triggers on_create rather than a state transition.
     """
+    _name = 'maintenance.request'
     _inherit = ['maintenance.request', 'nord_sync.notify.mixin']
 
     def _nord_sync_payload(self):

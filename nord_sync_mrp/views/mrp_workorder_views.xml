@@ -34,10 +34,10 @@
                 <field name="electric_consume" string="Electric Consume (kWh)"/>
                 <field name="electric_consume_cost" string="Electric Consume Cost"/>
             </field>
-            <!-- time_ids' own nested list+form both have a loss_id field:
-                 explicit xpath, scoped to the list only, so this doesn't hit
-                 the ambiguous-match error a bare <field name="loss_id"> would. -->
-            <xpath expr="//field[@name='time_ids']/list//field[@name='loss_id']" position="after">
+            <!-- v17's time_ids nested tree has no loss_id column (that's a later
+                 Shop Floor addition) — anchored on employee_id instead, the last
+                 column mrp_workorder's own view extension adds here. -->
+            <xpath expr="//field[@name='time_ids']/tree/field[@name='employee_id']" position="after">
                 <field name="electric_consume" string="Electric (kWh)" optional="show"/>
             </xpath>
         </field>

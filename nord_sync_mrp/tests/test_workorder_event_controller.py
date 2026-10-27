@@ -27,10 +27,10 @@ class TestNordSyncWorkorderEventController(HttpCase):
         cls.tech_user = cls.env['res.users'].create({
             'name': 'Nord Core Event Technical User',
             'login': 'test_nord_core_event_tech',
-            'group_ids': [(4, cls.env.ref('nord_sync.group_nord_sync_integration').id)],
+            'groups_id': [(4, cls.env.ref('nord_sync.group_nord_sync_integration').id)],
         })
         cls.api_key = cls.env['res.users.apikeys'].with_user(cls.tech_user).sudo()._generate(
-            'rpc', 'nord core event test key', None,
+            'rpc', 'nord core event test key',
         )
         cls.product = cls.env['product.product'].create({'name': 'Nordwire Event Test Product'})
 
@@ -72,10 +72,10 @@ class TestNordSyncWorkorderEventController(HttpCase):
             'login': 'test_other_company_event_tech',
             'company_id': other_company.id,
             'company_ids': [(4, other_company.id)],
-            'group_ids': [(4, self.env.ref('nord_sync.group_nord_sync_integration').id)],
+            'groups_id': [(4, self.env.ref('nord_sync.group_nord_sync_integration').id)],
         })
         other_key = self.env['res.users.apikeys'].with_user(other_user).sudo()._generate(
-            'rpc', 'other company event test key', None,
+            'rpc', 'other company event test key',
         )
         response = self._post(
             {'res_model': 'mrp.workorder', 'res_id': 1, 'event_type': 'session_start'},

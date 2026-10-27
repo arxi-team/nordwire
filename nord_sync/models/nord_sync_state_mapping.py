@@ -35,10 +35,10 @@ class NordSyncStateMapping(models.Model):
     )
     target_job_stage_id = fields.Many2one('nord_sync.job.stage')
 
-    _company_source_unique = models.Constraint(
-        'UNIQUE(company_id, source_model, source_value)',
-        'A mapping already exists for this source model/value in this company.',
-    )
+    _sql_constraints = [
+        ('company_source_unique', 'UNIQUE(company_id, source_model, source_value)',
+         'A mapping already exists for this source model/value in this company.'),
+    ]
 
     @api.model
     def _selection_source_model(self):

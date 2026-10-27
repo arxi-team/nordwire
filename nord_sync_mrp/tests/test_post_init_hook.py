@@ -76,23 +76,23 @@ class TestPostInitHook(TransactionCase):
         manager_group = self.env.ref('nord_sync.group_nord_sync_manager')
         mrp_user = self.env['res.users'].create({
             'name': 'Pre-Existing MRP User', 'login': 'test_pre_existing_mrp_user',
-            'group_ids': [(4, self.env.ref('mrp.group_mrp_user').id)],
+            'groups_id': [(4, self.env.ref('mrp.group_mrp_user').id)],
         })
         mrp_admin = self.env['res.users'].create({
             'name': 'Pre-Existing MRP Admin', 'login': 'test_pre_existing_mrp_admin',
-            'group_ids': [(4, self.env.ref('mrp.group_mrp_manager').id)],
+            'groups_id': [(4, self.env.ref('mrp.group_mrp_manager').id)],
         })
         outsider = self.env['res.users'].create({
             'name': 'No Manufacturing Access', 'login': 'test_no_mrp_access',
         })
         with patch(POST_TARGET):
             post_init_hook(self.env)
-        self.assertIn(user_group, mrp_user.group_ids)
-        self.assertNotIn(manager_group, mrp_user.group_ids)
-        self.assertIn(manager_group, mrp_admin.group_ids)
+        self.assertIn(user_group, mrp_user.groups_id)
+        self.assertNotIn(manager_group, mrp_user.groups_id)
+        self.assertIn(manager_group, mrp_admin.groups_id)
         # implied_ids grants effective access without adding a literal
         # group_ids membership — has_group() is the correct check, not
         # group_ids (direct assignments only).
         self.assertTrue(mrp_admin.has_group('nord_sync.group_nord_sync_user'))
-        self.assertNotIn(user_group, outsider.group_ids)
-        self.assertNotIn(manager_group, outsider.group_ids)
+        self.assertNotIn(user_group, outsider.groups_id)
+        self.assertNotIn(manager_group, outsider.groups_id)

@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
+import base64
+import io
 import logging
 from datetime import timedelta
 
+import qrcode
+
 from odoo import fields, models
 from odoo.exceptions import UserError
+from odoo.tools.float_utils import float_is_zero
 
 _logger = logging.getLogger(__name__)
 
@@ -20,35 +25,73 @@ class MrpProduction(models.Model):
     tag/warehouse/category. The create/enqueue plumbing itself is
     nord_sync.notify.mixin, shared by every source.
     """
+    _name = 'mrp.production'
     _inherit = ['mrp.production', 'nord_sync.notify.mixin']
 
-    def action_start(self):
-        """Interrupts a human-clicked Start on the MO header the same way
-        mrp.workorder.button_start does (nord_sync.workorder.start.wizard,
-        see mrp_workorder.py) — reuses that same wizard, pointed at this
-        production's own next-up workorder, so confirming/changing its
-        work center behaves identically regardless of which Start button
-        the human actually clicked. A routing-less production (no open
-        workorder_ids) has no work center to confirm, so it always falls
-        through to super() untouched.
-        """
+    nord_sync_qr_code = fields.Binary(
+        string='MO QR Code', compute='_compute_nord_sync_qr_code',
+        help="QR code of this MO's name, scanned by the Nord PDA to set the MO up on its "
+             'machine before the machine itself starts it.',
+    )
+
+    def _nord_sync_ensure_delivery(self):
+        """The customer delivery this MO ends in, for the Core to queue after
+        its last operation: the open delivery of the sale it came from (same
+        origin), else a simulated one to a placeholder customer. Pushed to
+        the Core either way (the Inventory source only notifies on create,
+        and a sale delivery may predate it). No-op without the Inventory
+        source installed."""
         self.ensure_one()
-        if self.state == 'confirmed' and not self.env.context.get('nord_sync_skip_confirm'):
-            workorder = self.workorder_ids.filtered(lambda wo: wo.state not in ('done', 'cancel'))[:1]
-            if workorder and workorder.workcenter_id.nord_sync_control_mode != 'nord':
-                config = self.env['nord_sync.config'].sudo()._get_for_company(self.company_id)
-                if config and config.nord_sync_confirm_workcenter_on_start:
-                    return {
-                        'type': 'ir.actions.act_window',
-                        'res_model': 'nord_sync.workorder.start.wizard',
-                        'view_mode': 'form',
-                        'target': 'new',
-                        'context': {
-                            'default_workorder_id': workorder.id,
-                            'default_production_id': self.id,
-                        },
-                    }
-        return super().action_start()
+        Picking = self.env['stock.picking'].sudo()
+        if not hasattr(Picking, '_nord_sync_productions'):
+            return Picking
+        origins = [o for o in (self.origin, self.name) if o]
+        picking = Picking.search([
+            ('company_id', '=', self.company_id.id), ('picking_type_code', '=', 'outgoing'),
+            ('origin', 'in', origins), ('state', 'not in', ('done', 'cancel')),
+        ], limit=1)
+        if not picking:
+            picking_type = self.env['stock.picking.type'].sudo().search([
+                ('code', '=', 'outgoing'), ('company_id', '=', self.company_id.id),
+            ], limit=1)
+            # v17's outgoing picking type has no default_location_dest_id (a
+            # delivery's destination is resolved at the view layer) -- fall
+            # back to the Customers virtual location, and Stock for the source.
+            location_src = picking_type.default_location_src_id or picking_type.warehouse_id.lot_stock_id
+            location_dest = picking_type.default_location_dest_id or self.env.ref('stock.stock_location_customers')
+            partner = self.env['res.partner'].sudo().search([('name', '=', 'Cliente Feira (simulado)')], limit=1) \
+                or self.env['res.partner'].sudo().create({'name': 'Cliente Feira (simulado)'})
+            picking = Picking.create({
+                'picking_type_id': picking_type.id,
+                'partner_id': partner.id,
+                'origin': self.name,
+                'location_id': location_src.id,
+                'location_dest_id': location_dest.id,
+                'move_ids': [(0, 0, {
+                    'name': self.product_id.display_name,
+                    'product_id': self.product_id.id,
+                    'product_uom_qty': self.product_qty,
+                    'product_uom': self.product_uom_id.id,
+                    'location_id': location_src.id,
+                    'location_dest_id': location_dest.id,
+                })],
+            })
+            picking.action_confirm()
+        else:
+            picking._nord_sync_notify('write')
+        return picking
+
+    def _compute_nord_sync_qr_code(self):
+        # Rendered with qrcode (an Odoo dependency) rather than /report/barcode,
+        # which needs reportlab's optional renderPM backend.
+        for production in self:
+            name = production.name
+            if not name or name == '/':
+                production.nord_sync_qr_code = False
+                continue
+            buffer = io.BytesIO()
+            qrcode.make(name, box_size=6, border=2).save(buffer, format='PNG')
+            production.nord_sync_qr_code = base64.b64encode(buffer.getvalue())
 
     def _nord_sync_payload(self):
         """Business payload for this MO, captured at enqueue time.
@@ -259,7 +302,12 @@ class MrpProduction(models.Model):
                 # request, silently dropping the Result Push).
                 self.qty_producing = qty_produced
                 mo = self.with_context(skip_backorder=True)
-                if not self.product_uom_id.is_zero(self._get_quantity_to_backorder()):
+                # v17's uom.uom has no is_zero() helper of its own (a later
+                # Odoo version's addition) — float_is_zero against its
+                # rounding is the same check.
+                if not float_is_zero(
+                    self._get_quantity_to_backorder(), precision_rounding=self.product_uom_id.rounding,
+                ):
                     mo = mo.with_context(mo_ids_to_backorder=self.ids)
                 result = mo.button_mark_done()
                 if isinstance(result, dict) and result.get('res_model') == 'mrp.consumption.warning':

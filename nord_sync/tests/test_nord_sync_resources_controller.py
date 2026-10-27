@@ -25,10 +25,10 @@ class TestNordSyncResourcesController(HttpCase):
         cls.tech_user = cls.env['res.users'].create({
             'name': 'Nord Core Resources Technical User',
             'login': 'test_nord_core_resources_tech',
-            'group_ids': [(4, cls.env.ref('nord_sync.group_nord_sync_integration').id)],
+            'groups_id': [(4, cls.env.ref('nord_sync.group_nord_sync_integration').id)],
         })
         cls.api_key = cls.env['res.users.apikeys'].with_user(cls.tech_user).sudo()._generate(
-            'rpc', 'nord core resources test key', None,
+            'rpc', 'nord core resources test key',
         )
 
     def _post(self, body, api_key=None):
@@ -52,10 +52,10 @@ class TestNordSyncResourcesController(HttpCase):
             'login': 'test_other_company_resources_tech',
             'company_id': other_company.id,
             'company_ids': [(4, other_company.id)],
-            'group_ids': [(4, self.env.ref('nord_sync.group_nord_sync_integration').id)],
+            'groups_id': [(4, self.env.ref('nord_sync.group_nord_sync_integration').id)],
         })
         other_key = self.env['res.users.apikeys'].with_user(other_user).sudo()._generate(
-            'rpc', 'other company resources test key', None,
+            'rpc', 'other company resources test key',
         )
         response = self._post({'resources': []}, api_key=other_key)
         self.assertEqual(response.status_code, 403)

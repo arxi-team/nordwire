@@ -41,6 +41,10 @@ class TestQualityCheckNordSync(TransactionCase):
     def _create_check(self, mo, workorder, **vals):
         vals.setdefault('test_type_id', self.instructions_type.id)
         vals.setdefault('title', 'Check the seal')
+        # v17's quality.check.team_id is required with no default of its own
+        # (only quality.point has one) — fine when created from a point, but
+        # this test creates the check directly.
+        vals.setdefault('team_id', self.env['quality.alert.team'].search([], limit=1).id)
         return self.env['quality.check'].create({
             'production_id': mo.id, 'workorder_id': workorder.id, **vals,
         })
@@ -72,6 +76,7 @@ class TestQualityCheckNordSync(TransactionCase):
         with patch(POST_TARGET) as mocked_post:
             check = self.env['quality.check'].create({
                 'test_type_id': self.instructions_type.id, 'title': 'Unrelated check',
+                'team_id': self.env['quality.alert.team'].search([], limit=1).id,
             })
         self.assertFalse(self.env['nord.sync.queue.line'].search([
             ('res_id', '=', check.id), ('res_model', '=', 'quality.check'),

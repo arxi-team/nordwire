@@ -10,6 +10,7 @@ class SaleOrder(models.Model):
     in the payload is what tells the Core which nord.job.type to use — never
     hardcoded Core-side.
     """
+    _name = 'sale.order'
     _inherit = ['sale.order', 'nord_sync.notify.mixin']
 
     def _nord_sync_payload(self):

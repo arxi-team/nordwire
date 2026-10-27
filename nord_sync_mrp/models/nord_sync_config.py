@@ -62,8 +62,13 @@ class NordSyncConfig(models.Model):
         # created/finished entirely during a disabled window (or before a
         # source addon was even installed) stayed invisible to the Core
         # forever unless someone happened to edit it again afterwards.
-        self.env['mrp.production'].sudo().search(
-            [('company_id', '=', self.company_id.id)])._nord_sync_notify('create')
+        # Only confirmed/progress: a draft MO isn't real work yet (nothing
+        # for the Core to do with it), and done/cancel are over — pushing
+        # either would just create a nord.job the Core immediately has to
+        # treat as historical noise instead of catching up on live work.
+        self.env['mrp.production'].sudo().search([
+            ('company_id', '=', self.company_id.id), ('state', 'in', ('confirmed', 'progress')),
+        ])._nord_sync_notify('create')
 
     # ── inbound extension points (Core->client result/event push) ──────────────
     # Moved here from nord_sync_mrp/controllers/main.py — the dispatch is now

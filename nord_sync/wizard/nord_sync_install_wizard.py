@@ -5,7 +5,7 @@ from odoo.tools import config
 
 from ..models.nord_sync_config import JOB_NAMING_MODES
 
-SUPPORTED_MAJOR_VERSIONS = (19,)
+SUPPORTED_MAJOR_VERSIONS = (17,)
 
 RUN_BEFORE_PREFIX = 'run_before_'
 RUN_AFTER_PREFIX = 'run_after_'
@@ -188,6 +188,25 @@ class NordSyncInstallWizard(models.TransientModel):
         more to actually advance — that second click is a plain no-op
         install-check (everything it needed is already installed) followed
         by the ordinary action_next_step, no different from any other step.
+
+        An already-'installed' source addon whose code is newer than what
+        actually got loaded is also upgraded here, not just skipped — real
+        bug found live, 2026-10-02: a source addon that reached 'installed'
+        state under an earlier revision (an earlier attempt, a restored DB)
+        never re-ran its data files once a later revision changed them (e.g.
+        a new/changed noupdate="1" base.automation rule) — nothing else in
+        this addon's lifecycle ever calls button_immediate_upgrade() on a
+        client's behalf, the install wizard is the only supported path, and
+        a plain `-u` from the command line needs someone to actually run it.
+        Gated on installed_version (on disk) != latest_version (in DB) —
+        the same signal Apps > Upgrade itself relies on — rather than
+        upgrading every already-installed source unconditionally: an
+        upgrade commits and rebuilds the whole registry just like install
+        does, so doing it on every single Sources-step confirm would pay
+        that cost on every future reopen of this wizard even when nothing
+        changed. The cost of this gate is that whoever ships a changed data
+        file in one of these addons must bump its manifest version, same as
+        any other Odoo addon relying on -u to pick up a change.
         """
         self.ensure_one()
         addon_names = {
@@ -196,11 +215,16 @@ class NordSyncInstallWizard(models.TransientModel):
             if source.model in NORD_SYNC_SOURCE_ADDON_BY_MODEL
         }
         Module = self.env['ir.module.module'].sudo()
-        to_install = Module.search([
-            ('name', 'in', list(addon_names)), ('state', 'not in', ('installed', 'to upgrade')),
-        ])
+        selected = Module.search([('name', 'in', list(addon_names))])
+        to_install = selected.filtered(lambda m: m.state not in ('installed', 'to upgrade'))
+        to_upgrade = (selected - to_install).filtered(
+            lambda m: m.state == 'installed' and m.installed_version != m.latest_version
+        )
         if to_install:
             to_install.button_immediate_install()
+            return self._reopen()
+        if to_upgrade:
+            to_upgrade.button_immediate_upgrade()
             return self._reopen()
         self._sync_available_sources()
         return self.action_next_step()
@@ -472,10 +496,10 @@ class NordSyncInstallWizard(models.TransientModel):
             'enabled_source_ids': [(6, 0, self.source_ids.ids)],
         })
         # A work center/employee/BOM created or already existing before this
-        # moment had nothing to notify (config wasn't enabled yet), and only
-        # an edit *after* now would ever trigger its own create/write hook
-        # again — this is the catch-up for that timing gap.
-        config_rec._nord_sync_backfill_existing_records()
+        # moment had nothing to notify (config wasn't enabled yet) and stays
+        # that way — backfilling them into the queue is a deliberate, separate
+        # action (nord_sync.config's "Backfill Existing Records" button), not
+        # something finishing this wizard does on its own.
         # Real records (and their push to the Core) only happen here, once
         # config.enabled is actually True — matches _nord_sync_notify's own
         # guard, and means nothing pushes for a wizard that gets cancelled.
@@ -503,6 +527,6 @@ class NordSyncInstallWizard(models.TransientModel):
             'type': 'ir.actions.act_window',
             'res_model': 'base.automation',
             'domain': ['|', ('name', 'like', 'Nordwire'), ('name', 'like', 'Nord Sync')],
-            'view_mode': 'list,form',
+            'view_mode': 'tree,form',
             'target': 'current',
         }

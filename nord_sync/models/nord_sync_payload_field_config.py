@@ -114,10 +114,10 @@ class NordSyncPayloadFieldConfig(models.Model):
              'dedicated resolution and are never sent through this mechanism.',
     )
 
-    _company_model_unique = models.Constraint(
-        'UNIQUE(company_id, res_model)',
-        'A payload field config already exists for this model in this company.',
-    )
+    _sql_constraints = [
+        ('company_model_unique', 'UNIQUE(company_id, res_model)',
+         'A payload field config already exists for this model in this company.'),
+    ]
 
     @api.onchange('res_model')
     def _onchange_res_model(self):

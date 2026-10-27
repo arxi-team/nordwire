@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Nordwire: Manufacturing',
-    'version': '1.0.1',
+    'version': '17.0.1.0.2',
     'category': 'Manufacturing',
     'summary': 'Nordwire source: mrp.production, plus the BOM/Resource/Employee/Workorder/Quality '
                'Check Bridges that support it.',
@@ -33,6 +33,7 @@ on the Apps screen (`application: False`). A client that never installs
         'views/mrp_workcenter_views.xml',
         'views/resource_resource_views.xml',
         'views/mrp_workorder_views.xml',
+        'views/mrp_production_views.xml',
         'views/res_config_settings_views.xml',
         'wizard/nord_sync_workorder_wizards_views.xml',
     ],

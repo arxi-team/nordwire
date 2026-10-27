@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Nordwire: Purchase',
-    'version': '1.0.0',
+    'version': '17.0.1.0.1',
     'category': 'Inventory/Purchase',
     'summary': 'Nordwire source: purchase.order.',
     'description': """

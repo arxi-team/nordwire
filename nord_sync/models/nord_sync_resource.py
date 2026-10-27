@@ -37,10 +37,10 @@ class NordSyncResource(models.Model):
     active = fields.Boolean(default=True)
     company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
 
-    _company_uid_unique = models.Constraint(
-        'UNIQUE(company_id, uid)',
-        'A Nordwire Resource with this uid already exists for this company.',
-    )
+    _sql_constraints = [
+        ('company_uid_unique', 'UNIQUE(company_id, uid)',
+         'A Nordwire Resource with this uid already exists for this company.'),
+    ]
 
     @api.model
     def _nord_sync_upsert_from_core(self, company, resources_payload):

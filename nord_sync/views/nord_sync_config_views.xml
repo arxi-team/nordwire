@@ -6,11 +6,11 @@
             <field name="name">nord_sync.config.list</field>
             <field name="model">nord_sync.config</field>
             <field name="arch" type="xml">
-                <list create="0">
+                <tree create="0">
                     <field name="company_id"/>
                     <field name="enabled"/>
                     <field name="company_uid"/>
-                </list>
+                </tree>
             </field>
         </record>
 
@@ -23,6 +23,9 @@
                         <button name="%(action_nord_sync_install_wizard)d" type="action"
                                 string="Open Install Wizard" class="btn-primary"
                                 context="{'default_company_id': company_id}"/>
+                        <button name="action_nord_sync_backfill_existing_records" type="object"
+                                string="Backfill Existing Records" invisible="not enabled"
+                                confirm="Push every pre-existing record (work centers, employees, BOMs, manufacturing orders, ...) for this company to the Nord Core. This is a one-off catch-up, not something you need to do again — continue?"/>
                     </header>
                     <sheet>
                         <group>
@@ -44,7 +47,7 @@
         <record id="action_nord_sync_config" model="ir.actions.act_window">
             <field name="name">Configuration</field>
             <field name="res_model">nord_sync.config</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">tree,form</field>
         </record>
 
     </data>

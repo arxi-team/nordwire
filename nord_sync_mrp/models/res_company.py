@@ -11,6 +11,7 @@ class ResCompany(models.Model):
     Core's own res.company (nordos_core/models/res_company.py) -- feeds
     nordos_onpremise's edge.resource.energy_cost_total/co2e_total_kg.
     """
+    _name = 'res.company'
     _inherit = ['res.company', 'nord_sync.notify.mixin']
 
     energy_tariff_eur_kwh = fields.Float(string='Energy Tariff (€/kWh)')

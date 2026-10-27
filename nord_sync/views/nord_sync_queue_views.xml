@@ -6,7 +6,7 @@
             <field name="name">nord.sync.queue.list</field>
             <field name="model">nord.sync.queue</field>
             <field name="arch" type="xml">
-                <list create="0" edit="0" delete="0">
+                <tree create="0" edit="0" delete="0">
                     <field name="id" string="Seq"/>
                     <field name="company_id"/>
                     <field name="owner_res_model" string="Model"/>
@@ -15,7 +15,7 @@
                     <field name="status" decoration-danger="status == 'failed'"
                            decoration-muted="status == 'pending'"/>
                     <field name="last_error" optional="hide"/>
-                </list>
+                </tree>
             </field>
         </record>
 
@@ -39,12 +39,12 @@
                             </page>
                             <page string="Changes">
                                 <field name="line_ids">
-                                    <list create="0" edit="0" delete="0">
+                                    <tree create="0" edit="0" delete="0">
                                         <field name="id" string="Seq"/>
                                         <field name="res_model"/>
                                         <field name="res_id"/>
                                         <field name="operation"/>
-                                    </list>
+                                    </tree>
                                 </field>
                             </page>
                         </notebook>
@@ -78,7 +78,7 @@
         <record id="action_nord_sync_queue" model="ir.actions.act_window">
             <field name="name">Nordwire Queue</field>
             <field name="res_model">nord.sync.queue</field>
-            <field name="view_mode">list,form</field>
+            <field name="view_mode">tree,form</field>
             <!-- Explicit empty domain, not omitted — an omitted field is
                  never cleared on module update (Odoo's XML loader only
                  writes fields actually listed), so a DB that went through

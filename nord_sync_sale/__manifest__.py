@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Nordwire: Sales',
-    'version': '1.0.0',
+    'version': '17.0.1.0.1',
     'category': 'Sales',
     'summary': 'Nordwire source: sale.order.',
     'description': """

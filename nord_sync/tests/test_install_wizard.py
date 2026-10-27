@@ -10,7 +10,7 @@ CONFIG_GET = 'odoo.addons.nord_sync.wizard.nord_sync_install_wizard.config.get'
 VERSION_INFO = 'odoo.addons.nord_sync.wizard.nord_sync_install_wizard.release.version_info'
 
 
-def _patch_env(cron_threads=2, major_version=19):
+def _patch_env(cron_threads=2, major_version=17):
     return patch(CONFIG_GET, return_value=cron_threads), patch(VERSION_INFO, (major_version, 0, 0, 'final', 0, ''))
 
 
@@ -22,7 +22,7 @@ class TestNordSyncInstallWizard(TransactionCase):
     test_install_wizard.py.
     """
 
-    def _new_wizard(self, cron_threads=2, major_version=19, **vals):
+    def _new_wizard(self, cron_threads=2, major_version=17, **vals):
         cron_patch, version_patch = _patch_env(cron_threads, major_version)
         with cron_patch, version_patch:
             return self.env['nord_sync.install.wizard'].create(vals)
@@ -44,7 +44,7 @@ class TestNordSyncInstallWizard(TransactionCase):
     # ── Step 1: pre-flight ───────────────────────────────────────────────────
 
     def test_preflight_ok_when_cron_active_and_version_supported(self):
-        wizard = self._new_wizard(cron_threads=2, major_version=19)
+        wizard = self._new_wizard(cron_threads=2, major_version=17)
         self.assertTrue(wizard.preflight_ok)
         self.assertTrue(wizard.cron_active)
         self.assertTrue(wizard.odoo_version_supported)
@@ -58,7 +58,7 @@ class TestNordSyncInstallWizard(TransactionCase):
         self.assertFalse(wizard.show_next)
 
     def test_preflight_fails_when_version_unsupported(self):
-        wizard = self._new_wizard(major_version=17)
+        wizard = self._new_wizard(major_version=19)
         self.assertFalse(wizard.preflight_ok)
         self.assertFalse(wizard.odoo_version_supported)
 
@@ -273,7 +273,7 @@ class TestNordSyncInstallWizard(TransactionCase):
             view_id=self.env.ref('nord_sync.view_nord_sync_install_wizard_form').id, view_type='form',
         )
         arch = etree.fromstring(view['arch'])
-        list_el = arch.xpath("//field[@name='mapping_line_ids']")[0].find('list')
+        list_el = arch.xpath("//field[@name='mapping_line_ids']")[0].find('tree')
         field_names = {f.get('name') for f in list_el.findall('field')}
         self.assertIn('source_value', field_names)
         self.assertIn('source_model', field_names)

@@ -14,7 +14,7 @@ class TestStockMoveNordSync(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.component = cls.env['product.product'].create({
-            'name': 'Real Component', 'is_storable': True,
+            'name': 'Real Component', 'type': 'product',
         })
         cls.product = cls.env['product.product'].create({'name': 'Real Output Product'})
 
@@ -98,7 +98,8 @@ class TestStockMoveNordSync(TransactionCase):
         warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1)
         with patch(POST_TARGET) as mocked_post:
             self.env['stock.move'].create({
-                'product_id': self.component.id, 'product_uom_qty': 1.0, 'product_uom': self.component.uom_id.id,
+                'name': 'Unrelated move', 'product_id': self.component.id, 'product_uom_qty': 1.0,
+                'product_uom': self.component.uom_id.id,
                 'location_id': warehouse.lot_stock_id.id, 'location_dest_id': warehouse.lot_stock_id.id,
             })
         self.assertFalse(self.env['nord.sync.queue.line'].search([('res_model', '=', 'mrp.production.moves')]))

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Nordwire: Maintenance',
-    'version': '1.0.0',
+    'version': '17.0.1.0.1',
     'category': 'Manufacturing/Maintenance',
     'summary': 'Nordwire source: maintenance.request.',
     'description': """

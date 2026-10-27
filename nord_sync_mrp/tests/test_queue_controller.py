@@ -20,10 +20,10 @@ class TestNordSyncQueueController(HttpCase):
         cls.tech_user = cls.env['res.users'].create({
             'name': 'Nord Core Technical User',
             'login': 'test_nord_core_tech',
-            'group_ids': [(4, cls.env.ref('nord_sync.group_nord_sync_integration').id)],
+            'groups_id': [(4, cls.env.ref('nord_sync.group_nord_sync_integration').id)],
         })
         cls.api_key = cls.env['res.users.apikeys'].with_user(cls.tech_user).sudo()._generate(
-            'rpc', 'nord core test key', None,
+            'rpc', 'nord core test key',
         )
 
     def _get(self, company_uid='core-test-uid', last_seq=0, api_key=None):
@@ -45,10 +45,10 @@ class TestNordSyncQueueController(HttpCase):
             'login': 'test_other_company_tech',
             'company_id': other_company.id,
             'company_ids': [(4, other_company.id)],
-            'group_ids': [(4, self.env.ref('nord_sync.group_nord_sync_integration').id)],
+            'groups_id': [(4, self.env.ref('nord_sync.group_nord_sync_integration').id)],
         })
         other_key = self.env['res.users.apikeys'].with_user(other_user).sudo()._generate(
-            'rpc', 'other company test key', None,
+            'rpc', 'other company test key',
         )
         response = self._get(api_key=other_key)
         self.assertEqual(response.status_code, 403)

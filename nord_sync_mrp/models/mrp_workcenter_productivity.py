@@ -13,6 +13,7 @@ class MrpWorkcenterProductivityLossType(models.Model):
     by design). A support model of the mrp.production source, not a
     toggle-able source of its own — see _nord_sync_source_key below.
     """
+    _name = 'mrp.workcenter.productivity.loss.type'
     _inherit = ['mrp.workcenter.productivity.loss.type', 'nord_sync.notify.mixin']
 
     @api.model_create_multi
@@ -67,6 +68,7 @@ class MrpWorkcenterProductivityLoss(models.Model):
     gets one, so neither loops back nor floods the Core with every custom
     reason a client creates by hand.
     """
+    _name = 'mrp.workcenter.productivity.loss'
     _inherit = ['mrp.workcenter.productivity.loss', 'nord_sync.notify.mixin']
 
     @api.model_create_multi

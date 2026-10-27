@@ -12,6 +12,7 @@ class HrEmployee(models.Model):
     to read it from. A support model of the mrp.production source, not a
     toggle-able source of its own — see _nord_sync_source_key below.
     """
+    _name = 'hr.employee'
     _inherit = ['hr.employee', 'nord_sync.notify.mixin']
 
     @api.model

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Nordwire',
-    'version': '1.0.5',
+    'version': '17.0.1.0.5',
     'category': 'Manufacturing',
     'summary': 'Bridges this Odoo to the Nord platform: notifies the Nord Cloud of changes, '
                'exposes a queue for the Nord Core to pull, authenticated by API key.',

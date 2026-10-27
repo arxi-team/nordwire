@@ -24,4 +24,6 @@ class NordSyncSource(models.Model):
              "against a source's own _nord_sync_payload()-producing model.",
     )
 
-    _model_unique = models.Constraint('UNIQUE(model)', 'A Nordwire Source for this model already exists.')
+    _sql_constraints = [
+        ('model_unique', 'UNIQUE(model)', 'A Nordwire Source for this model already exists.'),
+    ]

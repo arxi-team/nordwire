@@ -1,3 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_nord_sync_workorder_start_wizard_user,nord_sync.workorder.start.wizard.user,model_nord_sync_workorder_start_wizard,nord_sync.group_nord_sync_user,1,1,1,1
-access_nord_sync_workorder_workcenter_change_wizard_user,nord_sync.workorder.workcenter.change.wizard.user,model_nord_sync_workorder_workcenter_change_wizard,nord_sync.group_nord_sync_user,1,1,1,1
