@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """PDA page for setting up the next MO on a Nord-controlled machine: the
 operator scans the MO's QR code (its name, shown on the MO form) and the
-work order's Core resource waits in "Setup" until the machine's own port
+MO's next open work order (the operation it is waiting for, e.g. Torragem)
+is set up: its Core resource waits in "Setup" until the machine's own port
 starts it. The setup travels to the Core as a 'setup' floor event on the
 work order (mrp.workorder._nord_sync_notify_floor_event), same channel as
 a Shop Floor start/pause.
@@ -11,8 +12,6 @@ focus, ready for the next scan. It is a plain text input: a PDA's built-in
 scanner types the code followed by Enter, which needs no camera access
 (browsers only allow the camera on HTTPS).
 """
-from markupsafe import escape
-
 from odoo.http import Controller, request, route
 
 _PAGE = """<!DOCTYPE html>
@@ -23,15 +22,13 @@ _PAGE = """<!DOCTYPE html>
 <title>Nord PDA</title>
 <style>
   body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #f4f5f7; color: #1f2933; }
-  select { font-size: .9rem; padding: 6px; border-radius: 6px; border: 1px solid #cbd2d9; background: #fff; color: #52606d; }
-  input { width: 100%%; box-sizing: border-box; font-size: 1.4rem; padding: 16px; margin-top: 12px; border-radius: 10px; border: 2px solid #1f6feb; }
+  input { width: 100%; box-sizing: border-box; font-size: 1.4rem; padding: 16px; border-radius: 10px; border: 2px solid #1f6feb; }
   .msg { margin-top: 16px; padding: 16px; border-radius: 10px; font-size: 1.2rem; font-weight: 600; display: none; }
   .ok { background: #e3f9e5; color: #05400a; display: block; }
   .err { background: #ffe3e3; color: #610404; display: block; }
 </style>
 </head>
 <body>
-<select id="resource" aria-label="Centro de trabalho">%(options)s</select>
 <input id="code" autofocus autocomplete="off" aria-label="QR da MO" placeholder="Ler o QR da MO">
 <div id="msg" class="msg"></div>
 <script>
@@ -53,7 +50,7 @@ async function setup() {
   code.focus();
   if (!mo) return;
   try {
-    const r = await call('/nord_sync/pda/setup', {workcenter_id: +$('resource').value, mo_name: mo});
+    const r = await call('/nord_sync/pda/setup', {mo_name: mo});
     show(r.message, r.success);
   } catch (e) { show(e.message, false); }
 }
@@ -61,24 +58,11 @@ async function setup() {
 code.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); setup(); }
 });
-// Keep the field focused so the operator only has to pull the trigger;
-// the work center select is the one thing allowed to take it away
-code.addEventListener('blur', () => setTimeout(() => {
-  if (document.activeElement !== $('resource')) code.focus();
-}, 0));
-document.addEventListener('click', (e) => { if (e.target !== $('resource')) code.focus(); });
+// Keep the field focused so the operator only has to pull the trigger
+code.addEventListener('blur', () => setTimeout(() => code.focus(), 0));
+document.addEventListener('click', () => code.focus());
 document.addEventListener('visibilitychange', () => { if (!document.hidden) code.focus(); });
 window.addEventListener('focus', () => code.focus());
-// Each PDA sits at one machine: remember the work center it was set to
-try {
-  const saved = localStorage.getItem('nord_pda_workcenter');
-  if (saved && [...$('resource').options].some((o) => o.value === saved)) $('resource').value = saved;
-} catch (e) {}
-$('resource').onchange = () => {
-  try { localStorage.setItem('nord_pda_workcenter', $('resource').value); } catch (e) {}
-  code.focus();
-};
-$('resource').addEventListener('blur', () => setTimeout(() => code.focus(), 0));
 code.focus();
 </script>
 </body>
@@ -88,47 +72,27 @@ code.focus();
 
 class NordSyncPda(Controller):
 
-    def _workcenters(self):
-        return request.env['mrp.workcenter'].search(
-            [('company_id', 'in', request.env.companies.ids + [False])], order='name',
-        )
-
-    def _open_workorders(self, workcenter):
-        return request.env['mrp.workorder'].search([
-            ('workcenter_id', '=', workcenter.id), ('state', 'not in', ('done', 'cancel')),
-        ])
-
     @route('/nord_sync/pda', type='http', auth='user', methods=['GET'])
-    def pda_page(self, workcenter_id=None, **kwargs):
-        workcenters = self._workcenters()
-        # Default to a machine Nord drives (its own port starts the work),
-        # not just the alphabetically first work center
-        default = workcenters.filtered('nord_sync_autonomous_close')[:1] or workcenters[:1]
-        selected = int(workcenter_id) if workcenter_id else default.id
-        options = ''.join(
-            f'<option value="{wc.id}"{" selected" if wc.id == selected else ""}>{escape(wc.display_name)}</option>'
-            for wc in workcenters
-        )
-        return request.make_response(
-            _PAGE % {'options': options}, headers=[('Content-Type', 'text/html; charset=utf-8')],
-        )
+    def pda_page(self, **kwargs):
+        return request.make_response(_PAGE, headers=[('Content-Type', 'text/html; charset=utf-8')])
 
     @route('/nord_sync/pda/setup', type='jsonrpc', auth='user', methods=['POST'])
-    def pda_setup(self, workcenter_id, mo_name, **kwargs):
-        workcenter = self._workcenters().filtered(lambda wc: wc.id == int(workcenter_id))
-        if not workcenter:
-            return {'success': False, 'message': 'Centro de trabalho desconhecido.'}
-        workorder = self._open_workorders(workcenter).filtered(
-            lambda wo: wo.production_id.name == mo_name.strip()
-        )[:1]
+    def pda_setup(self, mo_name, **kwargs):
+        mo_name = mo_name.strip()
+        production = request.env['mrp.production'].search([
+            ('name', '=', mo_name), ('company_id', 'in', request.env.companies.ids),
+        ], limit=1)
+        if not production:
+            return {'success': False, 'message': f'{mo_name}: MO não encontrada.'}
+        # The operation the MO is waiting for: work orders come in sequence
+        workorder = production.workorder_ids.filtered(
+            lambda wo: wo.state not in ('done', 'cancel')
+        ).sorted(lambda wo: (wo.sequence, wo.id))[:1]
         if not workorder:
-            return {
-                'success': False,
-                'message': f'{mo_name}: nada por fazer em {workcenter.name}.',
-            }
+            return {'success': False, 'message': f'{mo_name}: nada por fazer.'}
         workorder._nord_sync_notify_floor_event('setup')
-        workorder.production_id._nord_sync_ensure_delivery()
+        production._nord_sync_ensure_delivery()
         return {
             'success': True,
-            'message': f'{mo_name} em setup em {workcenter.name}.',
+            'message': f'{mo_name} em setup em {workorder.workcenter_id.name}.',
         }
