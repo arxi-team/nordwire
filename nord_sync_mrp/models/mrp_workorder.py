@@ -210,8 +210,9 @@ class MrpWorkorder(models.Model):
         refuses to touch one).
 
         Keys:
-            event_type (str): 'session_start', 'session_stop' or
-                'session_loss_justified', any other value is rejected.
+            event_type (str): 'session_start', 'session_stop',
+                'session_loss_justified', 'session_setup' or
+                'session_downtime', any other value is rejected.
             payload (dict): session_start carries nord_timesheet_id (see
                 _nord_sync_button_start_bypassing_employee_check).
                 session_stop carries end_date (str, optional) — the Core's
@@ -227,10 +228,16 @@ class MrpWorkorder(models.Model):
                 return self._nord_sync_apply_session_loss_justified(payload)
             except Exception as exc:
                 return False, str(exc)
-        if event_type == 'session_setup':
+        if event_type in ('session_setup', 'session_downtime', 'session_downtime_open', 'session_downtime_cancel'):
             # Historical too, like session_loss_justified: logged even when
             # the work order already finished by the time it arrives.
             try:
+                if event_type == 'session_downtime_open':
+                    return self._nord_sync_apply_session_downtime_open(payload)
+                if event_type == 'session_downtime_cancel':
+                    return self._nord_sync_apply_session_downtime_cancel(payload)
+                if event_type == 'session_downtime':
+                    return self._nord_sync_apply_session_downtime(payload)
                 return self._nord_sync_apply_session_setup(payload)
             except Exception as exc:
                 return False, str(exc)
@@ -245,6 +252,7 @@ class MrpWorkorder(models.Model):
             return True, f'Workorder already {self.state}, event ignored.'
         try:
             if event_type == 'session_start':
+                self._nord_sync_close_before_start(payload)
                 already_open = self.time_ids.filtered(lambda t: not t.date_end)
                 self.with_context(nord_sync_from_core=True)._nord_sync_button_start_bypassing_employee_check(payload)
                 # Same correction session_stop makes for end_date below: the
@@ -337,26 +345,124 @@ class MrpWorkorder(models.Model):
                 session_loss_justified.
         """
         self.ensure_one()
+        return self._nord_sync_log_downtime(payload, 'setup')
+
+    def _nord_sync_apply_session_downtime(self, payload):
+        """Logs a stop of the machine in the middle of this work order
+        (Core: nord_sync_stop_tracking) as a closed time line: unjustified
+        ("Undefined" loss) unless the Core already had a reason for it; a
+        later reason reaches the same line through session_loss_justified.
+        Idempotent on nord_timesheet_id.
+
+        Keys:
+            start_date (str, required) / end_date (str, required).
+            nord_timesheet_id (int, required).
+            reason_name (str, optional) / reason_type (str, optional): see
+                session_loss_justified; absent means unjustified.
+        """
+        self.ensure_one()
+        return self._nord_sync_log_downtime(payload, 'stop')
+
+    def _nord_sync_apply_session_downtime_open(self, payload):
+        """Shows a setup (PDA scan, handover) or a stop of the machine live:
+        an open time line, closed by the later session_setup/
+        session_downtime with the same nord_timesheet_id. While it is open
+        the work center shows as blocked, Odoo's own way of saying it is not
+        producing; the Core's next session_start closes it first.
+
+        Keys:
+            nord_timesheet_id (int, required) / start_date (str, required).
+            kind (str, required): 'setup' or 'stop'.
+            reason_name (str, optional) / reason_type (str, optional).
+        """
+        self.ensure_one()
+        nord_timesheet_id, start_date, kind = (payload.get(k) for k in ('nord_timesheet_id', 'start_date', 'kind'))
+        if not nord_timesheet_id or not start_date or kind not in ('setup', 'stop'):
+            return False, 'Missing nord_timesheet_id/start_date/kind'
+        Productivity = self.env['mrp.workcenter.productivity'].sudo()
+        if Productivity.search_count([('nord_sync_timesheet_id', '=', nord_timesheet_id)]):
+            return True, 'Already shown.'
+        Productivity.create(self._nord_sync_downtime_line_vals(payload, kind))
+        return True, 'ok'
+
+    def _nord_sync_apply_session_downtime_cancel(self, payload):
+        """A segment shown live that turned out not to be this work order's
+        (another machine's changeover took it over, or a setup was undone):
+        its open line goes. A closed one is history and stays.
+
+        Keys:
+            nord_timesheet_id (int, required).
+        """
+        self.ensure_one()
+        lines = self.env['mrp.workcenter.productivity'].sudo().search([
+            ('nord_sync_timesheet_id', '=', payload.get('nord_timesheet_id') or -1), ('date_end', '=', False),
+        ])
+        lines.unlink()
+        return True, 'ok'
+
+    def _nord_sync_downtime_loss(self, kind, payload):
+        Loss = self.env['mrp.workcenter.productivity.loss']
+        if kind == 'setup':
+            return Loss._nord_sync_get_or_create(
+                payload.get('reason_name') or 'Setup and Adjustments', payload.get('reason_type') or 'Availability',
+            )
+        if payload.get('reason_name'):
+            return Loss._nord_sync_get_or_create(payload['reason_name'], payload.get('reason_type'))
+        return Loss._nord_sync_get_or_create_undefined()
+
+    def _nord_sync_downtime_line_vals(self, payload, kind):
+        return {
+            'workorder_id': self.id,
+            'workcenter_id': self.workcenter_id.id,
+            'date_start': payload['start_date'],
+            'date_end': payload.get('end_date') or False,
+            'loss_id': self._nord_sync_downtime_loss(kind, payload).id,
+            'description': 'Setup' if kind == 'setup' else 'Unjustified stop',
+            'nord_sync_timesheet_id': payload['nord_timesheet_id'],
+            'nord_sync_downtime_kind': kind,
+        }
+
+    def _nord_sync_log_downtime(self, payload, kind):
+        """Closes the line session_downtime_open showed live, or logs the
+        whole segment when it never was (an older Core, a lost event).
+        Idempotent on nord_timesheet_id."""
         nord_timesheet_id = payload.get('nord_timesheet_id')
         start_date, end_date = payload.get('start_date'), payload.get('end_date')
         if not nord_timesheet_id or not start_date or not end_date:
             return False, 'Missing nord_timesheet_id/start_date/end_date'
         Productivity = self.env['mrp.workcenter.productivity'].sudo()
-        if Productivity.search_count([('nord_sync_timesheet_id', '=', nord_timesheet_id)]):
-            return True, 'Setup already logged.'
-        loss = self.env['mrp.workcenter.productivity.loss']._nord_sync_get_or_create(
-            payload.get('reason_name') or 'Setup and Adjustments', payload.get('reason_type') or 'Availability',
-        )
-        Productivity.create({
-            'workorder_id': self.id,
-            'workcenter_id': self.workcenter_id.id,
-            'date_start': start_date,
-            'date_end': end_date,
-            'loss_id': loss.id,
-            'description': 'Setup',
-            'nord_sync_timesheet_id': nord_timesheet_id,
-        })
+        line = Productivity.search([('nord_sync_timesheet_id', '=', nord_timesheet_id)], limit=1)
+        if line and line.date_end:
+            return True, 'Already logged.'
+        if line:
+            # Its reason may have been set while it was open (a justified stop)
+            line.write({
+                'date_start': start_date, 'date_end': end_date,
+                'loss_id': self._nord_sync_downtime_loss(kind, payload).id,
+            })
+            return True, 'ok'
+        Productivity.create(self._nord_sync_downtime_line_vals(payload, kind))
         return True, 'ok'
+
+    def _nord_sync_close_before_start(self, payload):
+        """Before a Nord session opens its line: whatever this machine still
+        shows open must end where it starts. A setup/stop line on its work
+        center would block the start (Odoo refuses to start a blocked work
+        center), and a work line of an older Nord session left open (its
+        stop never arrived) would swallow this one: the start finds a line
+        already open and opens none, which once made a 12-day line."""
+        self.ensure_one()
+        start = payload.get('start_date') or fields.Datetime.now()
+        stale = self.env['mrp.workcenter.productivity'].sudo().search([
+            ('workcenter_id', '=', self.workcenter_id.id), ('date_end', '=', False),
+            ('nord_sync_downtime_kind', '!=', False),
+        ])
+        stale |= self.time_ids.filtered(
+            lambda t: not t.date_end and t.nord_sync_timesheet_id
+            and t.nord_sync_timesheet_id != payload.get('nord_timesheet_id')
+        )
+        for line in stale:
+            line.date_end = max(fields.Datetime.to_datetime(start), line.date_start)
 
     def _nord_sync_button_start_bypassing_employee_check(self, payload=None):
         """button_start(bypass=True) skips the Shop Floor "link this user to

@@ -735,3 +735,18 @@ msgid ""
 msgstr ""
 "electric_consume x o energy_tariff_eur_kwh desta empresa (res.company, "
 "sincronizado com o Core via Nord Sync -- ver res_company.py)."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_stop_tracking
+msgid "Track Stops and Changeovers"
+msgstr "Registar Paragens e Mudanças de Máquina"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_stop_tracking
+msgid "When the machine stops in the middle of a job, log that stop on the work order as an unjustified stop (until someone gives it a reason); when it starts again, carry on with the same production order. When the operator stops another tracked work center and then starts this one, the time in between is logged as setup of this work center instead of a stop of the other one."
+msgstr "Quando a máquina para a meio de um trabalho, regista essa paragem na ordem de trabalho como paragem não justificada (até alguém lhe dar um motivo); quando volta a arrancar, continua a mesma ordem de produção. Quando o operador para outro posto de trabalho registado e depois arranca este, o tempo entre os dois fica registado como setup deste posto em vez de paragem do outro."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter_productivity__nord_sync_downtime_kind
+msgid "Nord Downtime Kind"
+msgstr "Tipo de Paragem Nord"
