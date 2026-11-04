@@ -183,3 +183,39 @@ class MrpWorkcenterProductivity(models.Model):
         help='Set on a line the Core logged for a machine that was not working: its setup '
              'for this work order, or a stop in the middle of it.',
     )
+    nord_sync_time_category = fields.Selection([
+        ('productive', 'Productive'),
+        ('stop', 'Stop'),
+        ('setup', 'Setup'),
+        ('quality', 'Quality'),
+    ], string='Time Category', compute='_compute_nord_sync_time_category', store=True,
+        help='Productive / stop / setup split of this time line, for the work center charts. '
+             'A Nord session not justified yet ("Undefined" reason) is still worked time.',
+    )
+
+    nord_sync_elapsed_minutes = fields.Float(
+        string='Elapsed (minutes)', compute='_compute_nord_sync_elapsed_minutes', store=True,
+        help='Wall-clock length of this time line. Odoo\'s own duration only counts the part '
+             'inside the work center\'s working hours, which hides a machine running (or '
+             'stopped) outside them.',
+    )
+
+    @api.depends('date_start', 'date_end')
+    def _compute_nord_sync_elapsed_minutes(self):
+        for line in self:
+            line.nord_sync_elapsed_minutes = (
+                (line.date_end - line.date_start).total_seconds() / 60
+                if line.date_start and line.date_end else 0.0
+            )
+
+    @api.depends('nord_sync_downtime_kind', 'loss_id.loss_type', 'loss_id.name')
+    def _compute_nord_sync_time_category(self):
+        for line in self:
+            if line.nord_sync_downtime_kind:
+                line.nord_sync_time_category = line.nord_sync_downtime_kind
+            elif line.loss_id.loss_type == 'quality':
+                line.nord_sync_time_category = 'quality'
+            elif line.loss_id.loss_type == 'availability' and line.loss_id.name != NORD_SYNC_UNDEFINED_LOSS_NAME:
+                line.nord_sync_time_category = 'stop'
+            else:
+                line.nord_sync_time_category = 'productive'

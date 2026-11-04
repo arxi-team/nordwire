@@ -747,9 +747,71 @@ msgid "When the machine stops in the middle of a job, log that stop on the work 
 msgstr "Quando a máquina para a meio de um trabalho, regista essa paragem na ordem de trabalho como paragem não justificada (até alguém lhe dar um motivo); quando volta a arrancar, continua a mesma ordem de produção. Quando o operador para outro posto de trabalho registado e depois arranca este, o tempo entre os dois fica registado como setup deste posto em vez de paragem do outro."
 
 #. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter_productivity__nord_sync_time_category
+msgid "Time Category"
+msgstr "Categoria de Tempo"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter_productivity__nord_sync_elapsed_minutes
+msgid "Elapsed (minutes)"
+msgstr "Tempo decorrido (minutos)"
+
+#. module: nord_sync_mrp
 #: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter_productivity__nord_sync_downtime_kind
 msgid "Nord Downtime Kind"
 msgstr "Tipo de Paragem Nord"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__mrp_workcenter_productivity__nord_sync_time_category__productive
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_productivity_view_search_nord_sync
+msgid "Productive"
+msgstr "Produtivo"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__mrp_workcenter_productivity__nord_sync_time_category__stop
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__mrp_workcenter_productivity__nord_sync_downtime_kind__stop
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_productivity_view_search_nord_sync
+msgid "Stop"
+msgstr "Paragem"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__mrp_workcenter_productivity__nord_sync_time_category__setup
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__mrp_workcenter_productivity__nord_sync_downtime_kind__setup
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_productivity_view_search_nord_sync
+msgid "Setup"
+msgstr "Setup"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__mrp_workcenter_productivity__nord_sync_time_category__quality
+msgid "Quality"
+msgstr "Qualidade"
+
+#. module: nord_sync_mrp
+#: model:ir.actions.act_window,name:nord_sync_mrp.action_mrp_workcenter_productivity_nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_view_nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_productivity_view_graph_nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_productivity_view_pivot_nord_sync
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_productivity_view_list_nord_sync
+msgid "Nord Times"
+msgstr "Tempos Nord"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_productivity_view_search_nord_sync
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.xml:0
+msgid "Today"
+msgstr "Hoje"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_productivity_view_search_nord_sync
+msgid "Production Order"
+msgstr "Ordem de Produção"
+
+#. module: nord_sync_mrp
+#. odoo-python
+#: code:addons/nord_sync_mrp/models/mrp_workcenter.py:0
+msgid "Nord Times — %s"
+msgstr "Tempos Nord — %s"
 
 #. module: nord_sync_mrp
 #: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workorder__nord_sync_not_ok_count
@@ -780,3 +842,38 @@ msgstr "%s está parada."
 #: code:addons/nord_sync_mrp/models/mrp_workorder.py:0
 msgid "Nord PDA: not OK on %s"
 msgstr "PDA Nord: Não OK em %s"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.js:0
+msgid "Minutes"
+msgstr "Minutos"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.js:0
+msgid "Hourly average"
+msgstr "Média por hora"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.xml:0
+msgid "Refresh"
+msgstr "Atualizar"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.xml:0
+msgid "Details"
+msgstr "Detalhe"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.xml:0
+msgid "Save the work center to see its times."
+msgstr "Guarde o posto de trabalho para ver os tempos."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_time_chart
+msgid "Nord Times Chart"
+msgstr "Gráfico de Tempos Nord"

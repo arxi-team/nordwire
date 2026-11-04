@@ -1,0 +1,37 @@
+.o_nord_sync_time_chart {
+    width: 100%;
+}
+
+.o_nord_sync_time_chart_header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 16px;
+    margin-bottom: 8px;
+}
+
+.o_nord_sync_time_chart_dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 4px;
+    border-radius: 50%;
+}
+
+.o_nord_sync_time_chart_canvas {
+    position: relative;
+    height: 260px;
+}
+
+.o_nord_sync_time_chart_total {
+    padding: 2px 10px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 12px;
+    font-size: 0.85rem;
+}
+
+.o_nord_sync_time_chart {
+    padding: 10px;
+    border: 1px solid lightgray;
+    border-radius: 5px;
+}
