@@ -750,3 +750,33 @@ msgstr "Quando a máquina para a meio de um trabalho, regista essa paragem na or
 #: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter_productivity__nord_sync_downtime_kind
 msgid "Nord Downtime Kind"
 msgstr "Tipo de Paragem Nord"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workorder__nord_sync_not_ok_count
+msgid "Not OK (PDA)"
+msgstr "Não OK (PDA)"
+
+
+#. module: nord_sync_mrp
+#. odoo-python
+#: code:addons/nord_sync_mrp/models/mrp_workorder.py:0
+msgid "%s does not track stops on Nord."
+msgstr "%s não regista paragens no Nord."
+
+#. module: nord_sync_mrp
+#. odoo-python
+#: code:addons/nord_sync_mrp/models/mrp_workorder.py:0
+msgid "Nord PDA: 1 unit not OK on %(operation)s (%(count)s so far)."
+msgstr "PDA Nord: 1 unidade Não OK em %(operation)s (%(count)s até agora)."
+
+#. module: nord_sync_mrp
+#. odoo-python
+#: code:addons/nord_sync_mrp/models/mrp_workorder.py:0
+msgid "%s is stopped."
+msgstr "%s está parada."
+
+#. module: nord_sync_mrp
+#. odoo-python
+#: code:addons/nord_sync_mrp/models/mrp_workorder.py:0
+msgid "Nord PDA: not OK on %s"
+msgstr "PDA Nord: Não OK em %s"

@@ -266,7 +266,8 @@ class MrpProduction(models.Model):
                 auto-validated stock.scrap record when non-zero, plus a
                 mrp.workcenter.productivity 'quality' time entry (see
                 _nord_sync_log_quality_loss) so it counts toward Odoo's
-                own OEE.
+                own OEE. Units already rejected on the PDA (counted on
+                the work orders) are left out: they were applied then.
             materials (list[dict], optional): the Core's real per-product
                 consumed quantity, default None (treated as empty) —
                 [{product: {name, default_code}, quantity}], only read when
@@ -366,6 +367,10 @@ class MrpProduction(models.Model):
             return False, message
 
         self._nord_sync_create_scrap(scrap_qty, 'Nordwire: scrap')
+        # Rejects tapped on the PDA were scrapped and logged there and then
+        # (mrp.workorder.action_nord_sync_not_ok); the Core's not_pass_qty
+        # counts them too, so only the rest is applied here.
+        not_pass_qty = max(0.0, not_pass_qty - sum(self.workorder_ids.mapped('nord_sync_not_ok_count')))
         self._nord_sync_create_scrap(not_pass_qty, 'Nordwire: quality reject (not pass)')
         self._nord_sync_log_quality_loss(not_pass_qty)
 
@@ -591,7 +596,7 @@ class MrpProduction(models.Model):
                 scrap.id, self.id,
             )
 
-    def _nord_sync_log_quality_loss(self, not_pass_qty):
+    def _nord_sync_log_quality_loss(self, not_pass_qty, workorder=None):
         """Logs not_pass_qty as a real mrp.workcenter.productivity time
         entry with loss_type='quality', so it counts in Odoo's own native
         OEE (mrp.workcenter.oee, computed purely from productivity time
@@ -614,7 +619,8 @@ class MrpProduction(models.Model):
         self.ensure_one()
         if not not_pass_qty or not self.product_qty:
             return
-        workorder = self.workorder_ids[-1:]
+        # The PDA knows the operation the reject happened on
+        workorder = workorder or self.workorder_ids[-1:]
         if not workorder:
             return
         loss = self.env['mrp.workcenter.productivity.loss'].sudo().search(

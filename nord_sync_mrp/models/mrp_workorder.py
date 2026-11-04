@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 
 class MrpWorkorder(models.Model):
@@ -36,6 +37,13 @@ class MrpWorkorder(models.Model):
         # currency_field off, same reasoning mrp.workcenter.costs_hour already settled for.
         help='electric_consume x this company\'s energy_tariff_eur_kwh (res.company, Nord '
              'Sync-synced to the Core -- see res_company.py).',
+    )
+
+    nord_sync_not_ok_count = fields.Integer(
+        string='Not OK (PDA)', readonly=True, copy=False,
+        help='Units rejected on the Nord PDA ("Não OK") while this operation was running. '
+             'Each one is declared on the Core as a not_pass of 1, and reaches this '
+             'production order with the job\'s result as quality time.',
     )
 
     @api.depends('time_ids.electric_consume', 'company_id.energy_tariff_eur_kwh')
@@ -130,6 +138,48 @@ class MrpWorkorder(models.Model):
         if self.env.context.get('nord_sync_from_core'):
             return
         self.with_context(nord_sync_floor_event=event)._nord_sync_notify('write')
+
+    def action_nord_sync_not_ok(self):
+        """One unit rejected on the PDA ("Não OK"): counted here, noted on
+        the MO, and sent to the Core as a 'not_pass' floor event, which
+        declares it there (resource_setup_nord_sync.py). Only while the
+        machine is running it, on a work center with stop tracking on — the
+        fair demo's opt-in. Scrapped and logged as quality time right away,
+        the same way the job's result does it for the Core's not_pass.
+
+        The counter and the floor event go out in one write: write() already
+        notifies the Core, and nord_sync_floor_event rides along on it, so
+        the Core gets exactly one entry per tap.
+        """
+        self.ensure_one()
+        if not self.workcenter_id.nord_sync_stop_tracking:
+            raise UserError(self.env._('%s does not track stops on Nord.', self.workcenter_id.display_name))
+        if self.state != 'progress' or not self._nord_sync_is_running():
+            # The open time line is the machine running (session_start
+            # opens it, session_stop closes it): a reject needs a running
+            # machine, not just an operation started at some point.
+            raise UserError(self.env._('%s is stopped.', self.workcenter_id.display_name))
+        production = self.production_id
+        self.with_context(nord_sync_floor_event='not_pass').write({
+            'nord_sync_not_ok_count': self.nord_sync_not_ok_count + 1,
+        })
+        # Same scrap and quality time a not_pass gets when the Core's result
+        # arrives (mrp.production._nord_sync_apply_result), applied now;
+        # that result leaves these units out.
+        production._nord_sync_create_scrap(1, self.env._('Nord PDA: not OK on %s', self.name))
+        production._nord_sync_log_quality_loss(1, workorder=self)
+        production.message_post(body=self.env._(
+            'Nord PDA: 1 unit not OK on %(operation)s (%(count)s so far).',
+            operation=self.name, count=self.nord_sync_not_ok_count,
+        ))
+        return self.nord_sync_not_ok_count
+
+    def _nord_sync_is_running(self):
+        """The machine is working this operation now: an open work line (the
+        Core's session_start opens it, session_stop closes it), not a setup
+        or stop line shown live."""
+        self.ensure_one()
+        return bool(self.time_ids.filtered(lambda t: not t.date_end and not t.nord_sync_downtime_kind))
 
     def action_nord_sync_change_workcenter(self):
         """Standalone button, visible once this workorder is already
