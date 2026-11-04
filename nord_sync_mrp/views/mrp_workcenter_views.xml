@@ -21,6 +21,8 @@
                         Not mapped to a Nord Core resource yet — nothing below is sent to the Core
                         until this is set.
                     </div>
+                    <separator string="Nord Times"/>
+                    <field name="nord_sync_time_chart" class="w-100" widget="nord_sync_time_chart" nolabel="1"/>
                     <separator string="Control Mode"/>
                     <group>
                         <field name="nord_sync_control_mode"/>
@@ -47,6 +49,89 @@
                     </group>
                 </page>
             </xpath>
+        </field>
+    </record>
+
+    <!-- Productive / stop / setup time, from the work center's time lines
+         (the Core's sessions as logged on its work orders) -->
+    <record id="mrp_workcenter_productivity_view_search_nord_sync" model="ir.ui.view">
+        <field name="name">mrp.workcenter.productivity.search.nord.sync</field>
+        <field name="model">mrp.workcenter.productivity</field>
+        <field name="inherit_id" ref="mrp.oee_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='filter_date_start']" position="before">
+                <filter name="nord_productive" string="Productive" domain="[('nord_sync_time_category', '=', 'productive')]"/>
+                <filter name="nord_stop" string="Stop" domain="[('nord_sync_time_category', '=', 'stop')]"/>
+                <filter name="nord_setup" string="Setup" domain="[('nord_sync_time_category', '=', 'setup')]"/>
+                <separator/>
+                <filter name="nord_today" string="Today"
+                        domain="[('date_start', '&gt;=', (context_today()).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+            </xpath>
+            <xpath expr="//filter[@name='loss_group']" position="after">
+                <filter string="Time Category" name="nord_category_group" context="{'group_by': 'nord_sync_time_category'}"/>
+                <filter string="Production Order" name="nord_production_group" context="{'group_by': 'production_id'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="mrp_workcenter_productivity_view_graph_nord_sync" model="ir.ui.view">
+        <field name="name">mrp.workcenter.productivity.graph.nord.sync</field>
+        <field name="model">mrp.workcenter.productivity</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <graph string="Nord Times" type="bar" stacked="1" sample="1">
+                <field name="workcenter_id"/>
+                <field name="nord_sync_time_category"/>
+                <field name="nord_sync_elapsed_minutes" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="mrp_workcenter_productivity_view_pivot_nord_sync" model="ir.ui.view">
+        <field name="name">mrp.workcenter.productivity.pivot.nord.sync</field>
+        <field name="model">mrp.workcenter.productivity</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <pivot string="Nord Times" sample="1">
+                <field name="production_id" type="row"/>
+                <field name="nord_sync_time_category" type="col"/>
+                <field name="nord_sync_elapsed_minutes" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="mrp_workcenter_productivity_view_list_nord_sync" model="ir.ui.view">
+        <field name="name">mrp.workcenter.productivity.list.nord.sync</field>
+        <field name="model">mrp.workcenter.productivity</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <list string="Nord Times" decoration-success="nord_sync_time_category == 'productive'"
+                  decoration-danger="nord_sync_time_category == 'stop'"
+                  decoration-warning="nord_sync_time_category == 'setup'">
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="workcenter_id"/>
+                <field name="production_id"/>
+                <field name="nord_sync_time_category"/>
+                <field name="loss_id"/>
+                <field name="description" optional="hide"/>
+                <field name="nord_sync_elapsed_minutes" sum="Total"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_mrp_workcenter_productivity_nord_sync" model="ir.actions.act_window">
+        <field name="name">Nord Times</field>
+        <field name="res_model">mrp.workcenter.productivity</field>
+        <field name="view_mode">graph,pivot,list,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('mrp_workcenter_productivity_view_graph_nord_sync')}),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('mrp_workcenter_productivity_view_pivot_nord_sync')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('mrp_workcenter_productivity_view_list_nord_sync')})]"/>
+        <field name="context">{'create': False, 'edit': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No productive, stop or setup time logged yet</p>
         </field>
     </record>
 

@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime, timedelta
+
+import pytz
+
 from odoo import api, fields, models
 
 
@@ -91,6 +95,15 @@ class MrpWorkcenter(models.Model):
              'tracked work center and then starts this one, the time in between is logged '
              'as setup of this work center instead of a stop of the other one.',
     )
+
+    nord_sync_time_chart = fields.Json(
+        string='Nord Times Chart', compute='_compute_nord_sync_time_chart',
+        help='Placeholder for the "Nord Times" chart on the Nordwire tab: the widget '
+             'fetches its own data (nord_sync_time_chart_data).',
+    )
+
+    def _compute_nord_sync_time_chart(self):
+        self.nord_sync_time_chart = False
 
     # ── Automatic Idle/Tooling Segments ──────────────────────────────────────
     # Authored here purely for a familiar place to configure it — the Core
@@ -236,6 +249,66 @@ class MrpWorkcenter(models.Model):
         """
         self.env['mrp.workcenter.productivity.loss.type'].search([]).action_nord_sync_force_resync()
         self.env['mrp.workcenter.productivity.loss'].search([]).action_nord_sync_force_resync()
+
+    def nord_sync_time_chart_data(self):
+        """Today's productive / stop / setup / quality minutes on this work
+        center, per local hour, for the chart on the Nordwire tab. Each time
+        line is split across the hours it covers; a line still open runs
+        until now. Hours shown: from the first one with activity (8h at the
+        latest) to the current one.
+
+        Returns:
+            dict: labels (list[str], one per hour), series (list[dict]:
+            key, label, minutes per hour), totals (dict: key -> minutes).
+        """
+        self.ensure_one()
+        tz = pytz.timezone(self.env.user.tz or self.resource_calendar_id.tz or 'UTC')
+        now = fields.Datetime.now()
+        local_now = pytz.utc.localize(now).astimezone(tz)
+        day_start = tz.localize(datetime.combine(local_now.date(), datetime.min.time()))
+        start = day_start.astimezone(pytz.utc).replace(tzinfo=None)
+        end = start + timedelta(days=1)
+        lines = self.env['mrp.workcenter.productivity'].search([
+            ('workcenter_id', '=', self.id), ('date_start', '<', end),
+            '|', ('date_end', '=', False), ('date_end', '>', start),
+        ])
+        categories = self.env['mrp.workcenter.productivity']._fields['nord_sync_time_category']._description_selection(self.env)
+        minutes = {key: [0.0] * 24 for key, _label in categories}
+        first_hour = 8
+        for line in lines:
+            line_start, line_end = max(line.date_start, start), min(line.date_end or now, end)
+            if line_end <= line_start:
+                continue
+            first_hour = min(first_hour, int((line_start - start).total_seconds() // 3600))
+            cursor = line_start
+            while cursor < line_end:
+                hour = int((cursor - start).total_seconds() // 3600)
+                slot_end = min(start + timedelta(hours=hour + 1), line_end)
+                minutes[line.nord_sync_time_category][hour] += (slot_end - cursor).total_seconds() / 60
+                cursor = slot_end
+        hours = range(first_hour, max(local_now.hour, first_hour) + 1)
+        return {
+            'labels': [f'{hour:02d}h' for hour in hours],
+            'series': [
+                {'key': key, 'label': label, 'minutes': [round(minutes[key][hour], 1) for hour in hours]}
+                for key, label in categories
+            ],
+            'totals': {key: round(sum(values), 1) for key, values in minutes.items()},
+        }
+
+    def action_nord_sync_time_report(self):
+        """The time lines behind the Nordwire tab's chart, as graph/pivot/
+        list: the chart's "details" link."""
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id('nord_sync_mrp.action_mrp_workcenter_productivity_nord_sync')
+        action['display_name'] = self.env._('Nord Times — %s', self.display_name)
+        action['domain'] = [('workcenter_id', '=', self.id)]
+        action['context'] = {
+            'create': False, 'edit': False,
+            'search_default_nord_today': 1,
+            'graph_groupbys': ['date_start:hour', 'nord_sync_time_category'],
+        }
+        return action
 
     def _nord_sync_payload(self):
         """Payload sent to the Core to keep this work center's edge.resource

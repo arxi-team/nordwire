@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="nord_sync_mrp.NordSyncTimeChart">
+        <div class="o_nord_sync_time_chart">
+            <div t-if="!props.record.resId" class="text-muted">Save the work center to see its times.</div>
+            <t t-elif="state.data">
+                <div class="o_nord_sync_time_chart_header">
+                    <span class="fw-bold">Today</span>
+                    <span t-foreach="totals()" t-as="total" t-key="total.key" class="o_nord_sync_time_chart_total">
+                        <span class="o_nord_sync_time_chart_dot" t-attf-style="background-color: {{ total.color }}"/>
+                        <t t-out="total.label"/>: <b t-out="formatMinutes(total.minutes)"/>
+                    </span>
+                    <span class="ms-auto">
+                        <button type="button" class="btn btn-link btn-sm" t-on-click="refresh" title="Refresh">
+                            <i class="fa fa-refresh"/>
+                        </button>
+                        <button type="button" class="btn btn-link btn-sm" t-on-click="openDetails">Details</button>
+                    </span>
+                </div>
+                <div class="o_nord_sync_time_chart_canvas">
+                    <canvas t-ref="canvas"/>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>
