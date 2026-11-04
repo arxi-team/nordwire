@@ -428,7 +428,12 @@ class NordSyncPda(Controller):
         webhook(request.env, 'pda_setup', {'mo': production.name, 'operation': workorder.name,
                                                    'workcenter': workorder.workcenter_id.name})
         production._nord_sync_ensure_delivery()
-        return {
-            'success': True,
-            'message': f'{mo_name} em setup em {workorder.workcenter_id.name}.',
-        }
+        # The Core makes a second scan of the same MO on the same work center
+        # a plain selection (no new setup), so say so instead of "setup".
+        params = request.env['ir.config_parameter'].sudo()
+        key = f'nord_sync.pda_selected.{workorder.workcenter_id.id}'
+        selected_again = params.get_param(key) == str(production.id)
+        params.set_param(key, production.id)
+        message = (f'{mo_name} selecionada em {workorder.workcenter_id.name}.' if selected_again
+                   else f'{mo_name} em setup em {workorder.workcenter_id.name}.')
+        return {'success': True, 'message': message, 'selected_again': selected_again}
