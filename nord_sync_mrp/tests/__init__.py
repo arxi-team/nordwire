@@ -14,3 +14,4 @@ from . import test_mrp_workorder
 from . import test_post_init_hook
 from . import test_quality_check
 from . import test_stock_move
+from . import test_stop_tracking

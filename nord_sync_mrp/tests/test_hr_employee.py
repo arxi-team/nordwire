@@ -62,36 +62,3 @@ class TestHrEmployeeNordSync(TransactionCase):
         ])
         self.assertEqual(len(entry), 1)
 
-
-@tagged('post_install', '-at_install')
-class TestHrEmployeeAutonomousPlaceholder(TransactionCase):
-    """_nord_sync_get_or_create_autonomous_employee — the shared "Nordwire"
-    employee a machine-autonomous session (no real operator assigned)
-    attributes its mrp.workcenter.productivity timer to, see
-    mrp_workorder.py's own _nord_sync_button_start_bypassing_employee_check.
-    No nord_sync.config needed — a plain get-or-create, no push involved.
-    """
-
-    def test_creates_it_on_first_call(self):
-        with patch(POST_TARGET):
-            employee = self.env['hr.employee']._nord_sync_get_or_create_autonomous_employee(self.env.company)
-        self.assertEqual(employee.name, 'Nordwire')
-        self.assertEqual(employee.company_id, self.env.company)
-
-    def test_reuses_the_same_record_on_later_calls(self):
-        with patch(POST_TARGET):
-            first = self.env['hr.employee']._nord_sync_get_or_create_autonomous_employee(self.env.company)
-            second = self.env['hr.employee']._nord_sync_get_or_create_autonomous_employee(self.env.company)
-        self.assertEqual(first, second)
-        self.assertEqual(
-            self.env['hr.employee'].search_count([('name', '=', 'Nordwire')]), 1,
-        )
-
-    def test_scoped_per_company_not_shared_globally(self):
-        other_company = self.env['res.company'].create({'name': 'Autonomous Placeholder Other Co'})
-        with patch(POST_TARGET):
-            here = self.env['hr.employee']._nord_sync_get_or_create_autonomous_employee(self.env.company)
-            there = self.env['hr.employee']._nord_sync_get_or_create_autonomous_employee(other_company)
-        self.assertNotEqual(here, there)
-        self.assertEqual(here.company_id, self.env.company)
-        self.assertEqual(there.company_id, other_company)
