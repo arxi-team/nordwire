@@ -250,50 +250,124 @@ class MrpWorkcenter(models.Model):
         self.env['mrp.workcenter.productivity.loss.type'].search([]).action_nord_sync_force_resync()
         self.env['mrp.workcenter.productivity.loss'].search([]).action_nord_sync_force_resync()
 
-    def nord_sync_time_chart_data(self):
-        """Today's productive / stop / setup / quality minutes on this work
-        center, per local hour, for the chart on the Nordwire tab. Each time
-        line is split across the hours it covers; a line still open runs
-        until now. Hours shown: from the first one with activity (8h at the
-        latest) to the current one.
+    def nord_sync_time_chart_data(self, period='today'):
+        """Time of this work center for the chart on the Nordwire tab: one
+        bucket per local hour of today, or per local day of the last 7
+        (week) / 30 (month) days. Every elapsed minute of a bucket is either
+        one of the Nord categories (productive / stop / setup / quality: the
+        time lines, a line still open running until now), 'overtime'
+        (productive time outside the work day: the calendar minus leaves; a
+        stop, setup or quality keeps its own colour), 'offline' (inside the
+        work day, but no line), 'outside' (not in the work day, no line) or
+        still to come (not counted). Today shows the hours of the work day,
+        widened to any hour that had activity.
+
+        Args:
+            period (str): 'today', 'week' or 'month'.
 
         Returns:
-            dict: labels (list[str], one per hour), series (list[dict]:
-            key, label, minutes per hour), totals (dict: key -> minutes).
+            dict: categories (list[dict]: key, label of the Nord ones),
+            buckets (list[dict]: label, start (hour of the day, or the
+            date), minutes (dict: key -> minutes, incl. offline/outside/
+            overtime), work_minutes (minutes of the bucket in the work
+            day), future (bool)), totals (dict: key -> minutes, Nord ones
+            only, over the whole period).
         """
         self.ensure_one()
+        days = {'today': 1, 'week': 7, 'month': 30}.get(period, 1)
         tz = pytz.timezone(self.env.user.tz or self.resource_calendar_id.tz or 'UTC')
         now = fields.Datetime.now()
         local_now = pytz.utc.localize(now).astimezone(tz)
-        day_start = tz.localize(datetime.combine(local_now.date(), datetime.min.time()))
-        start = day_start.astimezone(pytz.utc).replace(tzinfo=None)
-        end = start + timedelta(days=1)
+
+        def local_midnight(date):
+            return tz.localize(datetime.combine(date, datetime.min.time()))
+
+        def to_naive_utc(moment):
+            return moment.astimezone(pytz.utc).replace(tzinfo=None)
+
+        first_day = local_now.date() - timedelta(days=days - 1)
+        range_start = local_midnight(first_day)
+        start = to_naive_utc(range_start)
+        end = to_naive_utc(local_midnight(local_now.date() + timedelta(days=1)))
+        minutes_in_range = int((end - start).total_seconds() // 60)
+        now_minute = min(int((now - start).total_seconds() // 60), minutes_in_range)
+
+        def minute_of(moment):
+            return int((moment - start).total_seconds() // 60)
+
+        in_calendar = [False] * minutes_in_range
+        if self.resource_calendar_id:
+            intervals = self.resource_calendar_id._work_intervals_batch(
+                range_start, local_midnight(local_now.date() + timedelta(days=1)),
+                resources=self.resource_id)[self.resource_id.id]
+            for interval_start, interval_stop, _records in intervals:
+                first = minute_of(to_naive_utc(interval_start))
+                last = minute_of(to_naive_utc(interval_stop))
+                for minute in range(max(first, 0), min(last, minutes_in_range)):
+                    in_calendar[minute] = True
+
         lines = self.env['mrp.workcenter.productivity'].search([
             ('workcenter_id', '=', self.id), ('date_start', '<', end),
             '|', ('date_end', '=', False), ('date_end', '>', start),
-        ])
+        ], order='date_start')
         categories = self.env['mrp.workcenter.productivity']._fields['nord_sync_time_category']._description_selection(self.env)
-        minutes = {key: [0.0] * 24 for key, _label in categories}
-        first_hour = 8
+        # The category of each elapsed minute; a stop, setup or quality line wins
+        # over a productive one covering the same minute, so it is never hidden.
+        minute_category = [None] * minutes_in_range
         for line in lines:
             line_start, line_end = max(line.date_start, start), min(line.date_end or now, end)
-            if line_end <= line_start:
-                continue
-            first_hour = min(first_hour, int((line_start - start).total_seconds() // 3600))
-            cursor = line_start
-            while cursor < line_end:
-                hour = int((cursor - start).total_seconds() // 3600)
-                slot_end = min(start + timedelta(hours=hour + 1), line_end)
-                minutes[line.nord_sync_time_category][hour] += (slot_end - cursor).total_seconds() / 60
-                cursor = slot_end
-        hours = range(first_hour, max(local_now.hour, first_hour) + 1)
+            first = minute_of(line_start)
+            last = int(-(-(line_end - start).total_seconds() // 60))
+            for minute in range(max(first, 0), min(last, minutes_in_range)):
+                if minute_category[minute] in (None, 'productive'):
+                    minute_category[minute] = line.nord_sync_time_category
+
+        if days == 1:
+            active = [minute for minute in range(minutes_in_range) if minute_category[minute]]
+            work = [minute for minute in range(minutes_in_range) if in_calendar[minute]]
+            hour_marks = [minute // 60 for minute in work + active]
+            first_hour, last_hour = (min(hour_marks), max(hour_marks)) if hour_marks else (8, max(local_now.hour, 8))
+            spans = [
+                (f'{hour:02d}h', hour, hour * 60, min(hour * 60 + 60, minutes_in_range))
+                for hour in range(first_hour, last_hour + 1)
+            ]
+        else:
+            spans = []
+            for offset in range(days):
+                date = first_day + timedelta(days=offset)
+                spans.append((
+                    f'{date:%d/%m}', date.isoformat(),
+                    minute_of(to_naive_utc(local_midnight(date))),
+                    minute_of(to_naive_utc(local_midnight(date + timedelta(days=1)))),
+                ))
+
+        totals = {key: 0.0 for key, _label in categories}
+        buckets = []
+        for label, key_value, span_start, span_end in spans:
+            bucket = {key: 0.0 for key, _label in categories}
+            bucket.update(offline=0.0, outside=0.0, overtime=0.0)
+            work_minutes = 0
+            for minute in range(span_start, span_end):
+                work_minutes += in_calendar[minute]
+                if minute >= now_minute:
+                    continue
+                category = minute_category[minute]
+                if category:
+                    totals[category] += 1
+                    bucket['overtime' if category == 'productive' and not in_calendar[minute] else category] += 1
+                else:
+                    bucket['offline' if in_calendar[minute] else 'outside'] += 1
+            buckets.append({
+                'label': label,
+                'start': key_value,
+                'minutes': {key: round(value, 1) for key, value in bucket.items()},
+                'work_minutes': work_minutes,
+                'future': span_start >= now_minute,
+            })
         return {
-            'labels': [f'{hour:02d}h' for hour in hours],
-            'series': [
-                {'key': key, 'label': label, 'minutes': [round(minutes[key][hour], 1) for hour in hours]}
-                for key, label in categories
-            ],
-            'totals': {key: round(sum(values), 1) for key, values in minutes.items()},
+            'categories': [{'key': key, 'label': label} for key, label in categories],
+            'buckets': buckets,
+            'totals': {key: round(value, 1) for key, value in totals.items()},
         }
 
     def action_nord_sync_time_report(self):

@@ -846,14 +846,80 @@ msgstr "PDA Nord: Não OK em %s"
 #. module: nord_sync_mrp
 #. odoo-javascript
 #: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.js:0
-msgid "Minutes"
-msgstr "Minutos"
+msgid "Offline"
+msgstr "Offline"
 
 #. module: nord_sync_mrp
 #. odoo-javascript
 #: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.js:0
-msgid "Hourly average"
-msgstr "Média por hora"
+msgid "Outside calendar"
+msgstr "Fora do calendário"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.xml:0
+msgid "hover a cell for the breakdown"
+msgstr "passe o rato numa célula para ver o detalhe"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.js:0
+msgid "Running"
+msgstr "A trabalhar"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.js:0
+msgid "Downtime"
+msgstr "Paragem"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.js:0
+msgid "Overtime"
+msgstr "Horas extra"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.js:0
+msgid "to come"
+msgstr "por vir"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.js:0
+msgid "no activity"
+msgstr "sem atividade"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.js:0
+msgid "Week"
+msgstr "Semana"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.js:0
+msgid "Month"
+msgstr "Mês"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.xml:0
+msgid "One cell per hour of the work day"
+msgstr "Uma célula por hora do dia de trabalho"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.xml:0
+msgid "One cell per day"
+msgstr "Uma célula por dia"
+
+#. module: nord_sync_mrp
+#. odoo-javascript
+#: code:addons/nord_sync_mrp/static/src/time_chart/time_chart.xml:0
+msgid ", painted by the share of each state"
+msgstr ", pintada pela proporção de cada estado"
 
 #. module: nord_sync_mrp
 #. odoo-javascript

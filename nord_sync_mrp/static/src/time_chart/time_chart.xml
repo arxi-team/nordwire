@@ -6,20 +6,42 @@
             <div t-if="!props.record.resId" class="text-muted">Save the work center to see its times.</div>
             <t t-elif="state.data">
                 <div class="o_nord_sync_time_chart_header">
-                    <span class="fw-bold">Today</span>
-                    <span t-foreach="totals()" t-as="total" t-key="total.key" class="o_nord_sync_time_chart_total">
+                    <span class="fw-bold" t-out="periods.find((p) => p.key === state.period).label"/>
+                    <span t-foreach="totals" t-as="total" t-key="total.key" class="o_nord_sync_time_chart_total">
                         <span class="o_nord_sync_time_chart_dot" t-attf-style="background-color: {{ total.color }}"/>
                         <t t-out="total.label"/>: <b t-out="formatMinutes(total.minutes)"/>
                     </span>
-                    <span class="ms-auto">
-                        <button type="button" class="btn btn-link btn-sm" t-on-click="refresh" title="Refresh">
+                    <span class="ms-auto d-flex align-items-center">
+                        <span class="btn-group btn-group-sm me-2" role="group">
+                            <button t-foreach="periods" t-as="period" t-key="period.key" type="button"
+                                    class="btn btn-outline-secondary" t-att-class="{ active: state.period === period.key }"
+                                    t-on-click="() => this.setPeriod(period.key)" t-out="period.label"/>
+                        </span>
+                        <button type="button" class="btn btn-link btn-sm" t-on-click="load" title="Refresh">
                             <i class="fa fa-refresh"/>
                         </button>
                         <button type="button" class="btn btn-link btn-sm" t-on-click="openDetails">Details</button>
                     </span>
                 </div>
-                <div class="o_nord_sync_time_chart_canvas">
-                    <canvas t-ref="canvas"/>
+                <div class="text-muted small mb-2"><t t-if="state.period === 'today'">One cell per hour of the work day</t><t t-else="">One cell per day</t>, painted by the share of each state</div>
+                <div class="o_nord_sync_time_track">
+                    <div t-foreach="state.data.buckets" t-as="bucket" t-key="bucket.start"
+                         class="o_nord_sync_time_cell" t-att-title="cellTitle(bucket)">
+                        <div class="o_nord_sync_time_cell_fill">
+                            <div t-foreach="parts(bucket)" t-as="part" t-key="part.key"
+                                 class="o_nord_sync_time_part"
+                                 t-attf-style="height: {{ part.pct }}%; background: {{ part.color }}"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="o_nord_sync_time_axis">
+                    <span t-foreach="axisLabels" t-as="label" t-key="label_index" t-out="label"/>
+                </div>
+                <div class="o_nord_sync_time_legend">
+                    <span t-foreach="legend" t-as="item" t-key="item.key" class="o_nord_sync_time_leg">
+                        <i t-attf-style="background: {{ item.color }}"/><t t-out="item.label"/>
+                    </span>
+                    <span class="o_nord_sync_time_leg o_nord_sync_time_leg_note">hover a cell for the breakdown</span>
                 </div>
             </t>
         </div>
