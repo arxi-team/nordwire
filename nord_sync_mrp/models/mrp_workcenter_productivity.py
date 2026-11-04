@@ -176,3 +176,10 @@ class MrpWorkcenterProductivity(models.Model):
              'external manufacturing systems for data compatibility -- filled from the Core\'s own '
              'nord.timesheet.energy_kwh_used for this exact session (Nordwire Result Push).',
     )
+    nord_sync_downtime_kind = fields.Selection([
+        ('setup', 'Setup'),
+        ('stop', 'Stop'),
+    ], string='Nord Downtime Kind', readonly=True, copy=False,
+        help='Set on a line the Core logged for a machine that was not working: its setup '
+             'for this work order, or a stop in the middle of it.',
+    )

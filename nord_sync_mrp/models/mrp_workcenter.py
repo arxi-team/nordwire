@@ -82,6 +82,16 @@ class MrpWorkcenter(models.Model):
              "when the quantities Nord declares for this resource can't be trusted yet.",
     )
 
+    nord_sync_stop_tracking = fields.Boolean(
+        string='Track Stops and Changeovers',
+        default=False,
+        help='When the machine stops in the middle of a job, log that stop on the work order '
+             'as an unjustified stop (until someone gives it a reason); when it starts again, '
+             'carry on with the same production order. When the operator stops another '
+             'tracked work center and then starts this one, the time in between is logged '
+             'as setup of this work center instead of a stop of the other one.',
+    )
+
     # ── Automatic Idle/Tooling Segments ──────────────────────────────────────
     # Authored here purely for a familiar place to configure it — the Core
     # never actually needs client data to compute either segment (it's pure
@@ -273,6 +283,11 @@ class MrpWorkcenter(models.Model):
                 quantities to this production order on close, posting
                 only a chatter note with the declaration count instead —
                 see nord_sync_close_notify_only's own help text.
+            stop_tracking (bool): a stop mid-job is logged on the work
+                order as an unjustified stop, the next start resumes the
+                same MO, and a start right after another tracked work
+                center's stop logs the gap as this one's setup — see
+                nord_sync_stop_tracking's own help text.
             auto_idle_segments (bool): backfill the gap between two closed
                 sessions of the same job on this resource with an Idle
                 segment on the Core — see nord_sync_auto_idle_segments's
@@ -298,6 +313,7 @@ class MrpWorkcenter(models.Model):
             'chain_close': self.nord_sync_chain_close,
             'mirror_mode': self.nord_sync_mirror_mode,
             'close_notify_only': self.nord_sync_close_notify_only,
+            'stop_tracking': self.nord_sync_stop_tracking,
             'auto_idle_segments': self.nord_sync_auto_idle_segments,
             'idle_segment_reason': self.nord_sync_idle_segment_reason_name,
             'auto_tooling_segments': self.nord_sync_auto_tooling_segments,
