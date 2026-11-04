@@ -160,9 +160,15 @@ class TestStopTrackingNordSync(TransactionCase):
         self.workorder._nord_sync_apply_granular_event('session_downtime', self._segment(9100, minutes=5))
         data = self.workcenter.nord_sync_time_chart_data()
         self.assertEqual(data['totals']['stop'], 5.0)
-        stop = next(s for s in data['series'] if s['key'] == 'stop')
-        self.assertEqual(round(sum(stop['minutes']), 1), 5.0)
-        self.assertEqual(len(stop['minutes']), len(data['labels']))
+        self.assertEqual(round(sum(bucket['minutes']['stop'] for bucket in data['buckets']), 1), 5.0)
+
+    def test_chart_data_by_day_for_week_and_month(self):
+        self.workorder._nord_sync_apply_granular_event('session_downtime', self._segment(9101, minutes=5))
+        week = self.workcenter.nord_sync_time_chart_data('week')
+        month = self.workcenter.nord_sync_time_chart_data('month')
+        self.assertEqual(len(week['buckets']), 7)
+        self.assertEqual(len(month['buckets']), 30)
+        self.assertEqual(week['totals']['stop'], 5.0)
 
     def test_not_ok_needs_stop_tracking(self):
         self.workorder.state = 'progress'
