@@ -119,6 +119,9 @@ class NordSyncQueueController(http.Controller):
         request.env['nord_sync.inbox'].sudo().create({
             'endpoint': 'workorder_event', 'res_model': res_model, 'payload': body, 'company_id': config.company_id.id,
         })
+        # Applied right away (oldest pending first), so the work order follows
+        # the machine live; the inbox cron still retries whatever fails here.
+        request.env['nord_sync.inbox'].sudo()._nord_sync_dispatch_pending()
         return request.make_json_response({'success': True})
 
     @http.route('/nord_sync/api/v1/resources', type='http', auth='nord_sync_api_key', methods=['POST'], csrf=False)
