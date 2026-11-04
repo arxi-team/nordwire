@@ -375,16 +375,17 @@ class MrpWorkorder(models.Model):
         only visible effect: no mrp.workcenter.productivity session ever
         opened, so Shop Floor's "Today" counter and OEE availability
         stayed at zero for the entire session despite the machine actually
-        running (real bug, caught live 2026-09-03). Nord always attributes
-        the session to a real hr.employee now — the assigned operator when
-        there is one, otherwise the shared "Nordwire" placeholder employee
-        (get-or-created on demand, see
-        hr.employee._nord_sync_get_or_create_autonomous_employee) — rather
-        than an employee-less timer, so every session shows up the same
-        way in Shop Floor/OEE regardless of whether a human was involved.
-        start_employee() already no-ops if this exact employee already has
-        an open session on this workorder, so a retried granular push
-        never opens a second one.
+        running (real bug, caught live 2026-09-03). employee_id on
+        mrp.workcenter.productivity is a plain compute/store field, not
+        required, so with no operator to attribute it to the session is
+        opened without one, via the same _prepare_timeline_vals
+        start_employee() itself uses -- a legitimate session, only nobody
+        to attribute the cost to. With an operator (assigned or already on
+        a past session) start_employee() is used as before, and already
+        no-ops if that employee has an open session here, so a retried
+        granular push never opens a second one. session_stop closes
+        whichever timer is open (end_previous(doall=True)), so it never
+        depended on the line having an employee.
 
         payload's nord_timesheet_id (see _nord_sync_session_start_payload,
         Core) gets stamped onto the line this call opens — the only stable
@@ -408,20 +409,27 @@ class MrpWorkorder(models.Model):
         # Same gap _nord_sync_payload() had (see _nord_sync_current_operator):
         # employee_assigned_ids alone is almost always empty on a real
         # install, which silently routed every Core-initiated start to the
-        # autonomous placeholder below even when this exact workorder had
+        # employee-less session below even when this exact workorder had
         # a real human on its last session (e.g. a paused job the Core is
         # resuming) -- _nord_sync_current_operator() also falls back
         # through employee_assigned_ids, then the most recent past
         # session's employee, before finally coming up empty here.
         employee = self._nord_sync_current_operator()
-        if not employee:
-            employee = self.env['hr.employee']._nord_sync_get_or_create_autonomous_employee(self.company_id)
-        already_open = self.time_ids.filtered(lambda t: not t.date_end and t.employee_id == employee)
-        self.start_employee(employee.id)
+        if employee:
+            already_open = self.time_ids.filtered(lambda t: not t.date_end and t.employee_id == employee)
+            self.start_employee(employee.id)
+        else:
+            already_open = self.time_ids.filtered(lambda t: not t.date_end)
+            if not already_open:
+                self.env['mrp.workcenter.productivity'].create(
+                    self._prepare_timeline_vals(self.duration, fields.Datetime.now())
+                )
         if not already_open:
             nord_timesheet_id = (payload or {}).get('nord_timesheet_id')
             if nord_timesheet_id:
-                line = self.time_ids.filtered(lambda t: not t.date_end and t.employee_id == employee)[:1]
+                line = self.time_ids.filtered(
+                    lambda t: not t.date_end and (not employee or t.employee_id == employee)
+                )[:1]
                 line.nord_sync_timesheet_id = nord_timesheet_id
 
     def _nord_sync_payload(self):
