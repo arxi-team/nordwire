@@ -1,31 +1,29 @@
-import { Component, onMounted, onWillStart, onWillUnmount, useRef, useState } from "@odoo/owl";
-import { loadBundle } from "@web/core/assets";
+import { Component, onWillStart, useState } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
 
 // Same meaning on the PDA, the list decorations and here: green works, red
-// stops, amber is setup, purple is quality.
+// stops, amber is setup, purple is quality. Offline (inside the work day, no
+// signal) and outside the work day follow the Core's greys; productive time
+// outside the work day is painted light blue.
 const COLORS = {
     productive: "#28a745",
     stop: "#dc3545",
     setup: "#f0ad4e",
     quality: "#6f42c1",
-};
-
-const HOVER_COLORS = {
-    productive: "#1e7e34",
-    stop: "#a71d2a",
-    setup: "#c77c0e",
-    quality: "#4e2d8a",
+    offline: "#adb5bd",
+    outside: "#dee1e5",
+    overtime: "#74c0fc",
 };
 
 /**
- * Today's productive / stop / setup / quality time of a work center, per
- * hour, on its Nordwire tab. Lives on a placeholder field
- * (mrp.workcenter.nord_sync_time_chart) and fetches its own data, so it
- * follows the Core's sessions as they are logged without saving the form.
+ * Today (one cell per hour of its work day), the week or the month (one cell
+ * per day) of a work center on its Nordwire tab, painted by the share of each state (the Core's analytics timeline).
+ * Lives on a placeholder field (mrp.workcenter.nord_sync_time_chart) and
+ * fetches its own data, so it follows the Core's sessions as they are logged
+ * without saving the form.
  */
 export class NordSyncTimeChart extends Component {
     static template = "nord_sync_mrp.NordSyncTimeChart";
@@ -34,15 +32,8 @@ export class NordSyncTimeChart extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
-        this.canvasRef = useRef("canvas");
-        this.chart = null;
-        this.state = useState({ data: null });
-        onWillStart(async () => {
-            await loadBundle("web.chartjs_lib");
-            await this.load();
-        });
-        onMounted(() => this.renderChart());
-        onWillUnmount(() => this.chart?.destroy());
+        this.state = useState({ data: null, period: "today" });
+        onWillStart(() => this.load());
     }
 
     async load() {
@@ -52,23 +43,89 @@ export class NordSyncTimeChart extends Component {
         this.state.data = await this.orm.call(
             "mrp.workcenter",
             "nord_sync_time_chart_data",
-            [this.props.record.resId]
+            [this.props.record.resId, this.state.period]
         );
     }
 
-    async refresh() {
+    async setPeriod(period) {
+        this.state.period = period;
         await this.load();
-        this.renderChart();
     }
 
-    totals() {
-        const data = this.state.data;
-        return data.series.map((serie) => ({
-            key: serie.key,
-            label: serie.label,
-            color: COLORS[serie.key],
-            minutes: data.totals[serie.key],
+    get periods() {
+        return [
+            { key: "today", label: _t("Today") },
+            { key: "week", label: _t("Week") },
+            { key: "month", label: _t("Month") },
+        ];
+    }
+
+    get legend() {
+        const labels = {
+            productive: _t("Running"),
+            stop: _t("Downtime"),
+            setup: _t("Setup"),
+            quality: _t("Quality"),
+            offline: _t("Offline"),
+            outside: _t("Outside calendar"),
+            overtime: _t("Overtime"),
+        };
+        return Object.keys(labels).map((key) => ({ key, label: labels[key], color: COLORS[key] }));
+    }
+
+    get totals() {
+        const labels = Object.fromEntries(this.legend.map((item) => [item.key, item.label]));
+        return this.state.data.categories.map((c) => ({
+            key: c.key,
+            label: labels[c.key],
+            color: COLORS[c.key],
+            minutes: this.state.data.totals[c.key],
         }));
+    }
+
+    /** Axis thinning of the Core: every label up to 12 cells, else every 5th and the last. */
+    get axisLabels() {
+        const labels = this.state.data.buckets.map((b) => b.label);
+        return labels.length <= 12
+            ? labels
+            : labels.filter((_label, i) => i % 5 === 0 || i === labels.length - 1);
+    }
+
+    labelOf(key) {
+        return this.legend.find((item) => item.key === key)?.label || key;
+    }
+
+    /** The parts of a cell, biggest share first isn't wanted: fixed order, bottom-up. */
+    parts(bucket) {
+        const total = this.elapsed(bucket);
+        return this.legend
+            .filter((item) => bucket.minutes[item.key] > 0)
+            .map((item) => ({
+                key: item.key,
+                color: item.color,
+                minutes: bucket.minutes[item.key],
+                pct: (bucket.minutes[item.key] / total) * 100,
+            }));
+    }
+
+    elapsed(bucket) {
+        return Object.values(bucket.minutes).reduce((a, b) => a + b, 0) || 1;
+    }
+
+    cellTitle(bucket) {
+        if (bucket.future) {
+            return `${bucket.label} · ${_t("to come")}`;
+        }
+        const detail = this.parts(bucket)
+            .sort((a, b) => b.minutes - a.minutes)
+            .map((part) => `${this.labelOf(part.key)} ${this.formatHM(part.minutes)}`)
+            .join(" · ");
+        return `${bucket.label} · ${detail || _t("no activity")}`;
+    }
+
+    formatHM(minutes) {
+        const total = Math.round(minutes);
+        return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
     }
 
     formatMinutes(minutes) {
@@ -84,90 +141,6 @@ export class NordSyncTimeChart extends Component {
             [this.props.record.resId]
         );
         await this.action.doAction(action);
-    }
-
-    renderChart() {
-        const data = this.state.data;
-        if (!data || !this.canvasRef.el) {
-            return;
-        }
-        this.chart?.destroy();
-        // Same look as the Kioda resource charts ("by hour" bars): grey bold
-        // ticks, horizontal grid only, bold legend on top, darker colour on
-        // hover, rounded top corner on the highest bar of each stack and a
-        // dashed average line.
-        const series = data.series;
-        const hourTotals = data.labels.map((_label, i) =>
-            series.reduce((sum, serie) => sum + serie.minutes[i], 0)
-        );
-        const average = hourTotals.length
-            ? hourTotals.reduce((a, b) => a + b, 0) / hourTotals.length
-            : 0;
-        const topSerie = data.labels.map((_label, i) => {
-            for (let s = series.length - 1; s >= 0; s--) {
-                if (series[s].minutes[i] > 0) {
-                    return s;
-                }
-            }
-            return -1;
-        });
-        const round = { topLeft: 5, topRight: 5, bottomLeft: 0, bottomRight: 0 };
-        const tick = { color: "grey", font: { weight: "bold" } };
-        this.chart = new Chart(this.canvasRef.el, {
-            type: "bar",
-            data: {
-                labels: data.labels,
-                datasets: [
-                    {
-                        label: _t("Hourly average"),
-                        type: "line",
-                        data: data.labels.map(() => average),
-                        borderColor: "rgba(50, 50, 50, 0.8)",
-                        borderWidth: 2,
-                        borderDash: [5, 5],
-                        pointRadius: 0,
-                        order: 0,
-                    },
-                    ...series.map((serie, s) => ({
-                        label: serie.label,
-                        data: serie.minutes,
-                        backgroundColor: COLORS[serie.key],
-                        hoverBackgroundColor: HOVER_COLORS[serie.key],
-                        borderRadius: data.labels.map((_label, i) => (topSerie[i] === s ? round : 0)),
-                        borderSkipped: false,
-                        order: 1,
-                    })),
-                ],
-            },
-            options: {
-                maintainAspectRatio: false,
-                interaction: { mode: "index", intersect: false },
-                scales: {
-                    x: { stacked: true, grid: { display: false }, ticks: tick },
-                    y: {
-                        stacked: true,
-                        min: 0,
-                        max: 60,
-                        grid: { display: true },
-                        ticks: { ...tick, stepSize: 15, callback: (value) => `${value} min` },
-                    },
-                },
-                plugins: {
-                    legend: { display: true, position: "top", labels: { font: { weight: "bold" } } },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) => {
-                                if (ctx.dataset.type === "line") {
-                                    return ` ${ctx.dataset.label}: ${this.formatMinutes(ctx.parsed.y)}`;
-                                }
-                                const total = hourTotals[ctx.dataIndex] || 1;
-                                return ` ${ctx.dataset.label}: ${this.formatMinutes(ctx.parsed.y)} (${Math.round((ctx.parsed.y / total) * 100)}%)`;
-                            },
-                        },
-                    },
-                },
-            },
-        });
     }
 }
 
