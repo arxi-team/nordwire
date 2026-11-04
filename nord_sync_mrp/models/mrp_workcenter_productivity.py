@@ -155,6 +155,15 @@ class MrpWorkcenterProductivityLoss(models.Model):
 class MrpWorkcenterProductivity(models.Model):
     _inherit = 'mrp.workcenter.productivity'
 
+    def _close(self):
+        """A Nord session closes as it ran: Odoo's own close cuts whatever
+        runs past the work order's expected duration into a "Reduced Speed"
+        line, which isn't true of a machine's real running time."""
+        if self.env.context.get('nord_sync_from_core'):
+            self.write({'date_end': fields.Datetime.now()})
+            return
+        return super()._close()
+
     nord_sync_timesheet_id = fields.Integer(
         string='Nord Timesheet', index=True,
         help='The nord.timesheet id on the Core this session came from -- the only stable '
