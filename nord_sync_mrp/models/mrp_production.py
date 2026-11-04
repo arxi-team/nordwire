@@ -32,6 +32,32 @@ class MrpProduction(models.Model):
              'machine before the machine itself starts it.',
     )
 
+    def _nord_sync_demo_deliver(self, qty=None, scrap=0.0, not_ok=0.0):
+        """Fair demo (PDA "Entregar", /nord_sync/pda/deliver): finishes this MO as if its
+        Nord job had been marked done, through the same result path
+        (_nord_sync_apply_result): qty good units (default: the planned
+        quantity), scrap, and not_ok rejects on top of those already tapped
+        on the PDA — those were scrapped then, the result leaves them out.
+        Only for an MO with an operation on a stop-tracking work center, the
+        fair demo's opt-in.
+
+        Returns (success, message), same as _nord_sync_apply_result.
+        """
+        self.ensure_one()
+        if not self.workorder_ids.workcenter_id.filtered('nord_sync_stop_tracking'):
+            return False, f'{self.name}: no work center of this MO tracks stops on Nord.'
+        qty_produced = self.product_qty if qty in (None, '') else float(qty)
+        # Whatever Nord still shows open (setup/stop/work) ends now; the
+        # close itself stops the work timers.
+        self.workorder_ids.time_ids.filtered(lambda t: not t.date_end and t.nord_sync_downtime_kind).write(
+            {'date_end': fields.Datetime.now()},
+        )
+        pda_rejects = sum(self.workorder_ids.mapped('nord_sync_not_ok_count'))
+        success, message = self._nord_sync_apply_result(
+            qty_produced, scrap_qty=scrap, not_pass_qty=pda_rejects + not_ok, work_sessions=[],
+        )
+        return success, message
+
     def _nord_sync_ensure_delivery(self):
         """The customer delivery this MO ends in, for the Core to queue after
         its last operation: the open delivery of the sale it came from (same
