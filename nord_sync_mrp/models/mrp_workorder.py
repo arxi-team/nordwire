@@ -176,6 +176,18 @@ class MrpWorkorder(models.Model):
     def _nord_sync_source_key(self):
         return 'mrp.production'
 
+    def _prepare_timeline_vals(self, duration, date_start, date_end=False):
+        """A Nord session is the machine's real running time: always "Fully
+        Productive Time". Odoo's own rule opens it as "Reduced Speed" once
+        this work order has run past its expected duration, which tagged
+        every session after the first stop that way."""
+        vals = super()._prepare_timeline_vals(duration, date_start, date_end=date_end)
+        if self.env.context.get('nord_sync_from_core'):
+            productive = self.env['mrp.workcenter.productivity.loss'].search([('loss_type', '=', 'productive')], limit=1)
+            if productive:
+                vals['loss_id'] = productive.id
+        return vals
+
     def _nord_sync_apply_granular_event(self, event_type, payload):
         """Applies one of the real-time work events a granular-push-opted
         resource sends back. session_start moves the workorder to
