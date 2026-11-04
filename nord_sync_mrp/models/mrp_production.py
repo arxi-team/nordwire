@@ -556,7 +556,7 @@ class MrpProduction(models.Model):
                 'loss_id': loss.id,
                 'date_start': session['start_date'],
                 'date_end': session['end_date'],
-                'user_id': self.env.user.id,
+                'user_id': False,
                 'company_id': workorder.company_id.id,
                 'employee_id': employee.id if employee else False,
                 'nord_sync_timesheet_id': session.get('nord_timesheet_id') or False,
@@ -665,7 +665,8 @@ class MrpProduction(models.Model):
             'loss_id': loss.id,
             'date_start': date_end - timedelta(minutes=duration_minutes),
             'date_end': date_end,
-            'user_id': self.env.user.id,
+            'user_id': False,
+            'employee_id': False,
             'company_id': workorder.company_id.id,
         })
 
