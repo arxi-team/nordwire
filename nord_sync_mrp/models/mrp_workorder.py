@@ -213,12 +213,30 @@ class MrpWorkorder(models.Model):
         for a workorder that's already finished its only session.
         """
         self.ensure_one()
-        open_session = self.time_ids.filtered(lambda t: not t.date_end).sorted('date_start', reverse=True)
+        # Acting for the Core (nord_sync_from_core), the acting user is the
+        # integration's technical user, never a real operator: its employee
+        # (Administrador) only shows up in time_ids because an earlier
+        # operator-less session got attributed to it, and falling back to it
+        # here would keep perpetuating that.
+        technical = (
+            self.env.user.employee_id
+            if self.env.context.get('nord_sync_from_core') else self.env['hr.employee']
+        )
+        # The "Nordwire" placeholder employee an older version of this addon
+        # created for operator-less sessions: its past lines are still in
+        # time_ids, and it must never be picked up as a real operator.
+        technical |= self.env['hr.employee'].sudo().with_context(active_test=False).search([
+            ('name', '=', 'Nordwire'), ('user_id', '=', False), ('company_id', '=', self.company_id.id),
+        ])
+        open_session = self.time_ids.filtered(
+            lambda t: not t.date_end and t.employee_id and t.employee_id not in technical
+        ).sorted('date_start', reverse=True)
         if open_session:
             return open_session[0].employee_id
-        if self.employee_assigned_ids:
-            return self.employee_assigned_ids[0]
-        last_session = self.time_ids.sorted('date_start', reverse=True)
+        assigned = self.employee_assigned_ids - technical
+        if assigned:
+            return assigned[0]
+        last_session = self.time_ids.filtered(lambda t: t.employee_id and t.employee_id not in technical).sorted('date_start', reverse=True)
         if last_session:
             return last_session[0].employee_id
         return self.env['hr.employee']
@@ -470,6 +488,11 @@ class MrpWorkorder(models.Model):
             'description': 'Setup' if kind == 'setup' else 'Unjustified stop',
             'nord_sync_timesheet_id': payload['nord_timesheet_id'],
             'nord_sync_downtime_kind': kind,
+            # No human behind a machine downtime line: user_id would default
+            # to the Core's technical user (Administrador), which
+            # mrp_workorder turns into that user's employee.
+            'user_id': False,
+            'employee_id': False,
         }
 
     def _nord_sync_log_downtime(self, payload, kind):
@@ -589,9 +612,16 @@ class MrpWorkorder(models.Model):
         else:
             already_open = self.time_ids.filtered(lambda t: not t.date_end)
             if not already_open:
-                self.env['mrp.workcenter.productivity'].create(
-                    self._prepare_timeline_vals(self.duration, fields.Datetime.now())
-                )
+                # employee_id is False explicitly: mrp_workorder computes it
+                # from user_id (defaulted to the acting user, here the Core's
+                # technical user), so leaving it out attributed every
+                # operator-less session to that user's employee
+                # ("Administrador").
+                self.env['mrp.workcenter.productivity'].create({
+                    **self._prepare_timeline_vals(self.duration, fields.Datetime.now()),
+                    'user_id': False,
+                    'employee_id': False,
+                })
         if not already_open:
             nord_timesheet_id = (payload or {}).get('nord_timesheet_id')
             if nord_timesheet_id:
