@@ -434,6 +434,21 @@ class NordSyncPda(Controller):
         key = f'nord_sync.pda_selected.{workorder.workcenter_id.id}'
         selected_again = params.get_param(key) == str(production.id)
         params.set_param(key, production.id)
-        message = (f'{mo_name} selecionada em {workorder.workcenter_id.name}.' if selected_again
-                   else f'{mo_name} em setup em {workorder.workcenter_id.name}.')
-        return {'success': True, 'message': message, 'selected_again': selected_again}
+        # The Core keeps a scan made while the machine runs another MO
+        # pending until that run stops: the next start is this MO's.
+        # The latest open work line is the machine's run: an older one left
+        # open (a session never closed) isn't what is on the machine now.
+        line = self._env()['mrp.workcenter.productivity'].search([
+            ('workcenter_id', '=', workorder.workcenter_id.id), ('date_end', '=', False),
+            ('nord_sync_downtime_kind', '=', False), ('workorder_id.state', '=', 'progress'),
+        ], order='date_start desc, id desc', limit=1)
+        running = line.workorder_id if line.workorder_id != workorder else self._env()['mrp.workorder']
+        if running:
+            message = (f'{mo_name} pendente em {workorder.workcenter_id.name}: '
+                       f'{running.production_id.name} continua até a máquina parar.')
+        elif selected_again:
+            message = f'{mo_name} selecionada em {workorder.workcenter_id.name}.'
+        else:
+            message = f'{mo_name} em setup em {workorder.workcenter_id.name}.'
+        return {'success': True, 'message': message, 'selected_again': selected_again,
+                'pending': bool(running)}
