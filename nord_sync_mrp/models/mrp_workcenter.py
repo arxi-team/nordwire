@@ -3,7 +3,8 @@ from datetime import datetime, timedelta
 
 import pytz
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 
 class MrpWorkcenter(models.Model):
@@ -34,6 +35,29 @@ class MrpWorkcenter(models.Model):
         help='Select the Nord resource(s) linked to this work center — more than one when '
              'several physical Nord resources feed it. This connection is required for '
              'production data to be synchronized with Nord.',
+    )
+
+    nord_sync_current_production_id = fields.Many2one(
+        'mrp.production', string='Current Manufacturing Order',
+        tracking=True, copy=False,
+        domain="[('company_id', '=', company_id), ('state', 'in', ('confirmed', 'progress', 'to_close'))]",
+        help='Manufacturing Order currently being worked on this Work Center.',
+    )
+    nord_sync_mo_change_behavior = fields.Selection([
+        ('close_and_open', 'Close current timesheet and open new on new MO'),
+        ('start_without_close', 'Start new WO without closing previous'),
+    ], string='MO Change Behavior',
+        help='Behavior when changing the MO on this work center. If unset, uses the company configuration.',
+    )
+    nord_sync_prevent_mo_change_if_running = fields.Boolean(
+        string='Block MO Change If Running',
+        help='Prevents changing the MO if this work center already has a work order in progress (requires stop first). If unset, uses the company configuration.',
+    )
+    nord_sync_unassigned_work_behavior = fields.Selection([
+        ('first_scheduled', 'Start 1st Scheduled MO'),
+        ('unassigned_timesheets', 'Create Unassigned Timesheets'),
+    ], string='Machine Working Without MO',
+        help='Behavior when the machine works without an MO selected. If unset, uses the company configuration.',
     )
 
     # ── Nordwire Autonomous Resource Policies ───────────────────────────────
@@ -234,9 +258,166 @@ class MrpWorkcenter(models.Model):
                 vals_list[index] = {**vals, **preset}
 
     def write(self, vals):
+        if 'nord_sync_current_production_id' in vals and not self.env.context.get('nord_sync_skip_mo_change'):
+            new_mo_id = vals.get('nord_sync_current_production_id')
+            print(new_mo_id)
+            for workcenter in self:
+                old_mo = workcenter.nord_sync_current_production_id
+                print(old_mo)
+                if old_mo.id != new_mo_id:
+                    workcenter._nord_sync_on_change_current_mo(old_mo, new_mo_id)
         result = super().write(vals)
         self._nord_sync_notify('write')
         return result
+
+    def _nord_sync_on_change_current_mo(self, old_mo, new_mo_id):
+        self.ensure_one()
+        config = self.env['nord_sync.config'].sudo()._get_for_company(self.company_id)
+
+        # 3.1: Verificar se tem WO a correr e setting ativo
+        prevent_if_running = (
+            self.nord_sync_prevent_mo_change_if_running
+            or (config and config.nord_sync_prevent_mo_change_if_running)
+        )
+        print(prevent_if_running)
+
+        if prevent_if_running and not self.env.context.get('nord_sync_skip_prevent_check'):
+            has_running_wo = bool(self.env['mrp.workorder'].search([
+                ('workcenter_id', '=', self.id),
+                ('state', '=', 'progress'),
+            ], limit=1))
+            print(has_running_wo)
+            has_open_timesheet = bool(self.env['mrp.workcenter.productivity'].search([
+                ('workcenter_id', '=', self.id),
+                ('date_end', '=', False),
+                ('nord_sync_downtime_kind', '=', False),
+            ], limit=1))
+            print(has_open_timesheet)
+            if has_running_wo or has_open_timesheet:
+                raise UserError(_(
+                    "Work center '%(wc)s' already has a work order in progress. "
+                    "You must stop it before selecting another Manufacturing Order.",
+                    wc=self.display_name or self.name,
+                ))
+
+        # 2: Reação na mudança da MO anterior
+        behavior = (
+            self.nord_sync_mo_change_behavior
+            or (config and config.nord_sync_mo_change_behavior)
+            or 'close_and_open'
+        )
+        print(behavior)
+        if old_mo:
+            if behavior == 'close_and_open':
+                # 2.1: Fechar timesheet atual e parar WO anterior
+                open_timesheets = self.env['mrp.workcenter.productivity'].search([
+                    ('workcenter_id', '=', self.id),
+                    ('date_end', '=', False),
+                ])
+                if open_timesheets:
+                    open_timesheets.write({'date_end': fields.Datetime.now()})
+                running_wos = old_mo.workorder_ids.filtered(
+                    lambda wo: wo.workcenter_id == self and wo.state == 'progress'
+                )
+                for rwo in running_wos:
+                    rwo.with_context(nord_sync_from_core=True).end_previous(doall=True)
+            elif behavior == 'start_without_close':
+                # 2.2: Dar start em nova WO sem fechar a anterior
+                pass
+
+        print(new_mo_id)
+        # 3, 3.2, 5.2: Atribuir nova MO
+        if new_mo_id:
+            print(new_mo_id)
+            new_mo = self.env['mrp.production'].browse(new_mo_id)
+            # 3.2: Verificar se já existe alguma WO daquele WC na nova MO
+            target_wo = new_mo.workorder_ids.filtered(
+                lambda wo: wo.workcenter_id == self and wo.state not in ('done', 'cancel')
+            ).sorted(lambda wo: (wo.sequence, wo.id))[:1]
+
+            if not target_wo:
+                # 3: Se não tiver nenhuma WO com aquele WC, cria uma WO com aquele workcenter
+                target_wo = self.env['mrp.workorder'].create({
+                    'name': self.name,
+                    'production_id': new_mo.id,
+                    'workcenter_id': self.id,
+                    'product_uom_id': new_mo.product_uom_id.id,
+                    'consumption': new_mo.consumption,
+                })
+
+            # 5.2: Atribuir timesheets unassigned abertos à nova WO
+            unassigned_timesheets = self.env['mrp.workcenter.productivity'].search([
+                ('workcenter_id', '=', self.id),
+                ('nord_sync_is_unassigned', '=', True),
+                ('date_end', '=', False),
+            ])
+            if unassigned_timesheets:
+                unassigned_timesheets.write({
+                    'workorder_id': target_wo.id,
+                    'nord_sync_is_unassigned': False,
+                })
+                if target_wo.state != 'progress':
+                    target_wo.state = 'progress'
+
+            # Se não vier do próprio botão de start de uma WO, iniciar a WO
+            if not self.env.context.get('nord_sync_from_wo_start'):
+                if target_wo.state not in ('progress', 'done', 'cancel'):
+                    target_wo.with_context(
+                        nord_sync_skip_confirm=True,
+                        nord_sync_from_core=True,
+                        nord_sync_from_wo_start=True,
+                    )._nord_sync_button_start_bypassing_employee_check()
+                elif target_wo.state == 'progress':
+                    open_session = target_wo.time_ids.filtered(lambda t: not t.date_end)
+                    if not open_session:
+                        self.env['mrp.workcenter.productivity'].create({
+                            **target_wo._prepare_timeline_vals(target_wo.duration, fields.Datetime.now()),
+                            'user_id': False,
+                            'employee_id': False,
+                        })
+
+    def _nord_sync_handle_machine_working_without_mo(self, start_date=None, payload=None):
+        """Ponto 5: máquina diz que aquele WC está a trabalhar mas não tem nenhuma MO selecionada."""
+        self.ensure_one()
+        start_date = start_date or (payload and payload.get('start_date')) or fields.Datetime.now()
+        config = self.env['nord_sync.config'].sudo()._get_for_company(self.company_id)
+        behavior = (
+            self.nord_sync_unassigned_work_behavior
+            or (config and config.nord_sync_unassigned_work_behavior)
+            or 'first_scheduled'
+        )
+
+        if behavior == 'first_scheduled':
+            # 5.1: Agarra na 1ª MO programada, organizada por data ascendente e marca start
+            mo = self.env['mrp.production'].search([
+                ('company_id', '=', self.company_id.id),
+                ('state', 'in', ('confirmed', 'progress')),
+            ], order='date_start asc, date_planned_start asc, id asc', limit=1)
+            if mo:
+                self.with_context(nord_sync_skip_prevent_check=True).nord_sync_current_production_id = mo.id
+                return True, _("Started first scheduled MO: %s", mo.name)
+            behavior = 'unassigned_timesheets'
+
+        if behavior == 'unassigned_timesheets':
+            # 5.2: Cria os timesheets sem MO, com estado por atribuir (unassigned)
+            Loss = self.env['mrp.workcenter.productivity.loss']
+            productive = Loss.search([('loss_type', '=', 'productive')], limit=1)
+            if not productive:
+                productive = Loss._nord_sync_get_or_create_undefined()
+            line = self.env['mrp.workcenter.productivity'].create({
+                'workcenter_id': self.id,
+                'workorder_id': False,
+                'date_start': start_date,
+                'date_end': False,
+                'loss_id': productive.id,
+                'nord_sync_is_unassigned': True,
+                'nord_sync_timesheet_id': (payload or {}).get('nord_timesheet_id', 0),
+                'description': 'Machine work without assigned MO',
+                'user_id': False,
+                'employee_id': False,
+            })
+            return True, _("Created unassigned timesheet (%s)", line.id)
+        return False, "No behavior defined"
 
     def unlink(self):
         self._nord_sync_notify('unlink')
@@ -787,6 +968,8 @@ class MrpWorkcenter(models.Model):
         self.ensure_one()
         return {
             **self._nord_sync_configurable_payload(),
+            'current_production_id': self.nord_sync_current_production_id.id or False,
+            'current_production_name': self.nord_sync_current_production_id.name or False,
             'nord_resource_uids': self.resource_id.nord_sync_resource_id.mapped('uid'),
             'autonomous_close': self.nord_sync_autonomous_close,
             'granular_push': self.nord_sync_granular_push,

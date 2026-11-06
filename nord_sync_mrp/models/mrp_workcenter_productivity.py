@@ -170,6 +170,10 @@ class MrpWorkcenterProductivity(models.Model):
              'reference to find this exact row again for a later loss-reason correction; '
              'a workorder can have several sessions.',
     )
+    nord_sync_is_unassigned = fields.Boolean(
+        string='Unassigned Timesheet', default=False, index=True,
+        help='Indicates a session created when the machine was working before an MO was assigned.',
+    )
     electric_consume = fields.Float(
         string='Electric Consume', copy=False,
         help='Tracks electric consumption for this session, using the same field shape as known '

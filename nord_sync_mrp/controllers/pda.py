@@ -85,8 +85,9 @@ _PAGE = """<!DOCTYPE html>
   @media (prefers-color-scheme: dark) { :root { --bg: #0a1628; --card: #0d1b2e; --surface: #101f35; --text: #e2e8f0; --text2: #94a3b8; --muted: #94a3b8; --border: rgba(30, 58, 95, .5); --border2: rgba(30, 58, 95, .85); --hover: rgba(255, 255, 255, .06); --navy: #2f5a96; --navy-hover: #3a6bb0; --success: #3fb950; --success-bg: rgba(63, 185, 80, .16); --warning: #e3b341; --warning-bg: rgba(227, 179, 65, .16); --danger: #f85149; --danger-bg: rgba(248, 81, 73, .16); --neutral-bg: rgba(148, 163, 184, .14); --shadow: 0 1px 3px rgba(0, 0, 0, .3); --shadow-lg: 0 8px 32px rgba(0, 0, 0, .5); } }
   * { box-sizing: border-box; }
   body { font-family: 'DM Sans', system-ui, sans-serif; font-size: 15px; margin: 0; padding: 16px; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
-  input { width: 100%; height: 44px; font: inherit; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border2); background: var(--surface); color: var(--text); }
-  input:focus { outline: 2px solid var(--navy); outline-offset: 0; }
+  input, select { width: 100%; height: 44px; font: inherit; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border2); background: var(--surface); color: var(--text); }
+  input:focus, select:focus { outline: 2px solid var(--navy); outline-offset: 0; }
+  .wc-bar { margin-bottom: 10px; }
   .msg { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 10; padding: 12px 14px; border-radius: 10px; font-weight: 600; display: none; box-shadow: var(--shadow-lg); border: 1px solid var(--border2); background: var(--surface); }
   .ok { color: var(--success); border-color: var(--success); display: block; }
   .err { color: var(--danger); border-color: var(--danger); display: block; }
@@ -132,6 +133,11 @@ _PAGE = """<!DOCTYPE html>
 </style>
 </head>
 <body>
+<div class="wc-bar">
+  <select id="wc-select" aria-label="Posto / Máquina">
+    <option value="all">Todas as máquinas</option>
+  </select>
+</div>
 <input id="code" autofocus autocomplete="off" inputmode="none" aria-label="QR da MO" placeholder="Ler o QR da MO">
 <div id="menu" class="screen on">
   <div class="menu">
@@ -273,6 +279,17 @@ function show(text, ok) {
   clearTimeout(hideMsg);
   hideMsg = setTimeout(() => { m.className = 'msg'; }, ok ? 4000 : 8000);
 }
+async function loadWorkcenters() {
+  try {
+    const list = await call('/nordwire/pda/workcenters_list', {});
+    const sel = $('wc-select');
+    if (!sel) return;
+    const currentVal = sel.value;
+    sel.innerHTML = '<option value="all">Todas as máquinas</option>' +
+      list.map((w) => `<option value="${w.id}">${esc(w.name)}${w.current_mo ? ' (' + esc(w.current_mo) + ')' : ''}</option>`).join('');
+    if ([...sel.options].some((o) => o.value === currentVal)) sel.value = currentVal;
+  } catch (e) {}
+}
 // A scan is the setup: no confirm step. The field is cleared at once so the
 // next scan can come in while this one is still on its way.
 async function setup() {
@@ -280,19 +297,23 @@ async function setup() {
   code.value = '';
   code.focus();
   if (!mo) return;
+  const wcSelect = $('wc-select');
+  const targetWc = wcSelect ? wcSelect.value : 'all';
   try {
-    const r = await call('/nordwire/pda/setup', {mo_name: mo});
+    const r = await call('/nordwire/pda/assign_mo', {mo_name: mo, workcenter_id: targetWc});
     show(r.message, r.success);
   } catch (e) { show(e.message, false); }
   refreshTodo();
+  loadWorkcenters();
 }
 // Scanners end the code with Enter (some with Tab)
 code.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); setup(); }
 });
+$('wc-select').addEventListener('change', () => code.focus());
 // The field keeps the focus on every screen, so a scan is recognised wherever
 // the operator is and only has to pull the trigger
-const focusScan = () => { if (!document.activeElement || document.activeElement.id !== 'qty') code.focus(); };
+const focusScan = () => { if (!document.activeElement || (document.activeElement.id !== 'qty' && document.activeElement.id !== 'wc-select')) code.focus(); };
 code.addEventListener('blur', () => setTimeout(focusScan, 0));
 document.addEventListener('focusout', () => setTimeout(focusScan, 0));
 document.addEventListener('click', focusScan);
@@ -300,7 +321,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) focu
 window.addEventListener('focus', focusScan);
 showScreen();
 refreshTodo();
-setInterval(refreshTodo, 30000);
+loadWorkcenters();
+setInterval(() => { refreshTodo(); loadWorkcenters(); }, 30000);
 </script>
 </body>
 </html>
@@ -456,3 +478,73 @@ class NordSyncPda(Controller):
             message = f'{mo_name} em setup em {workorder.workcenter_id.name}.'
         return {'success': True, 'message': message, 'selected_again': selected_again,
                 'pending': bool(running)}
+
+    @route('/nordwire/pda/workcenters_list', type='jsonrpc', auth='user', methods=['POST'])
+    def pda_workcenters_list(self, **kwargs):
+        workcenters = self._env()['mrp.workcenter'].search([
+            ('company_id', 'in', request.env.companies.ids),
+        ], order='sequence, name')
+        return [
+            {
+                'id': wc.id,
+                'name': wc.display_name or wc.name,
+                'current_mo': wc.nord_sync_current_production_id.name or False,
+            }
+            for wc in workcenters
+        ]
+
+    @route('/nordwire/pda/assign_mo', type='jsonrpc', auth='user', methods=['POST'])
+    def pda_assign_mo(self, mo_name, workcenter_id='all', **kwargs):
+        mo_name = (mo_name or '').strip()
+        production = self._env()['mrp.production'].search([
+            ('name', '=', mo_name), ('company_id', 'in', request.env.companies.ids),
+        ], limit=1)
+        if not production:
+            return {'success': False, 'message': f'{mo_name}: MO não encontrada.'}
+
+        Workcenter = self._env()['mrp.workcenter']
+        if workcenter_id == 'all':
+            workcenters = Workcenter.search([
+                ('company_id', 'in', request.env.companies.ids),
+            ])
+            if not workcenters:
+                return {'success': False, 'message': 'Nenhum posto de trabalho encontrado.'}
+        else:
+            try:
+                wc_id = int(workcenter_id)
+                workcenters = Workcenter.browse(wc_id)
+                if not workcenters.exists():
+                    return {'success': False, 'message': 'Posto de trabalho não encontrado.'}
+            except (ValueError, TypeError):
+                return {'success': False, 'message': 'Identificador de posto inválido.'}
+
+        updated_names = []
+        errors = []
+        for wc in workcenters:
+            try:
+                wc.nord_sync_current_production_id = production.id
+                updated_names.append(wc.display_name or wc.name)
+            except UserError as ue:
+                errors.append(f"{wc.name}: {ue.args[0]}")
+            except Exception as e:
+                errors.append(f"{wc.name}: {e}")
+
+        wake_core(request.env)
+        webhook(request.env, 'pda_assign_mo', {
+            'mo': production.name,
+            'workcenters': [w.name for w in workcenters],
+            'updated': updated_names,
+            'errors': errors,
+        })
+
+        if errors and not updated_names:
+            return {'success': False, 'message': ' | '.join(errors)}
+        elif errors:
+            return {
+                'success': True,
+                'message': f"{mo_name} atribuída a: {', '.join(updated_names)}. Avisos: {' | '.join(errors)}",
+            }
+        else:
+            if workcenter_id == 'all':
+                return {'success': True, 'message': f"{mo_name} atribuída a todas as máquinas ({len(updated_names)})."}
+            return {'success': True, 'message': f"{mo_name} atribuída a {updated_names[0]}."}

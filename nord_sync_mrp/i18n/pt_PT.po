@@ -943,3 +943,143 @@ msgstr "Guarde o posto de trabalho para ver os tempos."
 #: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_time_chart
 msgid "Nord Times Chart"
 msgstr "Gráfico de Tempos Nord"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_current_production_id
+msgid "Current Manufacturing Order"
+msgstr "Ordem de Fabrico Atual"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_current_production_id
+msgid "Manufacturing Order currently being worked on this Work Center."
+msgstr "Ordem de Fabrico a ser trabalhada atualmente neste Posto de Trabalho."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_mo_change_behavior
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_config__nord_sync_mo_change_behavior
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_res_config_settings__nord_sync_mo_change_behavior
+msgid "MO Change Behavior"
+msgstr "Comportamento ao Mudar MO"
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.res_config_settings_view_form_nord_sync_mrp
+msgid "Work Center MO Change Behavior"
+msgstr "Comportamento ao Mudar MO no Posto"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__mrp_workcenter__nord_sync_mo_change_behavior__close_and_open
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__nord_sync_config__nord_sync_mo_change_behavior__close_and_open
+msgid "Close current timesheet and open new on new MO"
+msgstr "Fechar timesheet atual e abrir nova na nova MO"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__mrp_workcenter__nord_sync_mo_change_behavior__start_without_close
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__nord_sync_config__nord_sync_mo_change_behavior__start_without_close
+msgid "Start new WO without closing previous"
+msgstr "Dar start em nova WO sem fechar a anterior"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_mo_change_behavior
+msgid "Behavior when changing the MO on this work center. If unset, uses the company configuration."
+msgstr "Comportamento ao mudar a MO neste posto de trabalho. Se não definido, utiliza a configuração da empresa."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_nord_sync_config__nord_sync_mo_change_behavior
+msgid "Determines the behavior when the current MO changes on a work center."
+msgstr "Define o comportamento quando o campo de MO muda no posto de trabalho."
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.res_config_settings_view_form_nord_sync_mrp
+msgid "Determines whether to close the previous MO's timesheet or keep it running when changing the current MO on a work center."
+msgstr "Define se fecha a sessão/timesheet atual da MO anterior ou se inicia a nova MO mantendo a anterior a decorrer."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_prevent_mo_change_if_running
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_config__nord_sync_prevent_mo_change_if_running
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_res_config_settings__nord_sync_prevent_mo_change_if_running
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.res_config_settings_view_form_nord_sync_mrp
+msgid "Block MO Change If Running"
+msgstr "Bloquear Mudança de MO se WO a Correr"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_prevent_mo_change_if_running
+msgid "Prevents changing the MO if this work center already has a work order in progress (requires stop first). If unset, uses the company configuration."
+msgstr "Impede mudar a MO se este posto de trabalho já tiver uma ordem de trabalho em curso (exige paragem prévia). Se não definido, utiliza a configuração da empresa."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_nord_sync_config__nord_sync_prevent_mo_change_if_running
+msgid "If enabled, prevents selecting a new MO on a work center if it already has a work order in progress (requires stop first)."
+msgstr "Se ativo, impede selecionar outra MO no posto se este já tiver uma ordem de trabalho em curso (exige dar stop primeiro)."
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.res_config_settings_view_form_nord_sync_mrp
+msgid "Prevents changing the MO on a work center if there is a work order in progress, requiring a stop first."
+msgstr "Impede mudar a MO no posto de trabalho se existir uma Ordem de Trabalho em curso, exigindo paragem prévia (stop)."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter__nord_sync_unassigned_work_behavior
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_nord_sync_config__nord_sync_unassigned_work_behavior
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_res_config_settings__nord_sync_unassigned_work_behavior
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.res_config_settings_view_form_nord_sync_mrp
+msgid "Machine Working Without MO"
+msgstr "Máquina a Trabalhar sem MO"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__mrp_workcenter__nord_sync_unassigned_work_behavior__first_scheduled
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__nord_sync_config__nord_sync_unassigned_work_behavior__first_scheduled
+msgid "Start 1st Scheduled MO"
+msgstr "Iniciar 1ª MO programada"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__mrp_workcenter__nord_sync_unassigned_work_behavior__unassigned_timesheets
+#: model:ir.model.fields.selection,name:nord_sync_mrp.selection__nord_sync_config__nord_sync_unassigned_work_behavior__unassigned_timesheets
+msgid "Create Unassigned Timesheets"
+msgstr "Criar timesheets não atribuídos"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter__nord_sync_unassigned_work_behavior
+msgid "Behavior when the machine works without an MO selected. If unset, uses the company configuration."
+msgstr "Comportamento quando a máquina trabalha sem uma MO selecionada. Se não definido, utiliza a configuração da empresa."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_nord_sync_config__nord_sync_unassigned_work_behavior
+msgid "Behavior when the machine reports work but the work center has no MO assigned."
+msgstr "Comportamento quando a máquina reporta trabalho mas o posto não tem nenhuma MO selecionada."
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.res_config_settings_view_form_nord_sync_mrp
+msgid "When a machine reports work but the work center has no MO assigned: start the first scheduled MO or create unassigned timesheets to be attributed later."
+msgstr "Quando a máquina reporta trabalho mas o posto não tem MO selecionada: iniciar a 1ª MO programada ou criar tempos pendentes para atribuir mais tarde."
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,field_description:nord_sync_mrp.field_mrp_workcenter_productivity__nord_sync_is_unassigned
+msgid "Unassigned Timesheet"
+msgstr "Timesheet Não Atribuído"
+
+#. module: nord_sync_mrp
+#: model:ir.model.fields,help:nord_sync_mrp.field_mrp_workcenter_productivity__nord_sync_is_unassigned
+msgid "Indicates a session created when the machine was working before an MO was assigned."
+msgstr "Indica uma sessão criada quando a máquina estava a trabalhar antes de ser atribuída uma MO."
+
+#. module: nord_sync_mrp
+#: model_terms:ir.ui.view,arch_db:nord_sync_mrp.mrp_workcenter_view_nord_sync
+msgid "MO & Work Order Rules"
+msgstr "Regras de MO & Ordens de Trabalho"
+
+#. module: nord_sync_mrp
+#: code:addons/nord_sync_mrp/models/mrp_workcenter.py:0
+#, python-format
+msgid "Work center '%(wc)s' already has a work order in progress. You must stop it before selecting another Manufacturing Order."
+msgstr "O posto de trabalho '%(wc)s' já tem uma Ordem de Trabalho a correr. É necessário parar (stop) antes de selecionar outra Ordem de Fabrico."
+
+#. module: nord_sync_mrp
+#: code:addons/nord_sync_mrp/models/mrp_workcenter.py:0
+#, python-format
+msgid "Started first scheduled MO: %s"
+msgstr "Iniciada a 1ª MO programada: %s"
+
+#. module: nord_sync_mrp
+#: code:addons/nord_sync_mrp/models/mrp_workcenter.py:0
+#, python-format
+msgid "Created unassigned timesheet (%s)"
+msgstr "Criado timesheet sem MO (%s)"
