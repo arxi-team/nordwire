@@ -34,6 +34,26 @@ class NordSyncConfig(models.Model):
              'this default.',
     )
 
+    nord_sync_mo_change_behavior = fields.Selection([
+        ('close_and_open', 'Close current timesheet and open new on new MO'),
+        ('start_without_close', 'Start new WO without closing previous'),
+    ], string='Work Center MO Change Behavior', default='close_and_open',
+        help='Determines the behavior when the current MO changes on a work center.',
+    )
+
+    nord_sync_prevent_mo_change_if_running = fields.Boolean(
+        string='Block MO Change If Running',
+        default=False,
+        help='If enabled, prevents selecting a new MO on a work center if it already has a work order in progress (requires stop first).',
+    )
+
+    nord_sync_unassigned_work_behavior = fields.Selection([
+        ('first_scheduled', 'Start 1st Scheduled MO'),
+        ('unassigned_timesheets', 'Create Unassigned Timesheets'),
+    ], string='Machine Working Without MO', default='first_scheduled',
+        help='Behavior when the machine reports work but the work center has no MO assigned.',
+    )
+
     @api.model
     def _nord_sync_available_native_sources(self):
         sources = super()._nord_sync_available_native_sources()
@@ -105,7 +125,35 @@ class NordSyncConfig(models.Model):
             return self._nord_sync_workorder_event_mrp_workorder(body, event_type)
         if res_model == 'mrp.production':
             return self._nord_sync_workorder_event_mrp_production(body, event_type)
+        if res_model == 'mrp.workcenter':
+            return self._nord_sync_workorder_event_mrp_workcenter(body, event_type)
         return super()._nord_sync_apply_workorder_event(body, res_model, event_type)
+
+    def _nord_sync_workorder_event_mrp_workcenter(self, body, event_type):
+        self.ensure_one()
+        res_id = body.get('res_id')
+        if not res_id:
+            return False, 'Missing res_id'
+        workcenter = self.env['mrp.workcenter'].sudo().browse(int(res_id))
+        if not workcenter.exists() or workcenter.company_id != self.company_id:
+            return False, 'Unknown record'
+        if event_type == 'session_start':
+            if not workcenter.nord_sync_current_production_id:
+                return workcenter._nord_sync_handle_machine_working_without_mo(payload=body.get('payload'))
+            wo = workcenter.nord_sync_current_production_id.workorder_ids.filtered(
+                lambda w: w.workcenter_id == workcenter and w.state not in ('done', 'cancel')
+            )[:1]
+            if wo:
+                return wo._nord_sync_apply_granular_event(event_type, body.get('payload') or {})
+            return workcenter._nord_sync_handle_machine_working_without_mo(payload=body.get('payload'))
+        elif event_type == 'session_stop':
+            open_lines = self.env['mrp.workcenter.productivity'].sudo().search([
+                ('workcenter_id', '=', workcenter.id), ('date_end', '=', False),
+            ])
+            end_date = (body.get('payload') or {}).get('end_date') or fields.Datetime.now()
+            open_lines.write({'date_end': end_date})
+            return True, 'ok'
+        return True, 'ok'
 
     def _nord_sync_workorder_event_mrp_workorder(self, body, event_type):
         self.ensure_one()

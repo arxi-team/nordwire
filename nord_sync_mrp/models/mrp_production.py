@@ -32,6 +32,31 @@ class MrpProduction(models.Model):
              'machine before the machine itself starts it.',
     )
 
+    def write(self, vals):
+        result = super().write(vals)
+        if vals.get('state') in ('done', 'cancel'):
+            self._nord_sync_clear_workcenter_current_production()
+        return result
+
+    def button_mark_done(self):
+        result = super().button_mark_done()
+        self._nord_sync_clear_workcenter_current_production()
+        return result
+
+    def action_cancel(self):
+        result = super().action_cancel()
+        self._nord_sync_clear_workcenter_current_production()
+        return result
+
+    def _nord_sync_clear_workcenter_current_production(self):
+        workcenters = self.env['mrp.workcenter'].sudo().search([
+            ('nord_sync_current_production_id', 'in', self.ids),
+        ])
+        if workcenters:
+            workcenters.with_context(nord_sync_skip_mo_change=True).write({
+                'nord_sync_current_production_id': False,
+            })
+
     def _nord_sync_demo_deliver(self, qty=None, scrap=0.0, not_ok=0.0):
         """Fair demo (PDA "Entregar", /nordwire/pda/deliver): finishes this MO as if its
         Nord job had been marked done, through the same result path

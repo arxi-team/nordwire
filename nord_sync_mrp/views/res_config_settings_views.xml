@@ -36,6 +36,38 @@
                         <field name="nord_sync_default_workcenter_control_mode"/>
                     </div>
                 </div>
+                <div class="col-12 col-lg-6 o_setting_box" invisible="not nord_sync_enabled">
+                    <div class="o_setting_right_pane">
+                        <label for="nord_sync_mo_change_behavior"
+                               string="Work Center MO Change Behavior"/>
+                        <div class="text-muted">
+                            Determines whether to close the previous MO's timesheet or keep it running when changing the current MO on a work center.
+                        </div>
+                        <field name="nord_sync_mo_change_behavior"/>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-6 o_setting_box" invisible="not nord_sync_enabled">
+                    <div class="o_setting_left_pane">
+                        <field name="nord_sync_prevent_mo_change_if_running"/>
+                    </div>
+                    <div class="o_setting_right_pane">
+                        <label for="nord_sync_prevent_mo_change_if_running"
+                               string="Block MO Change If Running"/>
+                        <div class="text-muted">
+                            Prevents changing the MO on a work center if there is a work order in progress, requiring a stop first.
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-6 o_setting_box" invisible="not nord_sync_enabled">
+                    <div class="o_setting_right_pane">
+                        <label for="nord_sync_unassigned_work_behavior"
+                               string="Machine Working Without MO"/>
+                        <div class="text-muted">
+                            When a machine reports work but the work center has no MO assigned: start the first scheduled MO or create unassigned timesheets to be attributed later.
+                        </div>
+                        <field name="nord_sync_unassigned_work_behavior"/>
+                    </div>
+                </div>
             </xpath>
         </field>
     </record>
