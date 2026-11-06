@@ -81,8 +81,19 @@ class NordSyncInbox(models.TransientModel):
         leaving the transaction clean for that write and for every other
         entry in the same batch — one bad entry never blocks the rest.
         """
+        self._nord_sync_dispatch_pending()
+
+    @api.model
+    def _nord_sync_dispatch_pending(self):
+        """The cron's work, also run right after a workorder_event lands so
+        it applies live. Entries are locked as they are taken (SKIP LOCKED):
+        the cron and a request running at once never apply the same entry
+        twice — the one that loses just leaves it to the other."""
         Config = self.env['nord_sync.config'].sudo()
-        for entry in self.sudo().search([('status', 'in', ('pending', 'failed'))], order='id asc'):
+        self.env.cr.execute(
+            "SELECT id FROM nord_sync_inbox WHERE status IN ('pending', 'failed') ORDER BY id FOR UPDATE SKIP LOCKED"
+        )
+        for entry in self.sudo().browse([row[0] for row in self.env.cr.fetchall()]):
             try:
                 with self.env.cr.savepoint():
                     config = Config._get_for_company(entry.company_id)

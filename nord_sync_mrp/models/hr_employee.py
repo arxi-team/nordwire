@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, models
 
-NORD_SYNC_AUTONOMOUS_EMPLOYEE_NAME = 'Nordwire'
-
 
 class HrEmployee(models.Model):
     """Resource Bridge for the person side of a workorder — mirrors
@@ -13,23 +11,6 @@ class HrEmployee(models.Model):
     toggle-able source of its own — see _nord_sync_source_key below.
     """
     _inherit = ['hr.employee', 'nord_sync.notify.mixin']
-
-    @api.model
-    def _nord_sync_get_or_create_autonomous_employee(self, company):
-        """The employee a granular session_start attributes work to when no
-        real operator is assigned to the workorder (machine-autonomous
-        work, no human ever picked one) — see
-        mrp_workorder.py's own _nord_sync_button_start_bypassing_employee_check.
-        Get-or-create by (name, company), same natural-key posture as the
-        rest of this bridge (e.g. _get_or_create_nord_sync_product on the
-        Core side) — idempotent, never duplicates once it exists.
-        """
-        employee = self.search([
-            ('name', '=', NORD_SYNC_AUTONOMOUS_EMPLOYEE_NAME), ('company_id', '=', company.id),
-        ], limit=1)
-        if not employee:
-            employee = self.create({'name': NORD_SYNC_AUTONOMOUS_EMPLOYEE_NAME, 'company_id': company.id})
-        return employee
 
     @api.model_create_multi
     def create(self, vals_list):

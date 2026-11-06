@@ -32,6 +32,47 @@ class MrpProduction(models.Model):
              'machine before the machine itself starts it.',
     )
 
+    def _nord_sync_demo_deliver(self, qty=None, scrap=0.0, not_ok=0.0):
+        """Fair demo (PDA "Entregar", /nordwire/pda/deliver): finishes this MO as if its
+        Nord job had been marked done, through the same result path
+        (_nord_sync_apply_result): qty good units (default: the planned
+        quantity), scrap, and not_ok rejects on top of those already tapped
+        on the PDA — those were scrapped then, the result leaves them out.
+        Only for an MO with an operation on a stop-tracking work center, the
+        fair demo's opt-in.
+
+        Quality checks still to do (on the MO or its work orders) are passed
+        first: on the PDA the rejects are the Não OK taps, and the Mark Done
+        would otherwise refuse to close ("You still need to do the quality
+        checks!"). Lot-tracked components left without a lot get one too
+        (see _nord_sync_fill_component_lots), else the close fails on "You
+        need to supply a Lot/Serial Number".
+
+        Returns (success, message), same as _nord_sync_apply_result.
+        """
+        self.ensure_one()
+        if not self.workorder_ids.workcenter_id.filtered('nord_sync_stop_tracking'):
+            return False, f'{self.name}: no work center of this MO tracks stops on Nord.'
+        qty_produced = self.product_qty if qty in (None, '') else float(qty)
+        # Whatever Nord still shows open (setup/stop/work) ends now; the
+        # close itself stops the work timers.
+        self.workorder_ids.time_ids.filtered(lambda t: not t.date_end and t.nord_sync_downtime_kind).write(
+            {'date_end': fields.Datetime.now()},
+        )
+        pending_checks = self.env['quality.check'].search([
+            ('production_id', '=', self.id), ('quality_state', '=', 'none'),
+        ])
+        if pending_checks:
+            # do_pass is one check at a time once quality_mrp_workorder is in
+            for check in pending_checks:
+                check.do_pass()
+            self.message_post(body=f'Nordwire: {len(pending_checks)} quality check(s) passed on PDA delivery.')
+        pda_rejects = sum(self.workorder_ids.mapped('nord_sync_not_ok_count'))
+        success, message = self.with_context(nord_sync_fill_component_lots=True)._nord_sync_apply_result(
+            qty_produced, scrap_qty=scrap, not_pass_qty=pda_rejects + not_ok, work_sessions=[],
+        )
+        return success, message
+
     def _nord_sync_ensure_delivery(self):
         """The customer delivery this MO ends in, for the Core to queue after
         its last operation: the open delivery of the sale it came from (same
@@ -266,7 +307,8 @@ class MrpProduction(models.Model):
                 auto-validated stock.scrap record when non-zero, plus a
                 mrp.workcenter.productivity 'quality' time entry (see
                 _nord_sync_log_quality_loss) so it counts toward Odoo's
-                own OEE.
+                own OEE. Units already rejected on the PDA (counted on
+                the work orders) are left out: they were applied then.
             materials (list[dict], optional): the Core's real per-product
                 consumed quantity, default None (treated as empty) —
                 [{product: {name, default_code}, quantity}], only read when
@@ -324,6 +366,8 @@ class MrpProduction(models.Model):
                 mo = self.with_context(skip_backorder=True)
                 if not self.product_uom_id.is_zero(self._get_quantity_to_backorder()):
                     mo = mo.with_context(mo_ids_to_backorder=self.ids)
+                if self.env.context.get('nord_sync_fill_component_lots'):
+                    self._nord_sync_fill_component_lots()
                 result = mo.button_mark_done()
                 if isinstance(result, dict) and result.get('res_model') == 'mrp.consumption.warning':
                     # Odoo's own "consumed qty differs from the BOM's expected
@@ -341,6 +385,8 @@ class MrpProduction(models.Model):
                     # (lot/serial) is a real business decision, left for a
                     # human — falls through to the generic blocked message.
                     self._nord_sync_set_raw_move_quantities(materials or [])
+                    if self.env.context.get('nord_sync_fill_component_lots'):
+                        self._nord_sync_fill_component_lots()
                     result = mo.with_context(skip_consumption=True).button_mark_done()
                 if isinstance(result, dict) and result.get('res_model') == 'mrp.production':
                     # button_mark_done() already wrote state='done' on this MO and
@@ -366,6 +412,10 @@ class MrpProduction(models.Model):
             return False, message
 
         self._nord_sync_create_scrap(scrap_qty, 'Nordwire: scrap')
+        # Rejects tapped on the PDA were scrapped and logged there and then
+        # (mrp.workorder.action_nord_sync_not_ok); the Core's not_pass_qty
+        # counts them too, so only the rest is applied here.
+        not_pass_qty = max(0.0, not_pass_qty - sum(self.workorder_ids.mapped('nord_sync_not_ok_count')))
         self._nord_sync_create_scrap(not_pass_qty, 'Nordwire: quality reject (not pass)')
         self._nord_sync_log_quality_loss(not_pass_qty)
 
@@ -525,12 +575,39 @@ class MrpProduction(models.Model):
                 'loss_id': loss.id,
                 'date_start': session['start_date'],
                 'date_end': session['end_date'],
-                'user_id': self.env.user.id,
+                'user_id': False,
                 'company_id': workorder.company_id.id,
                 'employee_id': employee.id if employee else False,
                 'nord_sync_timesheet_id': session.get('nord_timesheet_id') or False,
                 'electric_consume': session.get('energy_kwh_used') or 0.0,
             })
+
+    def _nord_sync_fill_component_lots(self):
+        """Fair demo (PDA "Entregar"): gives a lot to every consumed line of
+        a lot/serial-tracked component that has none — what Odoo adds when
+        the MO consumes more than it could reserve. Takes the newest lot of
+        that component with stock under the move's source location (the
+        line then consumes from where that lot is), else a new lot named
+        after the MO, so the close never stops on the missing lot.
+        """
+        self.ensure_one()
+        for move in self.move_raw_ids.filtered(lambda m: m.has_tracking != 'none' and m.state not in ('done', 'cancel')):
+            lines = move.move_line_ids.filtered(lambda ml: not ml.lot_id and not ml.lot_name)
+            if not lines:
+                continue
+            quant = self.env['stock.quant'].search([
+                ('product_id', '=', move.product_id.id), ('location_id', 'child_of', move.location_id.id),
+                ('lot_id', '!=', False), ('quantity', '>', 0),
+            ], order='in_date desc, id desc', limit=1)
+            if quant:
+                lines.write({'lot_id': quant.lot_id.id, 'location_id': quant.location_id.id})
+            else:
+                lot = self.env['stock.lot'].create({
+                    'name': f'{self.name}-{move.product_id.default_code or move.product_id.id}',
+                    'product_id': move.product_id.id,
+                    'company_id': self.company_id.id,
+                })
+                lines.lot_id = lot
 
     def _nord_sync_set_raw_move_quantities(self, materials):
         """Sets each open raw move's consumed quantity/picked flag from the
@@ -566,10 +643,12 @@ class MrpProduction(models.Model):
             move.quantity = quantity
             move.picked = True
 
-    def _nord_sync_create_scrap(self, quantity, reason):
+    def _nord_sync_create_scrap(self, quantity, reason, workorder=None):
         """Creates and immediately validates the scrap — no human in this
-        autonomous loop to confirm it by hand. action_validate() itself
-        never raises; when the scrap location doesn't have enough on hand
+        autonomous loop to confirm it by hand. `workorder` is the operation
+        the units were rejected on, when known (the PDA's Não OK), so the
+        scrap counts on its own work center's machine overview.
+        action_validate() itself never raises; when the scrap location doesn't have enough on hand
         to validate straight away it returns a forecast-wizard action
         instead, left in draft for manual follow-up (logged, not alarmed —
         same resilience posture as the rest of this bridge).
@@ -580,6 +659,7 @@ class MrpProduction(models.Model):
         scrap = self.env['stock.scrap'].sudo().create({
             'product_id': self.product_id.id,
             'production_id': self.id,
+            'workorder_id': workorder.id if workorder else False,
             'scrap_qty': quantity,
             'company_id': self.company_id.id,
             'origin': reason,
@@ -591,7 +671,7 @@ class MrpProduction(models.Model):
                 scrap.id, self.id,
             )
 
-    def _nord_sync_log_quality_loss(self, not_pass_qty):
+    def _nord_sync_log_quality_loss(self, not_pass_qty, workorder=None):
         """Logs not_pass_qty as a real mrp.workcenter.productivity time
         entry with loss_type='quality', so it counts in Odoo's own native
         OEE (mrp.workcenter.oee, computed purely from productivity time
@@ -614,7 +694,8 @@ class MrpProduction(models.Model):
         self.ensure_one()
         if not not_pass_qty or not self.product_qty:
             return
-        workorder = self.workorder_ids[-1:]
+        # The PDA knows the operation the reject happened on
+        workorder = workorder or self.workorder_ids[-1:]
         if not workorder:
             return
         loss = self.env['mrp.workcenter.productivity.loss'].sudo().search(
@@ -633,7 +714,8 @@ class MrpProduction(models.Model):
             'loss_id': loss.id,
             'date_start': date_end - timedelta(minutes=duration_minutes),
             'date_end': date_end,
-            'user_id': self.env.user.id,
+            'user_id': False,
+            'employee_id': False,
             'company_id': workorder.company_id.id,
         })
 

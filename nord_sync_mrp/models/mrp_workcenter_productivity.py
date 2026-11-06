@@ -155,6 +155,15 @@ class MrpWorkcenterProductivityLoss(models.Model):
 class MrpWorkcenterProductivity(models.Model):
     _inherit = 'mrp.workcenter.productivity'
 
+    def _close(self):
+        """A Nord session closes as it ran: Odoo's own close cuts whatever
+        runs past the work order's expected duration into a "Reduced Speed"
+        line, which isn't true of a machine's real running time."""
+        if self.env.context.get('nord_sync_from_core'):
+            self.write({'date_end': fields.Datetime.now()})
+            return
+        return super()._close()
+
     nord_sync_timesheet_id = fields.Integer(
         string='Nord Timesheet', index=True,
         help='The nord.timesheet id on the Core this session came from -- the only stable '
@@ -167,3 +176,46 @@ class MrpWorkcenterProductivity(models.Model):
              'external manufacturing systems for data compatibility -- filled from the Core\'s own '
              'nord.timesheet.energy_kwh_used for this exact session (Nordwire Result Push).',
     )
+    nord_sync_downtime_kind = fields.Selection([
+        ('setup', 'Setup'),
+        ('stop', 'Stop'),
+    ], string='Nord Downtime Kind', readonly=True, copy=False,
+        help='Set on a line the Core logged for a machine that was not working: its setup '
+             'for this work order, or a stop in the middle of it.',
+    )
+    nord_sync_time_category = fields.Selection([
+        ('productive', 'Productive'),
+        ('stop', 'Stop'),
+        ('setup', 'Setup'),
+        ('quality', 'Quality'),
+    ], string='Time Category', compute='_compute_nord_sync_time_category', store=True,
+        help='Productive / stop / setup split of this time line, for the work center charts. '
+             'A Nord session not justified yet ("Undefined" reason) is still worked time.',
+    )
+
+    nord_sync_elapsed_minutes = fields.Float(
+        string='Elapsed (minutes)', compute='_compute_nord_sync_elapsed_minutes', store=True,
+        help='Wall-clock length of this time line. Odoo\'s own duration only counts the part '
+             'inside the work center\'s working hours, which hides a machine running (or '
+             'stopped) outside them.',
+    )
+
+    @api.depends('date_start', 'date_end')
+    def _compute_nord_sync_elapsed_minutes(self):
+        for line in self:
+            line.nord_sync_elapsed_minutes = (
+                (line.date_end - line.date_start).total_seconds() / 60
+                if line.date_start and line.date_end else 0.0
+            )
+
+    @api.depends('nord_sync_downtime_kind', 'loss_id.loss_type', 'loss_id.name')
+    def _compute_nord_sync_time_category(self):
+        for line in self:
+            if line.nord_sync_downtime_kind:
+                line.nord_sync_time_category = line.nord_sync_downtime_kind
+            elif line.loss_id.loss_type == 'quality':
+                line.nord_sync_time_category = 'quality'
+            elif line.loss_id.loss_type == 'availability' and line.loss_id.name != NORD_SYNC_UNDEFINED_LOSS_NAME:
+                line.nord_sync_time_category = 'stop'
+            else:
+                line.nord_sync_time_category = 'productive'
