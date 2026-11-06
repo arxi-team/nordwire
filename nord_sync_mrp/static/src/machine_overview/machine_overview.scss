@@ -1,0 +1,256 @@
+// Machine overview of a work center, after the Kioda machine screen.
+.o_nord_overview {
+    --o-nord-overview-track: rgba(128, 128, 128, 0.18);
+    --o-nord-overview-working-90: #1d4ed8;
+    --o-nord-overview-working-60: #2563eb;
+    --o-nord-overview-working-30: #60a5fa;
+    --o-nord-overview-setup: #f0ad4e;
+    --o-nord-overview-alarm: #dc2828;
+    --o-nord-overview-idle: #c4c7cc;
+    --o-nord-overview-offline: rgba(128, 128, 128, 0.12);
+    width: 100%;
+}
+
+.o_nord_overview_toolbar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.o_nord_overview_card {
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 8px;
+}
+
+.o_nord_overview_hint {
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color, #6c757d);
+}
+
+// ── OEE header ────────────────────────────────────────────────────────────
+.o_nord_overview_oee_head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1rem;
+}
+
+.o_nord_overview_oee_bar {
+    position: relative;
+    height: 12px;
+    margin: 10px 0 4px;
+    border-radius: 6px;
+    background: linear-gradient(to right, #dc2828, #e6b800, #2eb88a);
+}
+
+.o_nord_overview_oee_indicator {
+    position: absolute;
+    top: -4px;
+    width: 10px;
+    height: 20px;
+    border: 1px solid #888;
+    border-radius: 5px;
+    background: #fff;
+    transition: left 0.4s ease-in-out;
+}
+
+.o_nord_overview_oee_target {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    background: var(--bs-body-color, #212529);
+    opacity: 0.6;
+}
+
+.o_nord_overview_donuts {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.o_nord_overview_donut_box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.o_nord_overview_donut {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+
+    &::before {
+        content: "";
+        position: absolute;
+        inset: 9px;
+        border-radius: 50%;
+        background: var(--bs-body-bg, #fff);
+    }
+
+    span {
+        position: relative;
+        font-weight: bold;
+    }
+}
+
+.o_nord_overview_donut_label {
+    margin-top: 4px;
+    font-weight: bold;
+    color: var(--bs-secondary-color, #6c757d);
+}
+
+.o_nord_overview_cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.o_nord_overview_kpi {
+    padding: 10px 12px;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 8px;
+}
+
+.o_nord_overview_kpi_title {
+    margin-bottom: 4px;
+    font-weight: bold;
+}
+
+.o_nord_overview_progress {
+    height: 8px;
+    margin: 6px 0 2px;
+    overflow: hidden;
+    border-radius: 4px;
+    background: var(--o-nord-overview-track);
+
+    div {
+        height: 100%;
+        border-radius: 4px;
+        background: var(--o-nord-overview-working-90);
+        transition: width 0.4s ease-in-out;
+    }
+}
+
+// ── Working hours ─────────────────────────────────────────────────────────
+.o_nord_overview_section_head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.o_nord_overview_status {
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+.o_nord_overview_status_working { background: var(--o-nord-overview-working-90); }
+.o_nord_overview_status_setup { background: var(--o-nord-overview-setup); }
+.o_nord_overview_status_alarm { background: var(--o-nord-overview-alarm); }
+.o_nord_overview_status_idle { background: var(--o-nord-overview-idle); color: #222; }
+.o_nord_overview_status_offline { background: var(--o-nord-overview-track); color: inherit; }
+
+.o_nord_overview_track {
+    display: flex;
+    gap: 1px;
+    min-width: 0;
+}
+
+.o_nord_overview_seg {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    &:hover .o_nord_overview_seg_bar {
+        filter: brightness(1.1);
+    }
+}
+
+.o_nord_overview_seg_bar {
+    height: 30px;
+    border-radius: 2px;
+}
+
+.o_nord_overview_seg_alarm {
+    height: 4px;
+    border-radius: 2px;
+}
+
+.o_nord_overview_seg_alarm_on {
+    background: var(--o-nord-overview-alarm);
+}
+
+.o_nord_overview_working_90 { background: var(--o-nord-overview-working-90); }
+.o_nord_overview_working_60 { background: var(--o-nord-overview-working-60); }
+.o_nord_overview_working_30 { background: var(--o-nord-overview-working-30); }
+.o_nord_overview_setup { background: var(--o-nord-overview-setup); }
+.o_nord_overview_alarm { background: var(--o-nord-overview-alarm); }
+.o_nord_overview_idle { background: var(--o-nord-overview-idle); }
+.o_nord_overview_offline { background: var(--o-nord-overview-offline); }
+.o_nord_overview_future {
+    background: transparent;
+    border: 1px dashed var(--o-nord-overview-track);
+}
+
+.o_nord_overview_axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2px;
+    font: 10px monospace;
+    color: var(--bs-secondary-color, #6c757d);
+}
+
+.o_nord_overview_legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-top: 10px;
+    font-size: 0.8rem;
+
+    i {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        margin-right: 4px;
+        border-radius: 3px;
+        vertical-align: -1px;
+    }
+}
+
+// ── Charts ────────────────────────────────────────────────────────────────
+.o_nord_overview_chart {
+    position: relative;
+    height: 240px;
+}
+
+// ── Alerts ────────────────────────────────────────────────────────────────
+.o_nord_overview_alerts {
+    font-size: 0.85rem;
+
+    td, th {
+        vertical-align: middle;
+    }
+}
+
+.o_nord_overview_alert_open td {
+    background: rgba(220, 40, 40, 0.06);
+}
+
+.o_nord_overview_legend i.o_nord_overview_legend_strip {
+    height: 4px;
+    vertical-align: middle;
+}

@@ -6,6 +6,13 @@
         <field name="model">mrp.workcenter</field>
         <field name="inherit_id" ref="mrp.mrp_workcenter_view"/>
         <field name="arch" type="xml">
+            <!-- The reference rate of the machine overview's Performance -->
+            <xpath expr="//group[@name='capacity']/div[field[@name='oee_target']]" position="after">
+                <label for="nord_sync_capacity_per_hour"/>
+                <div class="o_row">
+                    <field name="nord_sync_capacity_per_hour"/> units / hour
+                </div>
+            </xpath>
             <xpath expr="//page[@name='general_info']" position="after">
                 <page string="Nordwire" name="nord_sync">
                     <div class="mb-2">
@@ -21,8 +28,6 @@
                         Not mapped to a Nord Core resource yet — nothing below is sent to the Core
                         until this is set.
                     </div>
-                    <separator string="Nord Times"/>
-                    <field name="nord_sync_time_chart" class="w-100" widget="nord_sync_time_chart" nolabel="1"/>
                     <separator string="Control Mode"/>
                     <group>
                         <field name="nord_sync_control_mode"/>
@@ -47,6 +52,10 @@
                     <group>
                         <field name="nord_sync_auto_idle_segments"/>
                     </group>
+                    <!-- Today of the machine, after the Kioda machine screen: OEE,
+                         working hours, alerts, declarations and OEE per hour -->
+                    <separator string="Machine Overview"/>
+                    <field name="nord_sync_machine_overview" class="w-100" widget="nord_sync_machine_overview" nolabel="1"/>
                 </page>
             </xpath>
         </field>

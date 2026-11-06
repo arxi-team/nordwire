@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Nordwire: Manufacturing',
-    'version': '1.0.1',
+    'version': '1.0.2',
     'category': 'Manufacturing',
     'summary': 'Nordwire source: mrp.production, plus the BOM/Resource/Employee/Workorder/Quality '
                'Check Bridges that support it.',
