@@ -84,7 +84,7 @@ _PAGE = """<!DOCTYPE html>
   :root { --bg: #eef0f3; --card: #f6f7f9; --surface: #fff; --text: #1a1a1a; --text2: #495057; --muted: #6b7280; --border: rgba(17, 33, 56, .08); --border2: rgba(17, 33, 56, .2); --hover: rgba(17, 33, 56, .1); --navy: #112138; --navy-hover: #0c1726; --on-navy: #fff; --success: #28a745; --success-bg: rgba(40, 167, 69, .12); --warning: #d97706; --warning-bg: rgba(255, 172, 0, .16); --danger: #dc3545; --danger-bg: rgba(220, 53, 69, .12); --info: #17a2b8; --neutral-bg: rgba(108, 117, 125, .12); --shadow: 0 1px 3px rgba(0, 0, 0, .06); --shadow-lg: 0 4px 16px rgba(0, 0, 0, .12); }
   @media (prefers-color-scheme: dark) { :root { --bg: #0a1628; --card: #0d1b2e; --surface: #101f35; --text: #e2e8f0; --text2: #94a3b8; --muted: #94a3b8; --border: rgba(30, 58, 95, .5); --border2: rgba(30, 58, 95, .85); --hover: rgba(255, 255, 255, .06); --navy: #2f5a96; --navy-hover: #3a6bb0; --success: #3fb950; --success-bg: rgba(63, 185, 80, .16); --warning: #e3b341; --warning-bg: rgba(227, 179, 65, .16); --danger: #f85149; --danger-bg: rgba(248, 81, 73, .16); --neutral-bg: rgba(148, 163, 184, .14); --shadow: 0 1px 3px rgba(0, 0, 0, .3); --shadow-lg: 0 8px 32px rgba(0, 0, 0, .5); } }
   * { box-sizing: border-box; }
-  body { font-family: 'DM Sans', system-ui, sans-serif; font-size: 15px; margin: 0; padding: 16px 16px 88px; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+  body { font-family: 'DM Sans', system-ui, sans-serif; font-size: 15px; margin: 0; padding: 16px; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
   input { width: 100%; height: 44px; font: inherit; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border2); background: var(--surface); color: var(--text); }
   input:focus { outline: 2px solid var(--navy); outline-offset: 0; }
   .msg { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 10; padding: 12px 14px; border-radius: 10px; font-weight: 600; display: none; box-shadow: var(--shadow-lg); border: 1px solid var(--border2); background: var(--surface); }
@@ -126,6 +126,9 @@ _PAGE = """<!DOCTYPE html>
   .row { display: flex; gap: 8px; }
   .row .btn { flex: 1; }
   .row .btn.alt { background: var(--surface); color: var(--text); border-color: var(--border2); }
+  /* Pushed to the bottom of the page and tall enough that the last card clears the banner */
+  .brand { margin-top: auto; padding-top: 32px; text-align: center; pointer-events: none; user-select: none; }
+  .brand img { height: 22px; width: auto; opacity: .75; vertical-align: bottom; }
 </style>
 </head>
 <body>
@@ -154,6 +157,7 @@ _PAGE = """<!DOCTYPE html>
   <div class="bar"><button type="button" class="back" data-go="menu">&lsaquo; Menu</button><h1>Estado dos postos</h1></div>
   <div class="todo" data-view="status" aria-live="polite"></div>
 </div>
+<footer class="brand"><picture><source srcset="/nord_sync_mrp/static/src/img/logo_nordwire_white.svg" media="(prefers-color-scheme: dark)"><img src="/nord_sync_mrp/static/src/img/logo_nordwire.svg" alt="Nordwire"></picture></footer>
 <div id="msg" class="msg"></div>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -220,7 +224,7 @@ function render() {
   if (kept !== null && $('qty')) $('qty').value = kept;
 }
 async function refreshTodo() {
-  try { groups = await call('/nord_sync/pda/todo', {}); } catch (e) { return; }
+  try { groups = await call('/nordwire/pda/todo', {}); } catch (e) { return; }
   render();
 }
 // Menu navigation: the hash is the screen, so the device's back button works
@@ -249,8 +253,8 @@ document.addEventListener('click', async (e) => {
   btn.disabled = true;
   try {
     const r = btn.dataset.confirm
-      ? await call('/nord_sync/pda/deliver', {mo_name: btn.dataset.confirm, qty: $('qty').value})
-      : await call('/nord_sync/pda/not_ok', {mo_name: btn.dataset.mo});
+      ? await call('/nordwire/pda/deliver', {mo_name: btn.dataset.confirm, qty: $('qty').value})
+      : await call('/nordwire/pda/not_ok', {mo_name: btn.dataset.mo});
     show(r.message, r.success);
     if (btn.dataset.confirm && r.success) picked = null;
   } catch (err) { show(err.message, false); }
@@ -277,7 +281,7 @@ async function setup() {
   code.focus();
   if (!mo) return;
   try {
-    const r = await call('/nord_sync/pda/setup', {mo_name: mo});
+    const r = await call('/nordwire/pda/setup', {mo_name: mo});
     show(r.message, r.success);
   } catch (e) { show(e.message, false); }
   refreshTodo();
@@ -311,11 +315,11 @@ class NordSyncPda(Controller):
         notes they leave on the MO are written in."""
         return request.env(context=dict(request.env.context, lang=request.env.user.lang))
 
-    @route('/nord_sync/pda', type='http', auth='user', methods=['GET'])
+    @route(['/nordwire/pda', '/nord_sync/pda'], type='http', auth='user', methods=['GET'])
     def pda_page(self, **kwargs):
         return request.make_response(_PAGE, headers=[('Content-Type', 'text/html; charset=utf-8')])
 
-    @route('/nord_sync/pda/todo', type='jsonrpc', auth='user', methods=['POST'])
+    @route('/nordwire/pda/todo', type='jsonrpc', auth='user', methods=['POST'])
     def pda_todo(self, **kwargs):
         """The MOs still to do, grouped by the work center of the operation
         each one is waiting for (its next open work order, the one a scan
@@ -364,7 +368,7 @@ class NordSyncPda(Controller):
             for group in sorted(groups.values(), key=lambda g: (g['sequence'], g['workcenter']))
         ]
 
-    @route('/nord_sync/pda/not_ok', type='jsonrpc', auth='user', methods=['POST'])
+    @route('/nordwire/pda/not_ok', type='jsonrpc', auth='user', methods=['POST'])
     def pda_not_ok(self, mo_name, **kwargs):
         mo_name = mo_name.strip()
         production = self._env()['mrp.production'].search([
@@ -386,7 +390,7 @@ class NordSyncPda(Controller):
             return {'success': False, 'message': f'{mo_name}: {e}'}
         return {'success': True, 'message': f'{mo_name}: Não OK registado ({count}).'}
 
-    @route('/nord_sync/pda/deliver', type='jsonrpc', auth='user', methods=['POST'])
+    @route('/nordwire/pda/deliver', type='jsonrpc', auth='user', methods=['POST'])
     def pda_deliver(self, mo_name, qty=None, **kwargs):
         """Delivers and closes the MO with `qty` good units (default: the
         planned quantity), as a Nord "Mark Done" would. Only for an MO running
@@ -409,7 +413,7 @@ class NordSyncPda(Controller):
             webhook(request.env, 'deliver', {'mo': production.name, 'state': production.state, 'qty': qty})
         return {'success': success, 'message': message}
 
-    @route('/nord_sync/pda/setup', type='jsonrpc', auth='user', methods=['POST'])
+    @route('/nordwire/pda/setup', type='jsonrpc', auth='user', methods=['POST'])
     def pda_setup(self, mo_name, **kwargs):
         mo_name = mo_name.strip()
         production = self._env()['mrp.production'].search([

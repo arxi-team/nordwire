@@ -33,7 +33,7 @@ class MrpProduction(models.Model):
     )
 
     def _nord_sync_demo_deliver(self, qty=None, scrap=0.0, not_ok=0.0):
-        """Fair demo (PDA "Entregar", /nord_sync/pda/deliver): finishes this MO as if its
+        """Fair demo (PDA "Entregar", /nordwire/pda/deliver): finishes this MO as if its
         Nord job had been marked done, through the same result path
         (_nord_sync_apply_result): qty good units (default: the planned
         quantity), scrap, and not_ok rejects on top of those already tapped
