@@ -63,6 +63,8 @@ class MrpWorkorder(models.Model):
 
     def write(self, vals):
         result = super().write(vals)
+        if vals.get('state') in ('done', 'cancel', 'pending'):
+            self._nord_sync_update_wc_current_production_on_stop()
         self._nord_sync_notify('write')
         return result
 
@@ -104,22 +106,39 @@ class MrpWorkorder(models.Model):
         result = super().button_start(*args, **kwargs)
         if not kwargs.get('bypass'):
             self._nord_sync_notify_floor_event('start')
+        if self.workcenter_id and self.production_id:
+            self.workcenter_id.with_context(
+                nord_sync_skip_prevent_check=True,
+                nord_sync_from_wo_start=True,
+            ).nord_sync_current_production_id = self.production_id.id
         return result
 
     def button_pending(self):
         result = super().button_pending()
         self._nord_sync_notify_floor_event('stop')
+        self._nord_sync_update_wc_current_production_on_stop()
         return result
 
     def button_finish(self):
         result = super().button_finish()
         self._nord_sync_notify_floor_event('stop')
+        self._nord_sync_update_wc_current_production_on_stop()
+        return result
+
+    def action_cancel(self):
+        result = super().action_cancel()
+        self._nord_sync_update_wc_current_production_on_stop()
         return result
 
     def start_employee(self, employee_id):
         # Shop Floor starts a work order per employee, not through button_start
         result = super().start_employee(employee_id)
         self._nord_sync_notify_floor_event('start')
+        if self.workcenter_id and self.production_id:
+            self.workcenter_id.with_context(
+                nord_sync_skip_prevent_check=True,
+                nord_sync_from_wo_start=True,
+            ).nord_sync_current_production_id = self.production_id.id
         return result
 
     def stop_employee(self, employee_ids):
@@ -127,7 +146,42 @@ class MrpWorkorder(models.Model):
         for workorder in self:
             if not workorder.time_ids.filtered(lambda t: not t.date_end):
                 workorder._nord_sync_notify_floor_event('stop')
+                workorder._nord_sync_update_wc_current_production_on_stop()
         return result
+
+    def _nord_sync_update_wc_current_production_on_stop(self):
+        """When this work order stops (finished, paused, cancelled, or employee stopped),
+        checks whether the work center is still being used by this MO. If no active
+        open timesheets or running work orders remain on that work center, clears
+        nord_sync_current_production_id so it does not stay stuck on an MO that is not in use."""
+        for wo in self:
+            wc = wo.workcenter_id
+            if wc and wc.nord_sync_current_production_id == wo.production_id:
+                print(wc)
+                print(wc.nord_sync_current_production_id)
+                print(wo.production_id)
+                other_open_session = self.env['mrp.workcenter.productivity'].search([
+                    ('workcenter_id', '=', wc.id),
+                    ('date_end', '=', False),
+                    ('nord_sync_downtime_kind', '=', False),
+                ], limit=1)
+                if other_open_session and other_open_session.workorder_id:
+                    print(other_open_session)
+                    print(other_open_session.workorder_id)
+                    new_mo = other_open_session.workorder_id.production_id
+                    wc.with_context(nord_sync_skip_mo_change=True).nord_sync_current_production_id = new_mo.id
+                else:
+                    other_running_wo = self.env['mrp.workorder'].search([
+                        ('workcenter_id', '=', wc.id),
+                        ('state', '=', 'progress'),
+                        ('id', '!=', wo.id),
+                    ], limit=1)
+                    running_times = other_running_wo.time_ids.filtered(lambda t: not t.date_end)
+                    if running_times:
+                        wc.with_context(nord_sync_skip_mo_change=True).nord_sync_current_production_id = other_running_wo.production_id.id
+                    else:
+                        print('cai aquiiii')
+                        wc.with_context(nord_sync_skip_mo_change=True).nord_sync_current_production_id = False
 
     def _nord_sync_notify_floor_event(self, event):
         """Tells the Core a human started ('start') or paused/finished
@@ -357,6 +411,7 @@ class MrpWorkorder(models.Model):
                 end_date = payload.get('end_date')
                 if end_date:
                     still_open.write({'date_end': end_date})
+                self._nord_sync_update_wc_current_production_on_stop()
             else:
                 return False, f'Unknown event_type: {event_type}'
         except Exception as exc:

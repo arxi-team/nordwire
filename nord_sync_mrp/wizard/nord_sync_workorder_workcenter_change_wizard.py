@@ -36,10 +36,18 @@ class NordSyncWorkorderWorkcenterChangeWizard(models.TransientModel):
         workorder = self.workorder_id
         if self.workcenter_id == workorder.workcenter_id:
             raise UserError('Pick a different work center, or close this wizard to keep the current one.')
+        old_wc = workorder.workcenter_id
         if workorder.state == 'progress':
             open_employees = workorder.time_ids.filtered(lambda t: not t.date_end).mapped('employee_id')
             workorder.end_previous(doall=True)
+            if old_wc and old_wc.nord_sync_current_production_id == workorder.production_id:
+                old_wc.with_context(nord_sync_skip_mo_change=True).nord_sync_current_production_id = False
             workorder.workcenter_id = self.workcenter_id.id
+            if self.workcenter_id:
+                self.workcenter_id.with_context(
+                    nord_sync_skip_prevent_check=True,
+                    nord_sync_from_wo_start=True,
+                ).nord_sync_current_production_id = workorder.production_id.id
             for employee in open_employees:
                 if employee:
                     workorder.start_employee(employee.id)
