@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="nord_sync_mrp.NordSyncMachineOverview">
+        <div class="o_nord_overview">
+            <div t-if="!props.record.resId" class="text-muted">Save the work center to see its machine overview.</div>
+            <t t-elif="state.data">
+                <t t-set="oee" t-value="state.data.oee"/>
+                <t t-set="util" t-value="state.data.utilization"/>
+                <div class="o_nord_overview_toolbar">
+                    <span class="text-muted">Today, 00:00 until now</span>
+                    <button type="button" class="btn btn-link btn-sm ms-auto" t-on-click="load" title="Refresh"
+                            t-att-disabled="state.loading">
+                        <i class="fa fa-refresh" t-att-class="{ 'fa-spin': state.loading }"/> Refresh
+                    </button>
+                </div>
+
+                <!-- 1. OEE header -->
+                <div class="o_nord_overview_card">
+                    <div class="o_nord_overview_oee_head">
+                        <span>OEE <b t-out="formatPct(oee.oee)"/></span>
+                        <span t-if="oee.oee_target" class="text-muted">Target <b t-out="formatPct(oee.oee_target)"/></span>
+                    </div>
+                    <div class="o_nord_overview_oee_bar">
+                        <div t-if="oee.oee_target" class="o_nord_overview_oee_target"
+                             t-attf-style="left: {{ clamp(oee.oee_target) }}%" title="OEE target"/>
+                        <div class="o_nord_overview_oee_indicator" t-attf-style="left: calc({{ clamp(oee.oee) }}% - 5px)"/>
+                    </div>
+                    <div class="o_nord_overview_donuts">
+                        <div t-foreach="factors" t-as="factor" t-key="factor.key" class="o_nord_overview_donut_box">
+                            <div class="o_nord_overview_donut" t-att-style="donutStyle(factor)">
+                                <span t-out="formatPct(factor.value)"/>
+                            </div>
+                            <div class="o_nord_overview_donut_label" t-out="factor.label"/>
+                        </div>
+                    </div>
+                    <div class="o_nord_overview_cards">
+                        <div class="o_nord_overview_kpi">
+                            <div class="o_nord_overview_kpi_title">Work Time</div>
+                            <div>Planned: <b t-out="formatHours(oee.planned_hours)"/></div>
+                            <div>Real: <b t-out="formatHours(oee.worked_hours)"/></div>
+                            <div class="o_nord_overview_progress">
+                                <div t-attf-style="width: {{ progress(oee.worked_hours, oee.planned_hours) }}%"/>
+                            </div>
+                        </div>
+                        <div class="o_nord_overview_kpi">
+                            <div class="o_nord_overview_kpi_title">Production</div>
+                            <div>Expected: <b t-out="oee.capacity_source ? formatQty(oee.expected_production) : '—'"/></div>
+                            <div>Real: <b t-out="formatQty(oee.produced)"/></div>
+                            <div class="o_nord_overview_progress">
+                                <div t-attf-style="width: {{ progress(oee.produced, oee.expected_production) }}%"/>
+                            </div>
+                            <div class="o_nord_overview_hint" t-out="capacityNote"/>
+                        </div>
+                        <div class="o_nord_overview_kpi">
+                            <div class="o_nord_overview_kpi_title">Quality</div>
+                            <div>Checked: <b t-out="formatQty(oee.good)"/></div>
+                            <div>Not Pass: <b class="text-danger" t-if="oee.bad" t-out="formatQty(oee.bad)"/><b t-else="">0</b></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Working hours -->
+                <div class="o_nord_overview_card">
+                    <div class="o_nord_overview_section_head">
+                        <span class="fw-bold">Working Hours</span>
+                        <span class="o_nord_overview_status" t-attf-class="o_nord_overview_status_{{ util.current_status }}" t-out="statusLabel"/>
+                        <span t-if="util.in_alarm" class="o_nord_overview_status o_nord_overview_status_alarm">
+                            <i class="fa fa-exclamation-triangle"/> Alarm
+                        </span>
+                        <span class="ms-auto text-end">
+                            <b class="fs-5" t-out="formatPct(util.utilization_rate)"/>
+                            <div class="o_nord_overview_hint">Utilization rate</div>
+                        </span>
+                    </div>
+                    <div class="o_nord_overview_track">
+                        <div t-foreach="util.segments" t-as="segment" t-key="segment_index"
+                             class="o_nord_overview_seg" t-att-title="segmentTitle(segment)">
+                            <div class="o_nord_overview_seg_bar" t-attf-class="o_nord_overview_{{ segment.status }}"/>
+                            <div class="o_nord_overview_seg_alarm" t-att-class="{ 'o_nord_overview_seg_alarm_on': segment.alarm }"/>
+                        </div>
+                    </div>
+                    <div class="o_nord_overview_axis">
+                        <span t-foreach="axisLabels" t-as="label" t-key="label" t-out="label"/>
+                    </div>
+                    <div class="o_nord_overview_legend">
+                        <span t-foreach="states" t-as="item" t-key="item.key">
+                            <i t-attf-class="o_nord_overview_{{ item.css }}"/>
+                            <t t-out="item.label"/>: <b t-out="formatMinutes(util.totals[item.key])"/>
+                        </span>
+                        <span title="Time with a Nord stop open, on top of the states above">
+                            <i class="o_nord_overview_alarm o_nord_overview_legend_strip"/>
+                            Alarm: <b t-out="formatMinutes(util.totals.alarm)"/>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Alerts: today's Nord stops, open until they end -->
+                <t t-set="alerts" t-value="state.data.alerts"/>
+                <div class="o_nord_overview_card">
+                    <div class="o_nord_overview_section_head">
+                        <span class="fw-bold">Alerts</span>
+                        <span t-if="alerts.open" class="o_nord_overview_status o_nord_overview_status_alarm">
+                            <i class="fa fa-exclamation-triangle"/> <t t-out="alerts.open"/> open
+                        </span>
+                        <span class="text-muted small"><t t-out="alerts.count"/> today · <t t-out="formatMinutes(alerts.minutes)"/></span>
+                        <button type="button" class="btn btn-link btn-sm ms-auto" t-on-click="openAlerts">All alerts</button>
+                    </div>
+                    <div t-if="!alerts.count" class="text-muted small">No stops today.</div>
+                    <table t-else="" class="table table-sm o_nord_overview_alerts mb-0">
+                        <thead>
+                            <tr><th/><th>Reason</th><th>Production / Operation</th><th>Start</th><th>End</th><th class="text-end">Duration</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="alertItems" t-as="item" t-key="item.id" t-att-class="{ 'o_nord_overview_alert_open': item.open }">
+                                <td><i t-attf-class="fa {{ item.open ? 'fa-exclamation-triangle text-danger' : 'fa-check text-muted' }}"/></td>
+                                <td t-out="item.reason or ''"/>
+                                <td class="text-muted"><t t-out="item.production or ''"/><t t-if="item.operation"> · <t t-out="item.operation"/></t></td>
+                                <td t-out="item.start"/>
+                                <td><t t-if="item.end" t-out="item.end"/><b t-else="" class="text-danger">open</b></td>
+                                <td class="text-end" t-out="formatMinutes(item.minutes)"/>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <button t-if="alerts.items.length &gt; alertItems.length or state.allAlerts" type="button" class="btn btn-link btn-sm px-0"
+                            t-on-click="() => this.state.allAlerts = !this.state.allAlerts">
+                        <t t-if="state.allAlerts">Show less</t><t t-else="">Show all <t t-out="alerts.items.length"/></t>
+                    </button>
+                </div>
+
+                <!-- 3 and 4. Per hour -->
+                <div class="row g-3">
+                    <div class="col-lg-6">
+                        <div class="o_nord_overview_card h-100">
+                            <div class="fw-bold mb-1">Declarations</div>
+                            <div class="o_nord_overview_chart"><canvas t-ref="declarations"/></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="o_nord_overview_card h-100">
+                            <div class="fw-bold mb-1">OEE Report by Hour</div>
+                            <div class="o_nord_overview_chart"><canvas t-ref="oeeByHour"/></div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>

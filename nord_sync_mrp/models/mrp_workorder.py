@@ -166,7 +166,7 @@ class MrpWorkorder(models.Model):
         # Same scrap and quality time a not_pass gets when the Core's result
         # arrives (mrp.production._nord_sync_apply_result), applied now;
         # that result leaves these units out.
-        production._nord_sync_create_scrap(1, self.env._('Nord PDA: not OK on %s', self.name))
+        production._nord_sync_create_scrap(1, self.env._('Nord PDA: not OK on %s', self.name), workorder=self)
         production._nord_sync_log_quality_loss(1, workorder=self)
         production.message_post(body=self.env._(
             'Nord PDA: 1 unit not OK on %(operation)s (%(count)s so far).',

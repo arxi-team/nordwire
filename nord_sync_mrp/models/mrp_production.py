@@ -643,10 +643,12 @@ class MrpProduction(models.Model):
             move.quantity = quantity
             move.picked = True
 
-    def _nord_sync_create_scrap(self, quantity, reason):
+    def _nord_sync_create_scrap(self, quantity, reason, workorder=None):
         """Creates and immediately validates the scrap — no human in this
-        autonomous loop to confirm it by hand. action_validate() itself
-        never raises; when the scrap location doesn't have enough on hand
+        autonomous loop to confirm it by hand. `workorder` is the operation
+        the units were rejected on, when known (the PDA's Não OK), so the
+        scrap counts on its own work center's machine overview.
+        action_validate() itself never raises; when the scrap location doesn't have enough on hand
         to validate straight away it returns a forecast-wizard action
         instead, left in draft for manual follow-up (logged, not alarmed —
         same resilience posture as the rest of this bridge).
@@ -657,6 +659,7 @@ class MrpProduction(models.Model):
         scrap = self.env['stock.scrap'].sudo().create({
             'product_id': self.product_id.id,
             'production_id': self.id,
+            'workorder_id': workorder.id if workorder else False,
             'scrap_qty': quantity,
             'company_id': self.company_id.id,
             'origin': reason,
