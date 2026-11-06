@@ -41,6 +41,13 @@ class MrpProduction(models.Model):
         Only for an MO with an operation on a stop-tracking work center, the
         fair demo's opt-in.
 
+        Quality checks still to do (on the MO or its work orders) are passed
+        first: on the PDA the rejects are the Não OK taps, and the Mark Done
+        would otherwise refuse to close ("You still need to do the quality
+        checks!"). Lot-tracked components left without a lot get one too
+        (see _nord_sync_fill_component_lots), else the close fails on "You
+        need to supply a Lot/Serial Number".
+
         Returns (success, message), same as _nord_sync_apply_result.
         """
         self.ensure_one()
@@ -52,8 +59,16 @@ class MrpProduction(models.Model):
         self.workorder_ids.time_ids.filtered(lambda t: not t.date_end and t.nord_sync_downtime_kind).write(
             {'date_end': fields.Datetime.now()},
         )
+        pending_checks = self.env['quality.check'].search([
+            ('production_id', '=', self.id), ('quality_state', '=', 'none'),
+        ])
+        if pending_checks:
+            # do_pass is one check at a time once quality_mrp_workorder is in
+            for check in pending_checks:
+                check.do_pass()
+            self.message_post(body=f'Nordwire: {len(pending_checks)} quality check(s) passed on PDA delivery.')
         pda_rejects = sum(self.workorder_ids.mapped('nord_sync_not_ok_count'))
-        success, message = self._nord_sync_apply_result(
+        success, message = self.with_context(nord_sync_fill_component_lots=True)._nord_sync_apply_result(
             qty_produced, scrap_qty=scrap, not_pass_qty=pda_rejects + not_ok, work_sessions=[],
         )
         return success, message
@@ -351,6 +366,8 @@ class MrpProduction(models.Model):
                 mo = self.with_context(skip_backorder=True)
                 if not self.product_uom_id.is_zero(self._get_quantity_to_backorder()):
                     mo = mo.with_context(mo_ids_to_backorder=self.ids)
+                if self.env.context.get('nord_sync_fill_component_lots'):
+                    self._nord_sync_fill_component_lots()
                 result = mo.button_mark_done()
                 if isinstance(result, dict) and result.get('res_model') == 'mrp.consumption.warning':
                     # Odoo's own "consumed qty differs from the BOM's expected
@@ -368,6 +385,8 @@ class MrpProduction(models.Model):
                     # (lot/serial) is a real business decision, left for a
                     # human — falls through to the generic blocked message.
                     self._nord_sync_set_raw_move_quantities(materials or [])
+                    if self.env.context.get('nord_sync_fill_component_lots'):
+                        self._nord_sync_fill_component_lots()
                     result = mo.with_context(skip_consumption=True).button_mark_done()
                 if isinstance(result, dict) and result.get('res_model') == 'mrp.production':
                     # button_mark_done() already wrote state='done' on this MO and
@@ -562,6 +581,33 @@ class MrpProduction(models.Model):
                 'nord_sync_timesheet_id': session.get('nord_timesheet_id') or False,
                 'electric_consume': session.get('energy_kwh_used') or 0.0,
             })
+
+    def _nord_sync_fill_component_lots(self):
+        """Fair demo (PDA "Entregar"): gives a lot to every consumed line of
+        a lot/serial-tracked component that has none — what Odoo adds when
+        the MO consumes more than it could reserve. Takes the newest lot of
+        that component with stock under the move's source location (the
+        line then consumes from where that lot is), else a new lot named
+        after the MO, so the close never stops on the missing lot.
+        """
+        self.ensure_one()
+        for move in self.move_raw_ids.filtered(lambda m: m.has_tracking != 'none' and m.state not in ('done', 'cancel')):
+            lines = move.move_line_ids.filtered(lambda ml: not ml.lot_id and not ml.lot_name)
+            if not lines:
+                continue
+            quant = self.env['stock.quant'].search([
+                ('product_id', '=', move.product_id.id), ('location_id', 'child_of', move.location_id.id),
+                ('lot_id', '!=', False), ('quantity', '>', 0),
+            ], order='in_date desc, id desc', limit=1)
+            if quant:
+                lines.write({'lot_id': quant.lot_id.id, 'location_id': quant.location_id.id})
+            else:
+                lot = self.env['stock.lot'].create({
+                    'name': f'{self.name}-{move.product_id.default_code or move.product_id.id}',
+                    'product_id': move.product_id.id,
+                    'company_id': self.company_id.id,
+                })
+                lines.lot_id = lot
 
     def _nord_sync_set_raw_move_quantities(self, materials):
         """Sets each open raw move's consumed quantity/picked flag from the
