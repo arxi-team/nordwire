@@ -24,7 +24,7 @@
                     <group>
                         <label for="nord_sync_current_production_id"/>
                         <div class="o_row">
-                            <field name="nord_sync_current_production_id" options="{'no_create': True}"/>
+                            <field name="nord_sync_current_production_id" readonly="1"/>
                             <button name="action_nord_sync_start" type="object" string="Start" icon="fa-play"
                                     class="btn-link" invisible="not nord_sync_current_production_id or nord_sync_mo_running"/>
                             <field name="nord_sync_mo_running" invisible="1"/>
