@@ -518,11 +518,17 @@ class NordSyncPda(Controller):
             except (ValueError, TypeError):
                 return {'success': False, 'message': 'Identificador de posto inválido.'}
 
+        if production.state not in ('confirmed', 'progress', 'to_close'):
+            return {'success': False, 'message': f'{mo_name}: MO não está disponível para produção.'}
+
         updated_names = []
         errors = []
         for wc in workcenters:
             try:
-                wc.nord_sync_current_production_id = production.id
+                # Own savepoint: a failure half way (e.g. after the work order
+                # was created) must not leave partial writes behind.
+                with self._env().cr.savepoint():
+                    wc.with_context(nord_sync_pda_setup=True).nord_sync_current_production_id = production.id
                 updated_names.append(wc.display_name or wc.name)
             except UserError as ue:
                 errors.append(f"{wc.name}: {ue.args[0]}")

@@ -103,15 +103,30 @@ class MrpWorkorder(models.Model):
                     'target': 'new',
                     'context': {'default_workorder_id': self.id},
                 }
-        result = super().button_start(*args, **kwargs)
+        self._nord_sync_identify_on_workcenter()
+        # Shop Floor's button_start goes through start_employee, which tells the
+        # Nord side itself: one start, not two.
+        result = super(MrpWorkorder, self.with_context(nord_sync_in_button_start=True)).button_start(*args, **kwargs)
         if not kwargs.get('bypass'):
             self._nord_sync_notify_floor_event('start')
-        if self.workcenter_id and self.production_id:
-            self.workcenter_id.with_context(
+        return result
+
+    def _nord_sync_identify_on_workcenter(self):
+        """A work order about to start takes its MO onto the work center
+        first: the previous MO is dealt with by the work center's own MO-change
+        setting (its stop reaches the Nord side before this start does) and a
+        setup left by a PDA scan ends here, since Odoo refuses to start a
+        work center that is blocked by one."""
+        for workorder in self:
+            workcenter = workorder.workcenter_id
+            if not (workcenter and workorder.production_id):
+                continue
+            workcenter._nord_sync_close_setup_lines(workorder)
+            workcenter.with_context(
                 nord_sync_skip_prevent_check=True,
                 nord_sync_from_wo_start=True,
-            ).nord_sync_current_production_id = self.production_id.id
-        return result
+                nord_sync_starting_workorder_ids=workorder.ids,
+            ).nord_sync_current_production_id = workorder.production_id.id
 
     def button_pending(self):
         result = super().button_pending()
@@ -132,13 +147,10 @@ class MrpWorkorder(models.Model):
 
     def start_employee(self, employee_id):
         # Shop Floor starts a work order per employee, not through button_start
+        self._nord_sync_identify_on_workcenter()
         result = super().start_employee(employee_id)
-        self._nord_sync_notify_floor_event('start')
-        if self.workcenter_id and self.production_id:
-            self.workcenter_id.with_context(
-                nord_sync_skip_prevent_check=True,
-                nord_sync_from_wo_start=True,
-            ).nord_sync_current_production_id = self.production_id.id
+        if not self.env.context.get('nord_sync_in_button_start'):
+            self._nord_sync_notify_floor_event('start')
         return result
 
     def stop_employee(self, employee_ids):
@@ -157,17 +169,12 @@ class MrpWorkorder(models.Model):
         for wo in self:
             wc = wo.workcenter_id
             if wc and wc.nord_sync_current_production_id == wo.production_id:
-                print(wc)
-                print(wc.nord_sync_current_production_id)
-                print(wo.production_id)
                 other_open_session = self.env['mrp.workcenter.productivity'].search([
                     ('workcenter_id', '=', wc.id),
                     ('date_end', '=', False),
                     ('nord_sync_downtime_kind', '=', False),
                 ], limit=1)
                 if other_open_session and other_open_session.workorder_id:
-                    print(other_open_session)
-                    print(other_open_session.workorder_id)
                     new_mo = other_open_session.workorder_id.production_id
                     wc.with_context(nord_sync_skip_mo_change=True).nord_sync_current_production_id = new_mo.id
                 else:
@@ -180,7 +187,6 @@ class MrpWorkorder(models.Model):
                     if running_times:
                         wc.with_context(nord_sync_skip_mo_change=True).nord_sync_current_production_id = other_running_wo.production_id.id
                     else:
-                        print('cai aquiiii')
                         wc.with_context(nord_sync_skip_mo_change=True).nord_sync_current_production_id = False
 
     def _nord_sync_notify_floor_event(self, event):

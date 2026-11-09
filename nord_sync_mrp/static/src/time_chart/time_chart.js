@@ -1,4 +1,4 @@
-import { Component, onWillStart, useState } from "@odoo/owl";
+import { Component, onWillStart, status, useState } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
@@ -37,7 +37,7 @@ export class NordSyncTimeChart extends Component {
     }
 
     async load() {
-        if (!this.props.record.resId) {
+        if (!this.props.record.resId || status(this) === "destroyed") {
             return;
         }
         this.state.data = await this.orm.call(
