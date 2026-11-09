@@ -32,14 +32,20 @@ export class NordSyncMachineOverview extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
-        this.state = useState({ data: null, loading: false, allAlerts: false });
+        this.state = useState({ data: null, loading: false, allAlerts: false, tip: null });
         this.declarationsRef = useRef("declarations");
         this.oeeRef = useRef("oeeByHour");
         this.charts = [];
-        onWillStart(async () => {
-            await loadBundle("web.chartjs_lib");
-            await this.load();
-        });
+        onWillStart(() => loadBundle("web.chartjs_lib"));
+        // Entering the work center (and moving to another one with the pager)
+        // runs the Refresh by itself
+        useEffect(
+            () => {
+                this.state.tip = null;
+                this.load();
+            },
+            () => [this.props.record.resId]
+        );
         useEffect(
             () => this.renderCharts(),
             () => [this.state.data]
@@ -69,7 +75,13 @@ export class NordSyncMachineOverview extends Component {
         const oee = this.state.data.oee;
         return [
             { key: "availability", label: _t("Availability"), value: oee.availability },
-            { key: "performance", label: _t("Performance"), value: oee.performance },
+            {
+                key: "performance",
+                label: _t("Performance"),
+                value: oee.performance,
+                // Above 100% the pace beats the capacity per hour: the OEE counts it as 100%
+                over: oee.performance > 100,
+            },
             { key: "quality", label: _t("Quality"), value: oee.quality },
         ];
     }
@@ -109,6 +121,9 @@ export class NordSyncMachineOverview extends Component {
         if (oee.capacity_source === "workcenter") {
             return _t("%s per hour", this.formatQty(oee.capacity_per_hour));
         }
+        if (oee.capacity_source === "fallback") {
+            return _t("%s per hour, fallback capacity", this.formatQty(oee.capacity_per_hour));
+        }
         if (oee.capacity_source === "workorders") {
             return _t("%s per hour, estimated from today's work orders", this.formatQty(oee.capacity_per_hour));
         }
@@ -129,6 +144,44 @@ export class NordSyncMachineOverview extends Component {
     get statusLabel() {
         const status = this.state.data.utilization.current_status;
         return this.states.find((s) => s.key === status)?.label || status;
+    }
+
+    /** The hover popup of a 15 minute segment, placed on the bar (above it, below near the top). */
+    showTip(ev, segment) {
+        const rect = ev.currentTarget.getBoundingClientRect();
+        const width = 250;
+        const below = rect.top < 230;
+        this.state.tip = {
+            segment,
+            below,
+            x: Math.max(8, Math.min(window.innerWidth - width - 8, rect.left + rect.width / 2 - width / 2)),
+            y: below ? rect.bottom + 10 : rect.top - 10,
+            arrow: Math.max(14, Math.min(width - 14, rect.left + rect.width / 2 - Math.max(8, Math.min(window.innerWidth - width - 8, rect.left + rect.width / 2 - width / 2)))),
+        };
+    }
+
+    hideTip() {
+        this.state.tip = null;
+    }
+
+    tipStatus(segment) {
+        if (segment.status === "future") {
+            return { label: _t("To come"), css: "future" };
+        }
+        const key = segment.status.startsWith("working") ? "working" : segment.status;
+        return { label: this.states.find((s) => s.key === key)?.label || key, css: key };
+    }
+
+    tipRows(segment) {
+        const total = Math.max(15, ...this.states.map((s) => segment.minutes[s.key] || 0));
+        return this.states
+            .filter((s) => segment.minutes[s.key])
+            .map((s) => ({
+                key: s.key,
+                label: s.label,
+                minutes: segment.minutes[s.key],
+                pct: this.clamp((segment.minutes[s.key] / total) * 100),
+            }));
     }
 
     segmentTitle(segment) {

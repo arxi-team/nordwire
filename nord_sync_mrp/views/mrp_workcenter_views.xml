@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <!-- Work center list: the MO each one is working on now -->
+    <record id="mrp_workcenter_tree_view_nord_sync" model="ir.ui.view">
+        <field name="name">mrp.workcenter.list.nord_sync</field>
+        <field name="model">mrp.workcenter</field>
+        <field name="inherit_id" ref="mrp.mrp_workcenter_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="nord_sync_current_production_id" string="MO Atual" optional="show" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
     <record id="mrp_workcenter_view_nord_sync" model="ir.ui.view">
         <field name="name">mrp.workcenter.form.nord.sync</field>
         <field name="model">mrp.workcenter</field>
@@ -34,6 +46,10 @@
                         <group>
                             <field name="nord_sync_mo_change_behavior"/>
                             <field name="nord_sync_prevent_mo_change_if_running"/>
+                            <field name="nord_sync_auto_start_on_mo_select"/>
+                            <field name="nord_sync_stop_others_on_start"/>
+                            <field name="nord_sync_auto_reason_id" options="{'no_quick_create': True}"
+                                   context="{'default_manual': True}"/>
                         </group>
                         <group>
                             <field name="nord_sync_unassigned_work_behavior"/>
@@ -66,6 +82,13 @@
                     <!-- Today of the machine, after the Kioda machine screen: OEE,
                          working hours, alerts, declarations and OEE per hour -->
                     <separator string="Machine Overview"/>
+                    <group>
+                        <label for="nord_sync_capacity_fallback"/>
+                        <div class="o_row">
+                            <field name="nord_sync_capacity_fallback"/> units / hour
+                            <span class="text-muted">used for Performance when Capacity per Hour is empty</span>
+                        </div>
+                    </group>
                     <field name="nord_sync_machine_overview" class="w-100" widget="nord_sync_machine_overview" nolabel="1"/>
                 </page>
             </xpath>
@@ -154,5 +177,59 @@
             <p class="o_view_nocontent_smiling_face">No productive, stop or setup time logged yet</p>
         </field>
     </record>
+
+    <!-- Downtime reasons: add, rename and remove them (the ones the
+         "Auto Reason on MO Change" of a work center and the stops pick from) -->
+    <!-- The category is the loss.type record itself (loss_id): the base list edits
+         the related loss_type, which writes onto the shared category record and,
+         on a new reason with no category yet, saves nothing -->
+    <record id="view_nord_sync_downtime_reason_list" model="ir.ui.view">
+        <field name="name">mrp.workcenter.productivity.loss.list.nord.sync</field>
+        <field name="model">mrp.workcenter.productivity.loss</field>
+        <field name="arch" type="xml">
+            <list string="Downtime Reasons" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="loss_id" string="Category" required="1" options="{'no_create': True, 'no_open': True}"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_nord_sync_downtime_reason_form" model="ir.ui.view">
+        <field name="name">mrp.workcenter.productivity.loss.form.nord.sync</field>
+        <field name="model">mrp.workcenter.productivity.loss</field>
+        <field name="arch" type="xml">
+            <form string="Downtime Reason">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="loss_id" string="Category" required="1" options="{'no_create': True, 'no_open': True}"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_nord_sync_downtime_reasons" model="ir.actions.act_window">
+        <field name="name">Downtime Reasons</field>
+        <field name="res_model">mrp.workcenter.productivity.loss</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('loss_type', '!=', 'productive')]</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('nord_sync_mrp.view_nord_sync_downtime_reason_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('nord_sync_mrp.view_nord_sync_downtime_reason_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add a downtime reason</p>
+            <p>Reasons a work center can stop or be in setup for. A reason already used by a
+               timesheet cannot be deleted.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_nord_sync_downtime_reasons"
+              name="Downtime Reasons"
+              action="action_nord_sync_downtime_reasons"
+              parent="mrp.menu_mrp_configuration"
+              groups="mrp.group_mrp_manager"
+              sequence="91"/>
 
 </odoo>
