@@ -22,26 +22,36 @@
                                 help="Re-sends every session-loss reason and reason type to the Core, even ones already imported there — not specific to this work center, use after the Core's own copy was lost."/>
                     </div>
                     <group>
-                        <field name="nord_sync_current_production_id" options="{'no_create': True}"/>
+                        <label for="nord_sync_current_production_id"/>
+                        <div class="o_row">
+                            <field name="nord_sync_current_production_id" options="{'no_create': True}"/>
+                            <button name="action_nord_sync_start" type="object" string="Start" icon="fa-play"
+                                    class="btn-link" invisible="not nord_sync_current_production_id or nord_sync_mo_running"/>
+                            <field name="nord_sync_mo_running" invisible="1"/>
+                            <button name="action_nord_sync_stop" type="object" string="Stop" icon="fa-stop"
+                                    class="btn-link" invisible="not nord_sync_current_production_id"/>
+                        </div>
                         <field name="nord_sync_resource_id" widget="many2many_tags" options="{'no_create': True}"/>
                     </group>
                     <div class="alert alert-warning" role="alert" invisible="nord_sync_resource_id">
                         Not mapped to a Nord Core resource yet — nothing below is sent to the Core
                         until this is set.
                     </div>
+                    <separator string="Control Mode"/>
+                    <group>
+                        <field name="nord_sync_control_mode"/>
+                    </group>
                     <separator string="MO &amp; Work Order Rules"/>
                     <group>
                         <group>
-                            <field name="nord_sync_mo_change_behavior"/>
-                            <field name="nord_sync_prevent_mo_change_if_running"/>
+                            <field name="nord_sync_mo_change_behavior" readonly="nord_sync_control_mode == 'nord'"/>
+                            <field name="nord_sync_prevent_mo_change_if_running" readonly="nord_sync_control_mode == 'nord'"
+                                   invisible="nord_sync_mo_parallel"/>
+                            <field name="nord_sync_mo_parallel" invisible="1"/>
                         </group>
                         <group>
                             <field name="nord_sync_unassigned_work_behavior"/>
                         </group>
-                    </group>
-                    <separator string="Control Mode"/>
-                    <group>
-                        <field name="nord_sync_control_mode"/>
                     </group>
                     <group>
                         <group string="Port &amp; Sensor Behavior">

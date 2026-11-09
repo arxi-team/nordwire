@@ -46,7 +46,8 @@
                         <field name="nord_sync_mo_change_behavior"/>
                     </div>
                 </div>
-                <div class="col-12 col-lg-6 o_setting_box" invisible="not nord_sync_enabled">
+                <div class="col-12 col-lg-6 o_setting_box"
+                     invisible="not nord_sync_enabled or nord_sync_mo_change_behavior == 'start_without_close'">
                     <div class="o_setting_left_pane">
                         <field name="nord_sync_prevent_mo_change_if_running"/>
                     </div>
