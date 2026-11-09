@@ -5,6 +5,7 @@ from . import res_company
 from . import sync_queue
 from . import mrp_workcenter_productivity
 from . import mrp_production
+from . import nord_sync_resource
 from . import resource_resource
 from . import mrp_workcenter
 from . import hr_employee

@@ -177,8 +177,11 @@ class MrpProduction(models.Model):
 
     def _nord_sync_sale(self):
         """The sale this MO came from (its stock references, else the sale
-        line it was made for, else the sale named by its origin)."""
+        line it was made for, else the sale named by its origin). Empty
+        (False) without the Sales app installed."""
         self.ensure_one()
+        if 'sale.order' not in self.env:
+            return False
         sale = self.env['sale.order']
         if 'sale_ids' in self.env['stock.reference']._fields:
             sale = self.reference_ids.sale_ids
@@ -186,7 +189,7 @@ class MrpProduction(models.Model):
             sale |= self.sale_line_id.order_id
         if not sale and self.origin:
             sale = self.env['sale.order'].sudo().search([('name', '=', self.origin)], limit=1)
-        return sale[:1]
+        return sale[:1] or False
 
     def _nord_sync_find_delivery(self, create=True, include_done=False):
         """The open customer delivery of this MO. The sale the MO came from
@@ -198,7 +201,8 @@ class MrpProduction(models.Model):
         Picking = self.env['stock.picking'].sudo()
         skip = ('cancel',) if include_done else ('done', 'cancel')
         open_out = lambda p: p.picking_type_code == 'outgoing' and p.state not in skip
-        sale = self._nord_sync_sale().sudo()
+        sale = self._nord_sync_sale()
+        sale = sale.sudo() if sale else sale
         picking = Picking
         if sale:
             picking = sale.picking_ids.filtered(open_out)[:1] or Picking.search([

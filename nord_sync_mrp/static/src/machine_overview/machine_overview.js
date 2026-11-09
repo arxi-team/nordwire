@@ -1,4 +1,4 @@
-import { Component, onWillStart, onWillUnmount, useEffect, useRef, useState } from "@odoo/owl";
+import { Component, onWillStart, onWillUnmount, status, useEffect, useRef, useState } from "@odoo/owl";
 import { loadBundle } from "@web/core/assets";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
@@ -54,7 +54,11 @@ export class NordSyncMachineOverview extends Component {
     }
 
     async load() {
-        if (!this.props.record.resId) {
+        // The chart bundle is awaited before this runs: the form may be left (a
+        // quick tab change, a save) meanwhile, and the ORM refuses to be called
+        // from a destroyed component, which showed the generic error dialog
+        // instead of the real one of whatever the user was doing.
+        if (!this.props.record.resId || status(this) === "destroyed") {
             return;
         }
         this.state.loading = true;
