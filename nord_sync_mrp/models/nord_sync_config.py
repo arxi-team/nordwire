@@ -147,10 +147,18 @@ class NordSyncConfig(models.Model):
                 return wo._nord_sync_apply_granular_event(event_type, body.get('payload') or {})
             return workcenter._nord_sync_handle_machine_working_without_mo(payload=body.get('payload'))
         elif event_type == 'session_stop':
-            open_lines = self.env['mrp.workcenter.productivity'].sudo().search([
-                ('workcenter_id', '=', workcenter.id), ('date_end', '=', False),
-            ])
-            end_date = (body.get('payload') or {}).get('end_date') or fields.Datetime.now()
+            payload = body.get('payload') or {}
+            # Only the session the Core ended: its own line when it names it,
+            # else the lines a Nord session opened. A line someone started in
+            # Odoo (parallel work orders) is not the Core's to close.
+            domain = [('workcenter_id', '=', workcenter.id), ('date_end', '=', False)]
+            if payload.get('nord_timesheet_id'):
+                domain.append(('nord_sync_timesheet_id', '=', payload['nord_timesheet_id']))
+            else:
+                domain.append('|')
+                domain += [('nord_sync_timesheet_id', '!=', 0), ('nord_sync_is_unassigned', '=', True)]
+            open_lines = self.env['mrp.workcenter.productivity'].sudo().search(domain)
+            end_date = payload.get('end_date') or fields.Datetime.now()
             open_lines.write({'date_end': end_date})
             return True, 'ok'
         return True, 'ok'
