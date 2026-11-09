@@ -262,6 +262,24 @@ class MrpWorkcenter(models.Model):
             or (config and config.nord_sync_prevent_mo_change_if_running)
         )
 
+    def _nord_sync_effective_unassigned_behavior(self):
+        self.ensure_one()
+        config = self.env['nord_sync.config'].sudo()._get_for_company(self.company_id)
+        return (
+            self.nord_sync_unassigned_work_behavior
+            or (config and config.nord_sync_unassigned_work_behavior)
+            or 'first_scheduled'
+        )
+
+    def _nord_sync_effective_rule(self, field):
+        """What applies for one of the three MO & Work Order rules, by field name."""
+        self.ensure_one()
+        return {
+            'nord_sync_mo_change_behavior': self._nord_sync_effective_mo_change_behavior,
+            'nord_sync_prevent_mo_change_if_running': self._nord_sync_effective_prevent_mo_change,
+            'nord_sync_unassigned_work_behavior': self._nord_sync_effective_unassigned_behavior,
+        }[field]()
+
     @api.depends('nord_sync_mo_change_behavior', 'company_id')
     def _compute_nord_sync_mo_parallel(self):
         for workcenter in self:
@@ -523,12 +541,7 @@ class MrpWorkcenter(models.Model):
         """Ponto 5: máquina diz que aquele WC está a trabalhar mas não tem nenhuma MO selecionada."""
         self.ensure_one()
         start_date = start_date or (payload and payload.get('start_date')) or fields.Datetime.now()
-        config = self.env['nord_sync.config'].sudo()._get_for_company(self.company_id)
-        behavior = (
-            self.nord_sync_unassigned_work_behavior
-            or (config and config.nord_sync_unassigned_work_behavior)
-            or 'first_scheduled'
-        )
+        behavior = self._nord_sync_effective_unassigned_behavior()
 
         if behavior == 'first_scheduled':
             # 5.1: Agarra na 1ª MO programada, organizada por data ascendente e marca start
@@ -1088,6 +1101,9 @@ class MrpWorkcenter(models.Model):
                 on this resource without a human clicking "Mark Done".
             granular_push (bool): push work-session start/stop and job
                 cancellation back to this work order in real time.
+            prevent_mo_change_if_running (bool) / unassigned_work_behavior (str): the
+                other two MO & Work Order rules, effective values (the Core keeps them
+                on the resource and they sync both ways with the Cloud).
             mo_change_behavior (str): 'close_and_open' or 'start_without_close' — the
                 work center's effective MO Change Behavior (its own, else the
                 company's); the Core turns it into one work session at a time or
@@ -1133,6 +1149,8 @@ class MrpWorkcenter(models.Model):
             'autonomous_close': self.nord_sync_autonomous_close,
             'granular_push': self.nord_sync_granular_push,
             'mo_change_behavior': self._nord_sync_effective_mo_change_behavior(),
+            'prevent_mo_change_if_running': self._nord_sync_effective_prevent_mo_change(),
+            'unassigned_work_behavior': self._nord_sync_effective_unassigned_behavior(),
             'contention_policy': self.nord_sync_contention_policy,
             'chain_close': self.nord_sync_chain_close,
             'mirror_mode': self.nord_sync_mirror_mode,
