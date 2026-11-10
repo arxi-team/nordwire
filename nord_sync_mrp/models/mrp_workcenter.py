@@ -487,6 +487,9 @@ class MrpWorkcenter(models.Model):
     def _nord_sync_start_workorder(self, workorder):
         """Starts `workorder` here and opens its timesheet, whoever asked."""
         self.ensure_one()
+        # The operations of an MO run one after the other (Chain Close): also when the machine starts with no MO
+        # picked and takes one, which never goes through the work center event that does this for a picked MO
+        self._nord_sync_close_previous_operations(workorder)
         if workorder.state not in ('progress', 'done', 'cancel'):
             workorder.with_context(
                 nord_sync_skip_confirm=True,

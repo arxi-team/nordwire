@@ -153,6 +153,41 @@ class TestWorkcenterSequentialOperationsNordSync(TransactionCase):
         self.assertFalse(second.date_end)
         self.assertLessEqual(first.date_end, second.date_start)
 
+    def test_the_stop_of_the_first_operation_ends_when_the_second_starts(self):
+        # the bag leaves the first machine (its plate is released: a stop opens there), then the second starts
+        first = self._start(self.first, 9206)
+        ok, _msg = self.config._nord_sync_apply_workorder_event(
+            {'res_id': self.first.id, 'payload': {'nord_timesheet_id': 9206, 'end_date': str(fields.Datetime.now())}},
+            'mrp.workcenter', 'session_stop')
+        self.assertTrue(ok)
+        ok, _msg = self.config._nord_sync_apply_workorder_event(
+            {'res_id': self.first.id, 'payload': {
+                'nord_timesheet_id': 9207, 'start_date': str(fields.Datetime.now()), 'kind': 'stop'}},
+            'mrp.workcenter', 'session_downtime_open')
+        self.assertTrue(ok)
+        stop = self.Line.search([('nord_sync_timesheet_id', '=', 9207)])
+        self.assertFalse(stop.date_end, 'the first machine shows as stopped')
+        self._start(self.second, 9208)
+        self.assertTrue(stop.date_end, 'its operation is over once the next one starts, the stop does not go on')
+
+    def test_the_machine_taking_the_first_scheduled_mo_also_ends_the_previous_operation(self):
+        # the second machine has no MO picked and takes the first scheduled one, the MO the first machine started
+        self.second.with_context(nord_sync_skip_mo_change=True).nord_sync_current_production_id = False
+        self.second.nord_sync_unassigned_work_behavior = 'first_scheduled'
+        self._start(self.first, 9209)
+        ok, _msg = self.config._nord_sync_apply_workorder_event(
+            {'res_id': self.first.id, 'payload': {'nord_timesheet_id': 9209, 'end_date': str(fields.Datetime.now())}},
+            'mrp.workcenter', 'session_stop')
+        self.config._nord_sync_apply_workorder_event(
+            {'res_id': self.first.id, 'payload': {
+                'nord_timesheet_id': 9210, 'start_date': str(fields.Datetime.now()), 'kind': 'stop'}},
+            'mrp.workcenter', 'session_downtime_open')
+        stop = self.Line.search([('nord_sync_timesheet_id', '=', 9210)])
+        self.assertFalse(stop.date_end)
+        self._start(self.second, 9211)
+        self.assertEqual(self.second.nord_sync_current_production_id, self.mo)
+        self.assertTrue(stop.date_end, 'the first operation is over once the second starts, whichever way it started')
+
     def test_a_first_operation_line_with_no_session_id_is_ended_too(self):
         first_workorder = self.mo.workorder_ids.filtered(lambda w: w.workcenter_id == self.first)
         loss = self.env['mrp.workcenter.productivity.loss'].search([], limit=1)
