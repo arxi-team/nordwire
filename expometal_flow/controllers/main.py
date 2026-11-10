@@ -437,7 +437,7 @@ class ExpometalFlow(http.Controller):
         if not token:
             return False
         return bool(request.env['kioda.dashboards.devices'].sudo().search_count(
-            [('token', '=', token), ('has_access', '=', True), ('dashboard_id.screen', '=', 'flow')]))
+            [('token', '=', token), ('access_granted', '=', True), ('dashboard_id.screen', '=', 'flow')]))
 
     @http.route(['/flow/v5', '/flow/v5/'], type='http', auth='public', methods=['GET'])
     def line(self, token=None, **kw):

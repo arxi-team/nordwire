@@ -37,13 +37,13 @@
         <field name="name">kioda.dashboards.devices.list</field>
         <field name="model">kioda.dashboards.devices</field>
         <field name="arch" type="xml">
-            <list string="Dispositivos" editable="bottom" create="false">
+            <list string="Dispositivos" editable="bottom">
                 <field name="name"/>
-                <field name="mac"/>
+                <field name="mac" readonly="id"/>
                 <field name="token" readonly="1"/>
-                <field name="has_access" readonly="1" column_invisible="1"/>
-                <button name="action_add_access" type="object" string="Dar Acesso" class="btn-primary" invisible="has_access"/>
-                <button name="action_remove_access" type="object" string="Revogar Acesso" class="btn-secondary" invisible="not has_access"/>
+                <field name="access_granted" readonly="1" column_invisible="1"/>
+                <button name="action_add_access" type="object" string="Dar Acesso" class="btn-primary" invisible="access_granted"/>
+                <button name="action_remove_access" type="object" string="Revogar Acesso" class="btn-secondary" invisible="not access_granted"/>
                 <button name="restart_token" type="object" string="Reiniciar Token" class="btn-primary"/>
                 <button name="action_delete" type="object" string="Delete" class="btn-danger" confirm="Are you sure?"/>
             </list>

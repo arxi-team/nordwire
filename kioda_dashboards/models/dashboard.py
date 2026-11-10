@@ -11,17 +11,17 @@ class KiodaDashboardsDevices(models.Model):
     # dispositivos por MAC/token (ver kioda.dashboards.screen). A dashboard
     # 'test' não usa este modelo.
     name = fields.Char()
-    mac = fields.Char(required=True, readonly=True)
+    mac = fields.Char(required=True)
     token = fields.Char(default=lambda self: str(uuid.uuid4()), readonly=True)
     dashboard_id = fields.Many2one('kioda.dashboards', required=True, ondelete="cascade")
-    has_access = fields.Boolean(default=False, readonly=True)
+    access_granted = fields.Boolean(default=False, readonly=True)
     user_id = fields.Many2one('res.users', string='User')
 
     def action_add_access(self):
-        self.has_access = True
+        self.access_granted = True
 
     def action_remove_access(self):
-        self.has_access = False
+        self.access_granted = False
 
     def restart_token(self):
         self.token = str(uuid.uuid4())
@@ -52,6 +52,7 @@ class KiodaDashboards(models.Model):
             'view_id': self.env.ref('kioda_dashboards.kioda_dashboards_devices_view_list').id,
             'target': 'new',
             'domain': [('id', 'in', self.kioda_dashboard_device_ids.ids)],
+            'context': {'default_dashboard_id': self.id},
         }
 
     def action_open_device_url(self):
