@@ -1,7 +1,7 @@
 # EXPOMETAL line dashboard served by Odoo itself (the same screen as the stand server's /flow/v5).
-# Page:    /flow/v5/?token= (Linha de produção, ecrã 'flow' das dashboards Kioda) — add ?clean for the stand screen
-# Data:    /flow/v5/data — the snapshot app/server/odoo/flow.js builds over JSON-2, read here with the ORM
-# Summary: /flow/v5/summary?picking=<id> — the journey and cost of the order behind a validated delivery
+# Page:    /flow/v6/?token= (Linha de produção, ecrã 'flow' das dashboards Kioda) — add ?clean for the stand screen
+# Data:    /flow/v6/data — the snapshot app/server/odoo/flow.js builds over JSON-2, read here with the ORM
+# Summary: /flow/v6/summary?picking=<id> — the journey and cost of the order behind a validated delivery
 # Read only; public, only for a Kioda device with access (?token=); no customer names on the screen (references, products, quantities).
 # Keep in step with app/server/odoo/flow.js (poll → snapshot, summary).
 import json
@@ -439,7 +439,7 @@ class ExpometalFlow(http.Controller):
         return bool(request.env['kioda.dashboards.devices'].sudo().search_count(
             [('token', '=', token), ('access_granted', '=', True), ('dashboard_id.screen', '=', 'flow')]))
 
-    @http.route(['/flow/v5', '/flow/v5/'], type='http', auth='public', methods=['GET'])
+    @http.route(['/flow/v6', '/flow/v6/'], type='http', auth='public', methods=['GET'])
     def line(self, token=None, **kw):
         if not self._authorized(token):
             return request.render('kioda_dashboards.not_found', {'uuid': 'device-not-authorized'})
@@ -447,17 +447,17 @@ class ExpometalFlow(http.Controller):
             html = f.read()
         # relative files (main.js, line.css…) resolve from the module's static folder; the page polls Odoo for data
         # (the token travels in the path so the screen's own fetch('<url>?picking=…') keeps working)
-        cfg = json.dumps({'data': f'/flow/v5/data/{token}', 'summary': f'/flow/v5/summary/{token}', 'poll': POLL_MS})
+        cfg = json.dumps({'data': f'/flow/v6/data/{token}', 'summary': f'/flow/v6/summary/{token}', 'poll': POLL_MS})
         html = html.replace('<head>', f'<head><base href="/{PAGE}"><script>window.FLOW_CFG = {cfg};</script>', 1)
         return request.make_response(html, headers=[('Content-Type', 'text/html; charset=utf-8'), ('Cache-Control', 'no-cache')])
 
-    @http.route('/flow/v5/data/<token>', type='http', auth='public', methods=['GET'])
+    @http.route('/flow/v6/data/<token>', type='http', auth='public', methods=['GET'])
     def data(self, token, **kw):
         if not self._authorized(token):
             return request.not_found()
         return request.make_json_response(snapshot(request.env), headers=[('Cache-Control', 'no-store')])
 
-    @http.route('/flow/v5/summary/<token>', type='http', auth='public', methods=['GET'])
+    @http.route('/flow/v6/summary/<token>', type='http', auth='public', methods=['GET'])
     def order_summary(self, token, picking=None, **kw):
         if not self._authorized(token):
             return request.not_found()
