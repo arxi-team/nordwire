@@ -546,7 +546,10 @@ class MrpWorkcenter(models.Model):
         earlier = workorder.production_id.workorder_ids.filtered(
             lambda w: w != workorder and w.workcenter_id.nord_sync_chain_close
             and (w.sequence, w.id) < (workorder.sequence, workorder.id))
-        for line in earlier.time_ids.filtered(lambda t: not t.date_end and t.nord_sync_timesheet_id):
+        lines = earlier.time_ids.filtered(lambda t: not t.date_end and t.nord_sync_timesheet_id)
+        for workorder_before in earlier:
+            lines |= workorder_before._nord_sync_open_machine_lines()  # opened with no session id, see there
+        for line in lines:
             line.date_end = max(start, line.date_start)
 
     def _nord_sync_close_open_downtime(self, end_date=None):
