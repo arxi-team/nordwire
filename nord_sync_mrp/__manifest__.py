@@ -34,6 +34,7 @@ on the Apps screen (`application: False`). A client that never installs
         'views/resource_resource_views.xml',
         'views/mrp_workorder_views.xml',
         'views/mrp_production_views.xml',
+        'views/nord_sync_close_request_views.xml',
         'views/res_config_settings_views.xml',
         'wizard/nord_sync_workorder_wizards_views.xml',
     ],

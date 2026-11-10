@@ -57,6 +57,35 @@ class MrpWorkcenter(models.Model):
         string='Block MO Change If Running',
         help='Prevents changing the MO if this work center already has a work order in progress (requires stop first). If unset, uses the company configuration.',
     )
+    nord_sync_auto_start_on_mo_select = fields.Boolean(
+        string='Auto Start when MO selected', default=False,
+        help='When an MO is selected on this work center (a PDA scan, the Current Manufacturing '
+             'Order field), start its operation on it automatically. Off: the MO is only '
+             'selected and somebody starts the operation (the Auto Reason on MO Change, if set, '
+             'still opens its timesheet). Set per work center.',
+    )
+    nord_sync_stop_others_on_start = fields.Boolean(
+        string='Stop other Work Centers on Start',
+        help='When an operation is started on this work center, stop the operations of the same '
+             'Manufacturing Order that are producing on other work centers: each of them ends its '
+             'production timesheet and starts a new Undefined downtime one. Set per work center.',
+    )
+    nord_sync_auto_reason_id = fields.Many2one(
+        'mrp.workcenter.productivity.loss', string='Auto Reason on MO Change',
+        domain="[('loss_type', '!=', 'productive')]", ondelete='set null',
+        help='When the current Manufacturing Order of this work center changes to an MO that '
+             'has no timesheet yet on this work center, start a timesheet on it automatically '
+             'with this downtime reason (instead of a productive one). Empty: nothing happens. '
+             'Set per work center.',
+    )
+    nord_sync_clear_mo_on_stop = fields.Boolean(
+        string='Clear MO when Work Order stops',
+        default=False,
+        help='When a work order stops on this work center (Stop / Pause), the Current '
+             'Manufacturing Order is cleared. Off: the MO stays on the work center and the '
+             'Undefined downtime that follows is about it.',
+    )
+
     nord_sync_unassigned_work_behavior = fields.Selection([
         ('first_scheduled', 'Start 1st Scheduled MO'),
         ('unassigned_timesheets', 'Create Unassigned Timesheets'),
@@ -138,6 +167,12 @@ class MrpWorkcenter(models.Model):
         help='Units this work center should produce in one hour of the work day, the '
              'reference for the Performance of the machine overview (OEE). Left at 0, it '
              'is estimated from the expected duration of today\'s work orders.',
+    )
+    nord_sync_capacity_fallback = fields.Float(
+        string='Fallback Capacity per Hour',
+        help='Used for the Performance of the machine overview (OEE) when Capacity per Hour is '
+             'empty: an easy figure to adjust. Left at 0, the capacity is estimated from the '
+             'expected duration of today\'s work orders.',
     )
     nord_sync_machine_overview = fields.Json(
         string='Machine Overview', compute='_compute_nord_sync_machine_overview',
@@ -374,6 +409,20 @@ class MrpWorkcenter(models.Model):
                     wc=self.display_name or self.name,
                 ))
 
+        # Auto reason: a new MO with no timesheet yet on this work center starts a
+        # timesheet with the work center's reason (checked now, before anything of
+        # the new MO is created). Not for the machine's own start (Core) nor a
+        # work order's own Start button.
+        auto_reason = bool(
+            self.nord_sync_auto_reason_id and new_mo_id
+            and not self.env.context.get('nord_sync_from_wo_start')
+            and not self.env.context.get('nord_sync_from_core')
+            and not self.env.context.get('nord_sync_skip_prevent_check')
+            and not self.env['mrp.workcenter.productivity'].search_count([
+                ('workcenter_id', '=', self.id), ('workorder_id.production_id', '=', new_mo_id),
+            ])
+        )
+
         # 2: Reação na mudança da MO anterior
         behavior = self._nord_sync_effective_mo_change_behavior()
         if old_mo:
@@ -409,6 +458,15 @@ class MrpWorkcenter(models.Model):
         # 3, 3.2, 5.2: Atribuir nova MO
         if new_mo_id:
             new_mo = self.env['mrp.production'].browse(new_mo_id)
+            ctx = self.env.context
+            from_wo_start = ctx.get('nord_sync_from_wo_start')
+            from_core = ctx.get('nord_sync_from_core')
+            # Auto Start (work center option): the MO runs as soon as it is picked
+            auto_start = self.nord_sync_auto_start_on_mo_select and not from_wo_start and not from_core
+            if not (from_wo_start or from_core or auto_start or auto_reason):
+                # A pick with no rule on the work center (form or PDA) only identifies the MO:
+                # Start / Stop on the work center run it.
+                return
             target_wo = self._nord_sync_get_or_create_workorder(new_mo)
 
             # 5.2: Atribuir timesheets unassigned abertos à nova WO
@@ -425,17 +483,36 @@ class MrpWorkcenter(models.Model):
                 if target_wo.state != 'progress':
                     target_wo.state = 'progress'
 
-            if self.env.context.get('nord_sync_from_wo_start'):
+            if from_wo_start:
                 # The work order is starting itself (Start in Odoo).
                 return
-            if self.env.context.get('nord_sync_from_core'):
+            if from_core:
                 # The machine is already working: the MO is running, not only picked.
                 self._nord_sync_start_workorder(target_wo)
-            elif self.env.context.get('nord_sync_pda_setup'):
-                # A scan on the PDA: the work center is in setup for the MO until Start.
-                self._nord_sync_setup_workorder(target_wo)
-            # Anything else (the work center's form) only identifies the MO:
-            # Start / Stop on the work center run it.
+            elif auto_reason:
+                self._nord_sync_open_reason_line(target_wo)
+            elif auto_start:
+                self._nord_sync_start_workorder(target_wo)
+
+    def _nord_sync_open_reason_line(self, workorder):
+        """Auto Reason on MO Change: a timesheet with the work center's reason
+        opens on `workorder` (a setup reason is a Setup line, any other a stop)."""
+        self.ensure_one()
+        reason = self.nord_sync_auto_reason_id
+        self.env['mrp.workcenter.productivity'].create({
+            'workorder_id': workorder.id,
+            'workcenter_id': self.id,
+            'date_start': fields.Datetime.now(),
+            'loss_id': reason.id,
+            'description': reason.name,
+            'nord_sync_downtime_kind': 'setup' if 'setup' in (reason.name or '').lower() else 'stop',
+            'user_id': False,
+            'employee_id': False,
+        })
+        if workorder.state != 'progress':
+            workorder.state = 'progress'
+
+
 
     def _nord_sync_get_or_create_workorder(self, production):
         """3.2: the work order of this work center on the MO that is still to
@@ -457,9 +534,14 @@ class MrpWorkcenter(models.Model):
         `workorders`: whichever of the MO's work orders the Core opened the
         setup on (it may not be the one this work center runs, e.g. one
         already done)."""
+        # Also the downtime lines opened here (an Undefined stop after a Stop, an
+        # auto reason): they block the work center the same way and have no
+        # Core session (nord_sync_timesheet_id empty) to be closed by.
         lines = self.env['mrp.workcenter.productivity'].search([
             ('workcenter_id', '=', self.id), ('workorder_id.production_id', 'in', workorders.production_id.ids),
-            ('date_end', '=', False), ('nord_sync_downtime_kind', '=', 'setup'),
+            ('date_end', '=', False),
+            '|', ('nord_sync_downtime_kind', '=', 'setup'),
+            '&', ('nord_sync_downtime_kind', '=', 'stop'), ('nord_sync_timesheet_id', 'in', (0, False)),
         ])
         lines.write({'date_end': fields.Datetime.now()})
         return lines
@@ -520,10 +602,13 @@ class MrpWorkcenter(models.Model):
             workorder = workcenter._nord_sync_get_or_create_workorder(production)
             workcenter._nord_sync_close_setup_lines(workorder)
             workcenter._nord_sync_start_workorder(workorder)
+            workorder._nord_sync_stop_other_workcenters()
 
     def action_nord_sync_stop(self):
         """Stop of the MO the work center is on: its running work orders
-        pause and the work center is left without MO (nothing is on it)."""
+        pause and a new Undefined downtime starts on them. The MO stays on the
+        work center (Start picks it up again) unless "Clear MO when Work Order
+        stops" is on."""
         for workcenter in self:
             production = workcenter.nord_sync_current_production_id
             if not production:
@@ -536,9 +621,9 @@ class MrpWorkcenter(models.Model):
                 # Nord side hears the stop.
                 workorder.with_context(nord_sync_from_core=True).end_previous(doall=True)
                 workorder._nord_sync_notify_floor_event('stop')
-            running._nord_sync_update_wc_current_production_on_stop()
             workcenter._nord_sync_close_setup_lines(workorders)
-            if workcenter.nord_sync_current_production_id == production:
+            running._nord_sync_open_stop_downtime()
+            if workcenter.nord_sync_clear_mo_on_stop:
                 workcenter.with_context(nord_sync_skip_mo_change=True).nord_sync_current_production_id = False
 
     def _nord_sync_first_scheduled_mo(self):
@@ -645,15 +730,22 @@ class MrpWorkcenter(models.Model):
         behavior = self._nord_sync_effective_unassigned_behavior()
 
         if behavior == 'first_scheduled':
-            # 5.1: Agarra na 1ª MO programada, organizada por data ascendente e marca start
+            # 5.1: Agarra na 1ª MO programada, organizada por data ascendente; só arranca com Auto Start
             mo = self._nord_sync_first_scheduled_mo()
             if mo:
                 try:
                     # A MO that cannot start must not lose the machine's time:
                     # nothing of the attempt stays, the unassigned timesheet below does.
                     with self.env.cr.savepoint():
+                        if self.nord_sync_auto_start_on_mo_select:
+                            # Auto Start: the machine is working, so the MO starts
+                            self.with_context(
+                                nord_sync_skip_prevent_check=True, nord_sync_from_core=True,
+                            ).nord_sync_current_production_id = mo.id
+                            return True, _("Started first scheduled MO: %s", mo.name)
+                        # Without Auto Start the MO is only selected
                         self.with_context(
-                            nord_sync_skip_prevent_check=True, nord_sync_from_core=True,
+                            nord_sync_skip_prevent_check=True, nord_sync_skip_mo_change=True,
                         ).nord_sync_current_production_id = mo.id
                     return True, _("Started first scheduled MO: %s", mo.name)
                 except psycopg2.errors.TransactionRollbackError:
@@ -884,6 +976,52 @@ class MrpWorkcenter(models.Model):
         }
         return action
 
+    def action_nord_sync_emit_alert(self):
+        """Button "Emit alert": asks for the reason, then opens the alert."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': self.env._('Emit Alert — %s', self.display_name),
+            'res_model': 'nord_sync.alert.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_workcenter_id': self.id},
+        }
+
+    def _nord_sync_emit_alert(self, loss, description=False):
+        """The work center stops with `loss` as the reason: open timesheets end, then a stop timesheet opens (on the current MO's work
+        order when there is one). Nothing happens if an alert is already open."""
+        self.ensure_one()
+        Productivity = self.env['mrp.workcenter.productivity']
+        now = fields.Datetime.now()
+        if Productivity.search_count([('workcenter_id', '=', self.id), ('date_end', '=', False),
+                                      ('nord_sync_downtime_kind', '=', 'stop')]):
+            return
+        Productivity.search([('workcenter_id', '=', self.id), ('date_end', '=', False)]).write({'date_end': now})
+        workorder = self.env['mrp.workorder'].search([
+            ('workcenter_id', '=', self.id), ('state', '=', 'progress')], limit=1)
+        if not workorder and self.nord_sync_current_production_id:
+            workorder = self._nord_sync_get_or_create_workorder(self.nord_sync_current_production_id)
+        Productivity.create({
+            'workorder_id': workorder.id or False,
+            'workcenter_id': self.id,
+            'date_start': now,
+            'loss_id': loss.id,
+            'description': description or loss.name,
+            'nord_sync_downtime_kind': 'stop',
+            'user_id': False,
+            'employee_id': False,
+        })
+
+    def action_nord_sync_clear_alerts(self):
+        """Button "Clear alerts": every open stop of the work center ends now."""
+        now = fields.Datetime.now()
+        self.env['mrp.workcenter.productivity'].search([
+            ('workcenter_id', 'in', self.ids), ('date_end', '=', False),
+            ('nord_sync_time_category', '=', 'stop'),
+        ]).write({'date_end': now})
+        return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
+
     def action_nord_sync_alerts(self):
         """The Nord stops of this work center, as a list: the "all alerts"
         link of the machine overview (filtered on today)."""
@@ -955,7 +1093,8 @@ class MrpWorkcenter(models.Model):
         - oee: OEE = Availability x Performance x Quality, with
           Availability = worked / planned hours until now (the calendar
           minus leaves; worked never counts above planned), Performance =
-          produced / (capacity per hour x planned hours) and Quality =
+          produced / (capacity per hour x worked hours: the operating time,
+          so stops are only counted in Availability) and Quality =
           good / produced. Produced is good + bad: good is the quantity of
           the work orders finished here today (qty_produced, at
           date_finished), bad the scrap done today on them (the work
@@ -974,8 +1113,8 @@ class MrpWorkcenter(models.Model):
           is worked minutes over the minutes elapsed today.
         - declarations: good / bad per hour, with the average good of the
           hours that had planned or worked time.
-        - oee_by_hour: the same three factors per elapsed hour (capacity of
-          one hour), with their average over the same hours.
+        - oee_by_hour: the same three factors per elapsed hour (performance
+          against the minutes worked in that hour), with their average over the same hours.
         - alerts: the Nord stops of the day (see
           _nord_sync_overview_alerts).
 
@@ -983,7 +1122,7 @@ class MrpWorkcenter(models.Model):
             dict: oee (dict: oee, availability, performance, quality,
             oee_target, planned_hours, worked_hours, expected_production,
             produced, good, bad, capacity_per_hour, capacity_source
-            ('workcenter' / 'workorders' / False)), utilization (dict:
+            ('workcenter' / 'fallback' / 'workorders' / False)), utilization (dict:
             current_status, in_alarm (a stop still open), segments
             (list[dict]: label, status, alarm (bool), minutes (dict: state
             or 'alarm' -> minutes)), totals (dict: state or 'alarm' ->
@@ -1048,6 +1187,9 @@ class MrpWorkcenter(models.Model):
         # ── Capacity: the work center's own, else today's work orders' pace ──
         capacity = self.nord_sync_capacity_per_hour
         capacity_source = 'workcenter' if capacity else False
+        if not capacity and self.nord_sync_capacity_fallback:
+            capacity = self.nord_sync_capacity_fallback
+            capacity_source = 'fallback'
         if not capacity:
             reference = self.env['mrp.workorder'].search([
                 ('workcenter_id', '=', self.id), ('duration_expected', '>', 0),
@@ -1059,18 +1201,23 @@ class MrpWorkcenter(models.Model):
                 capacity = sum(reference.mapped('qty_production')) / expected_hours
                 capacity_source = 'workorders'
 
-        def factors(planned, worked, good, bad, hours):
+        def factors(planned, worked, good, bad):
             """Availability, performance, quality and OEE in %, for `planned`
-            and `worked` minutes and the `hours` of capacity they had."""
+            and `worked` minutes. Performance is the pace while the machine
+            ran (ideal capacity x operating time), so a stop costs
+            Availability only. It is capped at 100%, like the OEE."""
             worked = min(worked, planned) if planned else worked
             produced = good + bad
             availability = worked / (planned or worked or 1) * 100
+            operating_hours = worked / 60
             if capacity:
-                performance = produced / (capacity * hours) * 100 if hours else 0.0
+                performance = produced / (capacity * operating_hours) * 100 if operating_hours else (
+                    100.0 if produced else 0.0)
             else:
-                performance = 100.0 if produced or not hours else 0.0
+                performance = 100.0 if produced or not operating_hours else 0.0
+            performance = min(performance, 100.0)
             quality = good / produced * 100 if produced else (100.0 if not bad else 0.0)
-            oee = max(0.0, min(100.0, availability * min(performance, 100.0) * quality / 10000))
+            oee = max(0.0, min(100.0, availability * performance * quality / 10000))
             return availability, performance, quality, oee
 
         # ── OEE header ───────────────────────────────────────────────────────
@@ -1079,7 +1226,7 @@ class MrpWorkcenter(models.Model):
         base_hours = (planned_minutes or min(worked_minutes, now_minute)) / 60
         good, bad = sum(good_by_hour), sum(bad_by_hour)
         availability, performance, quality, oee = factors(
-            planned_minutes, worked_minutes, good, bad, base_hours)
+            planned_minutes, worked_minutes, good, bad)
         oee_data = {
             'oee': round(oee, 1),
             'availability': round(availability, 1),
@@ -1146,7 +1293,7 @@ class MrpWorkcenter(models.Model):
             if planned or worked or good_by_hour[hour] or bad_by_hour[hour]:
                 active_hours.append(hour)
             hour_availability, hour_performance, hour_quality, hour_oee = factors(
-                planned, worked, good_by_hour[hour], bad_by_hour[hour], 1 if planned or worked else 0)
+                planned, worked, good_by_hour[hour], bad_by_hour[hour])
             if not (good_by_hour[hour] or bad_by_hour[hour]):
                 # Nothing declared in the hour: no quality to speak of, and no
                 # OEE either — the Kioda screen's own reading of an empty hour.

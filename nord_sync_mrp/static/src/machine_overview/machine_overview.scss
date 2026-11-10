@@ -254,3 +254,138 @@
     height: 4px;
     vertical-align: middle;
 }
+
+
+// Hover popup of a segment of the working hours timeline
+.o_nord_overview_tip {
+    position: fixed;
+    z-index: 1090;
+    width: 250px;
+    transform: translateY(-100%);
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: #111827;
+    color: #f3f4f6;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    pointer-events: none;
+    font-size: 12.5px;
+    animation: o_nord_tip_in 0.12s ease-out;
+
+    &::after {
+        content: "";
+        position: absolute;
+        left: var(--tip-arrow, 50%);
+        bottom: -6px;
+        width: 12px;
+        height: 12px;
+        margin-left: -6px;
+        background: #111827;
+        transform: rotate(45deg);
+    }
+
+    &.o_nord_overview_tip_below {
+        transform: none;
+
+        &::after {
+            bottom: auto;
+            top: -6px;
+        }
+    }
+}
+
+@keyframes o_nord_tip_in {
+    from { opacity: 0; margin-top: 4px; }
+    to { opacity: 1; margin-top: 0; }
+}
+
+.o_nord_overview_tip_head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.o_nord_overview_tip_time {
+    font-size: 14px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.o_nord_overview_tip_badge {
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.o_nord_overview_tip_badge_working { background: rgba(96, 165, 250, 0.22); color: #93c5fd; }
+.o_nord_overview_tip_badge_setup { background: rgba(240, 173, 78, 0.22); color: #fbbf24; }
+.o_nord_overview_tip_badge_idle { background: rgba(196, 199, 204, 0.2); color: #d1d5db; }
+.o_nord_overview_tip_badge_alarm { background: rgba(220, 40, 40, 0.25); color: #fca5a5; }
+
+.o_nord_overview_tip_empty {
+    color: #9ca3af;
+}
+
+.o_nord_overview_tip_row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 4px;
+    margin-bottom: 8px;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+
+    b {
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+.o_nord_overview_tip_label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #d1d5db;
+}
+
+.o_nord_overview_tip_dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.o_nord_overview_tip_bar {
+    grid-column: 1 / -1;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+
+    > span {
+        display: block;
+        height: 100%;
+        border-radius: 2px;
+    }
+}
+
+.o_nord_overview_tip_dot_working { background: var(--o-nord-overview-working-90, #1d4ed8); }
+.o_nord_overview_tip_dot_setup { background: var(--o-nord-overview-setup, #f0ad4e); }
+.o_nord_overview_tip_dot_idle { background: var(--o-nord-overview-idle, #c4c7cc); }
+.o_nord_overview_tip_dot_offline { background: #6b7280; }
+
+.o_nord_overview_tip_alarm {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fca5a5;
+
+    .o_nord_overview_tip_label { color: #fca5a5; }
+}

@@ -31,7 +31,9 @@
                             <div class="o_nord_overview_donut" t-att-style="donutStyle(factor)">
                                 <span t-out="formatPct(factor.value)"/>
                             </div>
-                            <div class="o_nord_overview_donut_label" t-out="factor.label"/>
+                            <div class="o_nord_overview_donut_label">
+                                <t t-out="factor.label"/>
+                            </div>
                         </div>
                     </div>
                     <div class="o_nord_overview_cards">
@@ -75,7 +77,8 @@
                     </div>
                     <div class="o_nord_overview_track">
                         <div t-foreach="util.segments" t-as="segment" t-key="segment_index"
-                             class="o_nord_overview_seg" t-att-title="segmentTitle(segment)">
+                             class="o_nord_overview_seg"
+                             t-on-mouseenter="(ev) => this.showTip(ev, segment)" t-on-mouseleave="hideTip">
                             <div class="o_nord_overview_seg_bar" t-attf-class="o_nord_overview_{{ segment.status }}"/>
                             <div class="o_nord_overview_seg_alarm" t-att-class="{ 'o_nord_overview_seg_alarm_on': segment.alarm }"/>
                         </div>
@@ -142,6 +145,37 @@
                             <div class="o_nord_overview_chart"><canvas t-ref="oeeByHour"/></div>
                         </div>
                     </div>
+                </div>
+            </t>
+            <t t-if="state.tip">
+                <t t-set="tip" t-value="state.tip"/>
+                <t t-set="ts" t-value="tipStatus(tip.segment)"/>
+                <div class="o_nord_overview_tip" t-att-class="{ 'o_nord_overview_tip_below': tip.below }"
+                     t-attf-style="left: {{ tip.x }}px; top: {{ tip.y }}px; --tip-arrow: {{ tip.arrow }}px;">
+                    <div class="o_nord_overview_tip_head">
+                        <span class="o_nord_overview_tip_time" t-out="tip.segment.label"/>
+                        <span class="o_nord_overview_tip_badge" t-attf-class="o_nord_overview_tip_badge_{{ ts.css }}"
+                              t-out="ts.label"/>
+                    </div>
+                    <div t-if="tip.segment.status === 'future'" class="o_nord_overview_tip_empty">Not started yet</div>
+                    <t t-else="">
+                        <div t-foreach="tipRows(tip.segment)" t-as="row" t-key="row.key" class="o_nord_overview_tip_row">
+                            <span class="o_nord_overview_tip_label">
+                                <i t-attf-class="o_nord_overview_tip_dot o_nord_overview_tip_dot_{{ row.key }}"/>
+                                <t t-out="row.label"/>
+                            </span>
+                            <b t-out="row.minutes + ' min'"/>
+                            <span class="o_nord_overview_tip_bar">
+                                <span t-attf-class="o_nord_overview_tip_dot_{{ row.key }}" t-attf-style="width: {{ row.pct }}%"/>
+                            </span>
+                        </div>
+                        <div t-if="tip.segment.minutes.alarm" class="o_nord_overview_tip_row o_nord_overview_tip_alarm">
+                            <span class="o_nord_overview_tip_label">
+                                <i class="fa fa-exclamation-triangle"/> Alarm
+                            </span>
+                            <b t-out="tip.segment.minutes.alarm + ' min'"/>
+                        </div>
+                    </t>
                 </div>
             </t>
         </div>

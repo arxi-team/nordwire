@@ -17,4 +17,17 @@
         </field>
     </record>
 
+    <!-- Header button that goes to this MO's customer delivery -->
+    <record id="mrp_production_form_view_nord_sync_delivery" model="ir.ui.view">
+        <field name="name">mrp.production.form.nord.sync.delivery</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="inside">
+                <button name="action_nord_sync_open_delivery" type="object" string="Entrega"
+                        icon="fa-truck" invisible="state == 'cancel'"/>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>

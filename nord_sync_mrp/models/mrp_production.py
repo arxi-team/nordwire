@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
+import contextlib
 import io
 import logging
 from datetime import timedelta
@@ -58,6 +59,11 @@ class MrpProduction(models.Model):
             })
 
     def _nord_sync_demo_deliver(self, qty=None, scrap=0.0, not_ok=0.0):
+        self.ensure_one()
+        with self._nord_sync_no_synthetic_time():
+            return self._nord_sync_demo_deliver_inner(qty, scrap, not_ok)
+
+    def _nord_sync_demo_deliver_inner(self, qty=None, scrap=0.0, not_ok=0.0):
         """Fair demo (PDA "Entregar", /nordwire/pda/deliver): finishes this MO as if its
         Nord job had been marked done, through the same result path
         (_nord_sync_apply_result): qty good units (default: the planned
@@ -138,6 +144,128 @@ class MrpProduction(models.Model):
         else:
             picking._nord_sync_notify('write')
         return picking
+
+    @contextlib.contextmanager
+    def _nord_sync_no_synthetic_time(self):
+        """Closing an MO makes Odoo book the expected duration on every
+        operation nobody worked on, as a time line ending now (a 30 hour
+        "productive" line in the last night). Those lines are dropped: time
+        is only what a work center really ran."""
+        worked = self.workorder_ids.filtered('time_ids')
+        before = set(self.workorder_ids.time_ids.ids)
+        yield
+        fake = self.workorder_ids.time_ids.filtered(
+            lambda t: t.id not in before and t.workorder_id not in worked)
+        if fake:
+            fake.with_context(nord_sync_skip_push=True).unlink()
+
+    def _nord_sync_force_close(self):
+        """PDA "Fechar MO" (/nordwire/pda/close_mo): closes the MO with its
+        planned quantity. On a stop-tracking work center it goes through the
+        same result path as a Nord "Mark Done" (_nord_sync_demo_deliver);
+        otherwise it is a plain Mark Done that skips the backorder,
+        consumption and immediate-production wizards.
+
+        Returns (success, message)."""
+        self.ensure_one()
+        if self.state in ('done', 'cancel'):
+            return False, f'{self.name}: já está fechada.'
+        if self.workorder_ids.workcenter_id.filtered('nord_sync_stop_tracking'):
+            return self._nord_sync_demo_deliver()
+        self.workorder_ids.time_ids.filtered(lambda t: not t.date_end).write({'date_end': fields.Datetime.now()})
+        self.qty_producing = self.product_qty
+        with self._nord_sync_no_synthetic_time():
+            self.with_context(skip_backorder=True, skip_consumption=True, skip_immediate=True,
+                              mo_ids_to_backorder=[]).button_mark_done()
+        if self.state != 'done':
+            return False, f'{self.name}: não foi possível fechar ({self.state}).'
+        return True, f'{self.name}: fechada.'
+
+    def action_nord_sync_open_delivery(self):
+        """Header button "Entrega": opens this MO's customer delivery, open
+        or already done (the one the PDA's Entrega confirms)."""
+        self.ensure_one()
+        picking = self._nord_sync_find_delivery(create=False, include_done=True)
+        if not picking:
+            raise UserError(self.env._('%s has no delivery.', self.name))
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.picking',
+            'res_id': picking.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def _nord_sync_sale(self):
+        """The sale this MO came from (its stock references, else the sale
+        line it was made for, else the sale named by its origin). Empty
+        (False) without the Sales app installed."""
+        self.ensure_one()
+        if 'sale.order' not in self.env:
+            return False
+        sale = self.env['sale.order']
+        if 'sale_ids' in self.env['stock.reference']._fields:
+            sale = self.reference_ids.sale_ids
+        if 'sale_line_id' in self._fields:
+            sale |= self.sale_line_id.order_id
+        if not sale and self.origin:
+            sale = self.env['sale.order'].sudo().search([('name', '=', self.origin)], limit=1)
+        return sale[:1] or False
+
+    def _nord_sync_find_delivery(self, create=True, include_done=False):
+        """The open customer delivery of this MO. The sale the MO came from
+        is aggregated to that delivery (picking.sale_id, which links the
+        sale's stock reference): a delivery made apart from the sale is
+        attached to it here. With no sale at all, the simulated delivery of
+        _nord_sync_ensure_delivery."""
+        self.ensure_one()
+        Picking = self.env['stock.picking'].sudo()
+        skip = ('cancel',) if include_done else ('done', 'cancel')
+        open_out = lambda p: p.picking_type_code == 'outgoing' and p.state not in skip
+        sale = self._nord_sync_sale()
+        sale = sale.sudo() if sale else sale
+        picking = Picking
+        if sale:
+            picking = sale.picking_ids.filtered(open_out)[:1] or Picking.search([
+                ('picking_type_code', '=', 'outgoing'), ('state', 'not in', skip),
+                ('origin', 'in', [sale.name, self.name]),
+            ], order='id desc', limit=1)
+            if picking and picking.sale_id != sale:
+                picking.sale_id = sale
+        if picking or not create:
+            return picking
+        return self._nord_sync_ensure_delivery()
+
+    def _nord_sync_force_deliver(self):
+        """PDA "Entrega" (/nordwire/pda/deliver_scan): scanning the MO confirms
+        its delivery, forced: every move is set to its full demand and picked,
+        and the validation skips the immediate-transfer / backorder / expiry
+        wizards, whatever stock there is. Only for a closed MO (see
+        _nord_sync_force_close).
+
+        Returns (success, message)."""
+        self.ensure_one()
+        if self.state != 'done':
+            return False, f'{self.name}: a MO ainda não está fechada.'
+        picking = self._nord_sync_find_delivery()
+        if not picking:
+            return False, f'{self.name}: sem entrega associada.'
+        if picking.state == 'draft':
+            picking.action_confirm()
+        for move in picking.move_ids.filtered(lambda m: m.state not in ('done', 'cancel')):
+            move.quantity = move.product_uom_qty
+            move.picked = True
+        result = picking.with_context(
+            skip_immediate=True, skip_backorder=True, skip_sms=True, skip_expired=True,
+        ).button_validate()
+        if isinstance(result, dict) and result.get('res_model'):
+            wizard = self.env[result['res_model']].with_context(**(result.get('context') or {})).create({})
+            if hasattr(wizard, 'process'):
+                wizard.process()
+        if picking.state != 'done':
+            return False, f'{self.name}: não foi possível confirmar {picking.name} ({picking.state}).'
+        sale = picking.sale_id.name if 'sale_id' in picking._fields and picking.sale_id else False
+        return True, f'{self.name}: entrega {picking.name} confirmada' + (f' ({sale})' if sale else '') + '.'
 
     def _compute_nord_sync_qr_code(self):
         # Rendered with qrcode (an Odoo dependency) rather than /report/barcode,

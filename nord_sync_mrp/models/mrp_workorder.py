@@ -39,6 +39,74 @@ class MrpWorkorder(models.Model):
              'Sync-synced to the Core -- see res_company.py).',
     )
 
+    nord_sync_in_setup = fields.Boolean(
+        string='In Setup', compute='_compute_nord_sync_in_setup',
+        help='A downtime timesheet (setup, or a stop with a reason) is open on this work order: '
+             'Start production closes it.',
+    )
+
+    nord_sync_running = fields.Boolean(
+        string='Running', compute='_compute_nord_sync_in_setup',
+        help='A productive timesheet is open on this work order, whoever it belongs to: '
+             'the list shows Stop instead of Start.',
+    )
+
+    @api.depends('time_ids.date_end', 'time_ids.nord_sync_downtime_kind')
+    def _compute_nord_sync_in_setup(self):
+        for workorder in self:
+            workorder.nord_sync_in_setup = any(
+                not t.date_end and t.nord_sync_downtime_kind for t in workorder.time_ids
+            )
+            workorder.nord_sync_running = any(
+                not t.date_end and not t.nord_sync_downtime_kind for t in workorder.time_ids
+            )
+
+    def action_nord_sync_stop(self):
+        """Stop while a productive timesheet is open that is not the user's
+        (opened by the machine, the PDA or an older Start): the base Pause only
+        shows for the user's own line, so the line is taken over first."""
+        self.ensure_one()
+        self.time_ids.filtered(lambda t: not t.date_end and not t.user_id).write({'user_id': self.env.user.id})
+        return self.button_pending()
+
+    def action_nord_sync_start_production(self):
+        """Start while a downtime timesheet (setup, or the auto reason of the
+        work center) is open: closes it and goes on to production. The open
+        line also blocks the work center (non-productive loss), which is why
+        the base Start refuses ("Please unblock the work center") and hides
+        its button."""
+        self.ensure_one()
+        setup_lines = self.time_ids.filtered(lambda t: not t.date_end and t.nord_sync_downtime_kind)
+        setup_lines.write({'date_end': fields.Datetime.now()})
+        self.workcenter_id.invalidate_recordset(['working_state'])
+        self.with_context(
+            nord_sync_skip_confirm=True, nord_sync_from_wo_start=True,
+        )._nord_sync_button_start_bypassing_employee_check()
+        # The line is the clicking user's: that is what makes the base buttons
+        # show Pause / Done (is_user_working) instead of Start again
+        self.time_ids.filtered(lambda t: not t.date_end and not t.user_id).write({'user_id': self.env.user.id})
+        self._nord_sync_notify_floor_event('start')
+        self._nord_sync_stop_other_workcenters()
+        if self.workcenter_id and self.production_id:
+            self.workcenter_id.with_context(
+                nord_sync_skip_prevent_check=True, nord_sync_from_wo_start=True,
+            ).nord_sync_current_production_id = self.production_id.id
+        return True
+
+    def _nord_sync_stop_other_workcenters(self):
+        """Work center option "Stop other Work Centers on Start": the other
+        operations of this MO that are producing now are stopped, each one
+        going to a new Undefined downtime (see button_pending)."""
+        for workorder in self:
+            if not workorder.workcenter_id.nord_sync_stop_others_on_start:
+                continue
+            others = workorder.production_id.workorder_ids.filtered(
+                lambda wo: wo != workorder and wo.workcenter_id != workorder.workcenter_id
+                and wo.state == 'progress' and wo.nord_sync_running
+            )
+            for other in others:
+                other.action_nord_sync_stop()
+
     nord_sync_not_ok_count = fields.Integer(
         string='Not OK (PDA)', readonly=True, copy=False,
         help='Units rejected on the Nord PDA ("Não OK") while this operation was running. '
@@ -89,6 +157,8 @@ class MrpWorkorder(models.Model):
         deliberately outside Control Mode (see mrp_workcenter.py).
         """
         self.ensure_one()
+        if not kwargs.get('bypass') and self.nord_sync_in_setup:
+            return self.action_nord_sync_start_production()
         if (
             not kwargs.get('bypass') and not self.env.context.get('nord_sync_skip_confirm')
             and self.state not in ('done', 'cancel')
@@ -109,6 +179,7 @@ class MrpWorkorder(models.Model):
         result = super(MrpWorkorder, self.with_context(nord_sync_in_button_start=True)).button_start(*args, **kwargs)
         if not kwargs.get('bypass'):
             self._nord_sync_notify_floor_event('start')
+            self._nord_sync_stop_other_workcenters()
         return result
 
     def _nord_sync_identify_on_workcenter(self):
@@ -131,8 +202,32 @@ class MrpWorkorder(models.Model):
     def button_pending(self):
         result = super().button_pending()
         self._nord_sync_notify_floor_event('stop')
-        self._nord_sync_update_wc_current_production_on_stop()
+        # Stop keeps the MO on the work center: the production timesheet ends
+        # and a downtime one (Undefined, to be justified) takes its place
+        self._nord_sync_open_stop_downtime()
         return result
+
+    def _nord_sync_open_stop_downtime(self):
+        """A human Stop: the work order is not running any more, so an open
+        downtime timesheet with the default reason "Undefined" starts, until
+        somebody justifies it or starts the production again."""
+        Productivity = self.env['mrp.workcenter.productivity']
+        for workorder in self:
+            if workorder.state in ('done', 'cancel') or self.env.context.get('nord_sync_from_core'):
+                continue
+            if workorder.time_ids.filtered(lambda t: not t.date_end):
+                continue
+            loss = self.env['mrp.workcenter.productivity.loss']._nord_sync_get_or_create_undefined()
+            Productivity.create({
+                'workorder_id': workorder.id,
+                'workcenter_id': workorder.workcenter_id.id,
+                'date_start': fields.Datetime.now(),
+                'loss_id': loss.id,
+                'description': loss.name,
+                'nord_sync_downtime_kind': 'stop',
+                'user_id': False,
+                'employee_id': False,
+            })
 
     def button_finish(self):
         result = super().button_finish()
@@ -162,12 +257,17 @@ class MrpWorkorder(models.Model):
         return result
 
     def _nord_sync_update_wc_current_production_on_stop(self):
-        """When this work order stops (finished, paused, cancelled, or employee stopped),
+        """When this work order stops (finished or cancelled; a pause only with the work center's option),
         checks whether the work center is still being used by this MO. If no active
         open timesheets or running work orders remain on that work center, clears
         nord_sync_current_production_id so it does not stay stuck on an MO that is not in use."""
         for wo in self:
             wc = wo.workcenter_id
+            if wo.state not in ('done', 'cancel') and not wc.nord_sync_clear_mo_on_stop:
+                # A stop / pause keeps the MO on the work center (the Undefined
+                # downtime that follows is about this MO) unless the work center
+                # asks to clear it ("Clear MO when Work Order stops").
+                continue
             if wc and wc.nord_sync_current_production_id == wo.production_id:
                 other_open_session = self.env['mrp.workcenter.productivity'].search([
                     ('workcenter_id', '=', wc.id),

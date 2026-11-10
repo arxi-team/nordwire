@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 NORD_SYNC_UNDEFINED_LOSS_NAME = 'Undefined'
 NORD_SYNC_UNDEFINED_LOSS_TYPE = 'availability'
@@ -107,6 +108,18 @@ class MrpWorkcenterProductivityLoss(models.Model):
         """
         self.ensure_one()
         return {'name': self.name, 'loss_type_source_res_id': self.loss_id.id or False}
+
+    def unlink(self):
+        """A reason a timesheet already uses cannot go: say so, instead of
+        the database's foreign key error."""
+        for reason in self:
+            used = self.env['mrp.workcenter.productivity'].sudo().search_count([('loss_id', '=', reason.id)])
+            if used:
+                raise UserError(self.env._(
+                    "'%(reason)s' is used by %(count)s timesheet(s) and cannot be deleted.",
+                    reason=reason.name, count=used,
+                ))
+        return super().unlink()
 
     @api.model
     def _nord_sync_get_or_create(self, name, reason_type_name):

@@ -13,3 +13,5 @@ from . import mrp_bom
 from . import mrp_workorder
 from . import quality_check
 from . import stock_move
+from . import nord_sync_alert_wizard
+from . import nord_sync_close_request
