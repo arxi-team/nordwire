@@ -236,3 +236,47 @@ class TestWorkcenterUnstampedLinesNordSync(TransactionCase):
         by_person = self._open_line(employee_id=operator.id)
         self._event('session_start', 9404)
         self.assertFalse(by_person.date_end)
+
+
+@tagged('post_install', '-at_install')
+class TestFirstScheduledNordSync(TransactionCase):
+    """A machine working with no MO picked starts the first scheduled MO. Starting an MO moves its date_start
+    to now, so the next machine of an MO already started in the chain must take that MO, not the next planned one."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.config = cls.env['nord_sync.config']._get_or_create_for_company(cls.env.company)
+        cls.first = cls.env['mrp.workcenter'].create({'name': 'Scheduled First WC'})
+        cls.second = cls.env['mrp.workcenter'].create({
+            'name': 'Scheduled Second WC', 'nord_sync_unassigned_work_behavior': 'first_scheduled'})
+        product = cls.env['product.product'].create({'name': 'Scheduled Test Product'})
+        bom = cls.env['mrp.bom'].create({
+            'product_tmpl_id': product.product_tmpl_id.id, 'product_qty': 1.0,
+            'operation_ids': [
+                (0, 0, {'name': 'First', 'workcenter_id': cls.first.id, 'time_cycle_manual': 30, 'sequence': 1}),
+                (0, 0, {'name': 'Second', 'workcenter_id': cls.second.id, 'time_cycle_manual': 30, 'sequence': 2}),
+            ],
+        })
+        cls.mos = cls.env['mrp.production']
+        with patch(POST_TARGET):
+            for index in range(2):
+                mo = cls.env['mrp.production'].create({
+                    'product_id': product.id, 'product_qty': 1.0, 'bom_id': bom.id,
+                    'date_start': fields.Datetime.now() - timedelta(days=2 - index),
+                })
+                mo.action_confirm()
+                cls.mos |= mo
+
+    def test_the_next_machine_takes_the_mo_the_previous_one_started(self):
+        planned_first, planned_second = self.mos
+        # the planner's first MO gets its first operation started: its date_start becomes now
+        first_op = planned_first.workorder_ids.filtered(lambda w: w.workcenter_id == self.first)
+        first_op.with_context(nord_sync_from_core=True).button_start()
+        self.assertEqual(planned_first.state, 'progress')
+        self.assertLess(planned_second.date_start, planned_first.date_start,
+                        'the started MO fell behind the planned one by date')
+        self.assertEqual(self.second._nord_sync_first_scheduled_mo(), planned_first)
+
+    def test_without_an_mo_started_the_first_planned_one(self):
+        self.assertEqual(self.second._nord_sync_first_scheduled_mo(), self.mos.sorted('date_start')[:1])
