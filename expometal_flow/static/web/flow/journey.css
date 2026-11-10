@@ -1,0 +1,27 @@
+/* v9 · Viagem — a generated topographic map; the camera follows the lot along its route. */
+.jr { display: block; padding: 0; background: #0b0a08; }
+.jr__map { position: absolute; inset: 0; }
+.jr__vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(75% 70% at 55% 52%, transparent 40%, rgba(8,7,6,.75) 100%); }
+.jr__top { position: absolute; left: calc(var(--u) * 3); right: calc(var(--u) * 3); top: calc(var(--u) * 2.4); display: flex; justify-content: space-between; align-items: flex-start; z-index: 3; }
+.jr__title { font-family: var(--font-craft); font-weight: 300; font-size: calc(var(--u) * 3.4); letter-spacing: -.02em; margin-top: calc(var(--u) * .5); }
+.jr__title em { font-style: normal; color: var(--acc); }
+
+/* the card that travels with the camera, anchored to the active stop */
+.jr__card { position: absolute; z-index: 4; left: 0; top: 0; width: calc(var(--u) * 26); pointer-events: none; will-change: transform; opacity: 0; transition: opacity var(--t-2); }
+.jr__card.-on { opacity: 1; }
+.jr__card > div { padding: calc(var(--u) * 1.6) calc(var(--u) * 1.8); border-radius: calc(var(--u) * 1.2); background: rgba(14,12,10,.82); border: 1px solid color-mix(in srgb, var(--acc) 45%, transparent);
+  box-shadow: 0 30px 80px -30px rgba(0,0,0,.9), 0 0 60px -20px color-mix(in srgb, var(--acc) 50%, transparent); backdrop-filter: blur(8px); }
+.jr__card .c-step { font-family: var(--font-mono); font-size: calc(var(--u) * .78); letter-spacing: .22em; text-transform: uppercase; color: var(--acc-2); }
+.jr__card .c-name { font-family: var(--font-craft); font-weight: 300; font-size: calc(var(--u) * 3.2); line-height: 1; letter-spacing: -.02em; margin: calc(var(--u) * .5) 0 calc(var(--u) * 1); }
+.jr__card .c-lot { font-size: calc(var(--u) * 1.15); font-weight: 500; } .jr__card .c-lot b { font-family: var(--font-mono); font-weight: 500; color: var(--creme-3); margin-right: .5em; }
+.jr__card .c-meta { font-family: var(--font-mono); font-size: calc(var(--u) * .85); color: var(--creme-3); margin-top: 6px; }
+.jr__card .c-bar { height: 3px; border-radius: 3px; background: rgba(243,237,227,.1); margin-top: calc(var(--u) * 1); overflow: hidden; } .jr__card .c-bar i { display: block; height: 100%; background: var(--acc-2); box-shadow: 0 0 10px var(--acc); transition: width 1s linear; }
+.jr__card.-in > div > * { animation: from-right var(--t-3) var(--e-out) both; } .jr__card.-in > div > :nth-child(2) { animation-delay: 70ms; } .jr__card.-in > div > :nth-child(3) { animation-delay: 150ms; } .jr__card.-in > div > :nth-child(4) { animation-delay: 220ms; }
+
+.jr__legend { position: absolute; z-index: 3; left: calc(var(--u) * 3); bottom: calc(var(--u) * 7); display: grid; gap: calc(var(--u) * .9); }
+.jr__legend div { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; min-width: calc(var(--u) * 16); opacity: .5; transition: opacity var(--t-3); font-size: calc(var(--u) * .95); color: var(--creme-2); }
+.jr__legend div.-on { opacity: 1; color: var(--creme); }
+.jr__legend i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 18%, transparent); }
+.jr__legend b { font-family: var(--font-mono); font-weight: 300; font-size: 1.3em; }
+.jr__foot { position: absolute; z-index: 3; left: calc(var(--u) * 3); right: calc(var(--u) * 3); bottom: calc(var(--u) * 2); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.jr__foot .fl__dock { grid-column: 2; } .jr__foot .fl__ticker { grid-column: 3; justify-content: flex-end; }
