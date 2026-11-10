@@ -19,4 +19,4 @@ class KiodaDashboardsDevices(models.Model):
     def action_open_url(self):
         self.ensure_one()
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-        return {'type': 'ir.actions.act_url', 'url': f'{base_url}/flow/v5/?clean&token={self.token}', 'target': 'new'}
+        return {'type': 'ir.actions.act_url', 'url': f'{base_url}/flow/v6/?clean&token={self.token}', 'target': 'new'}
