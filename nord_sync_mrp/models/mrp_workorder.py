@@ -481,16 +481,22 @@ class MrpWorkorder(models.Model):
         try:
             if event_type == 'session_start':
                 self._nord_sync_close_before_start(payload)
-                already_open = self.time_ids.filtered(lambda t: not t.date_end)
+                Line = self.env['mrp.workcenter.productivity'].sudo()
+                already_open = Line.search([('workorder_id', '=', self.id), ('date_end', '=', False)])
                 self.with_context(nord_sync_from_core=True)._nord_sync_button_start_bypassing_employee_check(payload)
                 # Same correction session_stop makes for end_date below: the
                 # line just opened is stamped with delivery time, the Core
                 # sends the machine's real start.
+                opened = Line.search([('workorder_id', '=', self.id), ('date_end', '=', False)]) - already_open
                 start_date = payload.get('start_date')
                 if start_date:
-                    (self.time_ids.filtered(lambda t: not t.date_end) - already_open).write(
-                        {'date_start': start_date},
-                    )
+                    opened.write({'date_start': start_date})
+                # ... and carries the Core's session id, which the stop looks the line up by. Stamped here
+                # too (not only when the helper opened it itself): a line opened some other way by the
+                # start was left with no id, and the stop never closed it.
+                if payload.get('nord_timesheet_id'):
+                    opened.filtered(lambda t: not t.nord_sync_timesheet_id).write(
+                        {'nord_sync_timesheet_id': payload['nord_timesheet_id']})
             elif event_type == 'session_stop':
                 # Not button_pending(): its end_previous(doall=False) only
                 # closes a timer started by the *calling* user, and the Nord
@@ -678,6 +684,15 @@ class MrpWorkorder(models.Model):
         Productivity.create(self._nord_sync_downtime_line_vals(payload, kind))
         return True, 'ok'
 
+    def _nord_sync_open_machine_lines(self):
+        """Open time lines of this work order that no person owns and no Nord session claims."""
+        self.ensure_one()
+        return self.env['mrp.workcenter.productivity'].sudo().search([
+            ('workorder_id', '=', self.id), ('date_end', '=', False),
+            ('employee_id', '=', False), ('user_id', '=', False),
+            ('nord_sync_downtime_kind', '=', False), ('nord_sync_timesheet_id', 'in', (False, 0)),
+        ])
+
     def _nord_sync_close_before_start(self, payload):
         """Before a Nord session opens its line: whatever this machine still
         shows open must end where it starts. A setup/stop line on its work
@@ -695,6 +710,9 @@ class MrpWorkorder(models.Model):
             lambda t: not t.date_end and t.nord_sync_timesheet_id
             and t.nord_sync_timesheet_id != payload.get('nord_timesheet_id')
         )
+        # A machine line (no employee, no user) of this work order with no Nord session id: one a Nord
+        # start opened without stamping it, whose stop therefore never found it. Never a person's line.
+        stale |= self._nord_sync_open_machine_lines()
         for line in stale:
             line.date_end = max(fields.Datetime.to_datetime(start), line.date_start)
 

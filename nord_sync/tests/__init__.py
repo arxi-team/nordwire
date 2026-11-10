@@ -6,7 +6,6 @@ from . import test_settings_consolidation
 from . import test_sync_overview
 from . import test_nord_sync_inbox
 from . import test_nord_sync_resources_controller
-from . import test_failure_wizard
 from . import test_res_config_settings
 from . import test_job_naming_signal
 from . import test_nord_sync_config_enabled_toggle
@@ -14,3 +13,4 @@ from . import test_nord_sync_payload_field_config
 from . import test_post_init_hook
 from . import test_sync_queue_folding
 from . import test_wake_throttle
+from . import test_neutralize

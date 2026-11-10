@@ -144,6 +144,9 @@ class NordSyncConfig(models.Model):
                 lambda w: w.workcenter_id == workcenter and w.state not in ('done', 'cancel')
             )[:1]
             if wo:
+                # The operations of an MO run one after the other: this one starting ends the
+                # earlier ones still running (on the work centers that opted in)
+                workcenter._nord_sync_close_previous_operations(wo, (body.get('payload') or {}).get('start_date'))
                 return wo._nord_sync_apply_granular_event(event_type, body.get('payload') or {})
             return workcenter._nord_sync_handle_machine_working_without_mo(payload=body.get('payload'))
         elif event_type == 'session_stop':
@@ -158,9 +161,17 @@ class NordSyncConfig(models.Model):
                 domain.append('|')
                 domain += [('nord_sync_timesheet_id', '!=', 0), ('nord_sync_is_unassigned', '=', True)]
             open_lines = self.env['mrp.workcenter.productivity'].sudo().search(domain)
+            # ... and the machine lines (no person) of the current MO's work order that carry no id: a start that
+            # did not stamp its line left it open for good (65 minutes once)
+            current_wo = workcenter.nord_sync_current_production_id.workorder_ids.filtered(
+                lambda w: w.workcenter_id == workcenter and w.state not in ('done', 'cancel'))[:1]
+            if current_wo and payload.get('nord_timesheet_id'):
+                open_lines |= current_wo._nord_sync_open_machine_lines()
             end_date = payload.get('end_date') or fields.Datetime.now()
             open_lines.write({'date_end': end_date})
             return True, 'ok'
+        elif event_type in ('session_downtime_open', 'session_downtime', 'session_downtime_cancel'):
+            return workcenter._nord_sync_apply_downtime_event(event_type, body.get('payload') or {})
         return True, 'ok'
 
     def _nord_sync_workorder_event_mrp_workorder(self, body, event_type):
