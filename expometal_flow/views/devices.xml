@@ -5,7 +5,7 @@
         <field name="inherit_id" ref="kioda_dashboards.kioda_dashboards_devices_view_list"/>
         <field name="arch" type="xml">
             <button name="restart_token" position="after">
-                <button name="action_open_url" type="object" string="Abrir Flow" class="btn-secondary" invisible="not has_access"/>
+                <button name="action_open_url" type="object" string="Abrir Flow" class="btn-secondary" invisible="not access_granted"/>
             </button>
         </field>
     </record>
