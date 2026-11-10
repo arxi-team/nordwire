@@ -537,10 +537,79 @@ class MrpWorkcenter(models.Model):
             if workcenter.nord_sync_current_production_id == production:
                 workcenter.with_context(nord_sync_skip_mo_change=True).nord_sync_current_production_id = False
 
+    def _nord_sync_close_previous_operations(self, workorder, start_date=None):
+        """Chain Close (nord_sync_chain_close, on the work center of the EARLIER operation): `workorder`
+        starting ends the Nord time lines still open on the earlier operations of the same MO, so the
+        operations of an MO never run at the same time."""
+        self.ensure_one()
+        start = fields.Datetime.to_datetime(start_date) if start_date else fields.Datetime.now()
+        earlier = workorder.production_id.workorder_ids.filtered(
+            lambda w: w != workorder and w.workcenter_id.nord_sync_chain_close
+            and (w.sequence, w.id) < (workorder.sequence, workorder.id))
+        for line in earlier.time_ids.filtered(lambda t: not t.date_end and t.nord_sync_timesheet_id):
+            line.date_end = max(start, line.date_start)
+
+    def _nord_sync_close_open_downtime(self, end_date=None):
+        """A stop line of this work center still open ends where the machine starts again."""
+        self.ensure_one()
+        end = fields.Datetime.to_datetime(end_date) if end_date else fields.Datetime.now()
+        for line in self.env['mrp.workcenter.productivity'].sudo().search([
+            ('workcenter_id', '=', self.id), ('date_end', '=', False), ('nord_sync_downtime_kind', '!=', False),
+        ]):
+            line.date_end = max(end, line.date_start)
+
+    def _nord_sync_apply_downtime_event(self, event_type, payload):
+        """session_downtime_open / session_downtime / session_downtime_cancel of a Nord resource
+        with no job (a machine stopped with nothing assigned to it). The same stop lines a work
+        order gets, on the work order of the work center's current MO when it has one, else with no
+        work order (like the unassigned work lines).
+
+        Keys: see mrp.workorder._nord_sync_apply_granular_event.
+        """
+        self.ensure_one()
+        workorder = self.nord_sync_current_production_id.workorder_ids.filtered(
+            lambda w: w.workcenter_id == self and w.state not in ('done', 'cancel'))[:1]
+        if workorder:
+            return workorder._nord_sync_apply_granular_event(event_type, payload)
+        nord_timesheet_id = payload.get('nord_timesheet_id')
+        if not nord_timesheet_id:
+            return False, 'Missing nord_timesheet_id'
+        Productivity = self.env['mrp.workcenter.productivity'].sudo()
+        line = Productivity.search([('nord_sync_timesheet_id', '=', nord_timesheet_id)], limit=1)
+        if event_type == 'session_downtime_cancel':
+            line.filtered(lambda t: not t.date_end).unlink()
+            return True, 'ok'
+        start_date, end_date = payload.get('start_date'), payload.get('end_date')
+        if not start_date or (event_type == 'session_downtime' and not end_date):
+            return False, 'Missing start_date/end_date'
+        if event_type == 'session_downtime_open':
+            if not line:
+                Productivity.create(self._nord_sync_workcenter_downtime_vals(payload))
+            return True, 'ok'
+        if line and line.date_end:
+            return True, 'Already logged.'
+        if line:
+            line.write({'date_start': start_date, 'date_end': end_date})
+        else:
+            Productivity.create(self._nord_sync_workcenter_downtime_vals(payload))
+        return True, 'ok'
+
+    def _nord_sync_workcenter_downtime_vals(self, payload):
+        loss = self.env['mrp.workorder']._nord_sync_downtime_loss('stop', payload)
+        return {
+            'workcenter_id': self.id, 'workorder_id': False,
+            'date_start': payload['start_date'], 'date_end': payload.get('end_date') or False,
+            'loss_id': loss.id, 'description': 'Unjustified stop',
+            'nord_sync_timesheet_id': payload['nord_timesheet_id'], 'nord_sync_downtime_kind': 'stop',
+            'user_id': False, 'employee_id': False,
+        }
+
     def _nord_sync_handle_machine_working_without_mo(self, start_date=None, payload=None):
         """Ponto 5: máquina diz que aquele WC está a trabalhar mas não tem nenhuma MO selecionada."""
         self.ensure_one()
         start_date = start_date or (payload and payload.get('start_date')) or fields.Datetime.now()
+        # The machine starts: the stop it was in ends here (else the two lines overlap)
+        self._nord_sync_close_open_downtime(start_date)
         behavior = self._nord_sync_effective_unassigned_behavior()
 
         if behavior == 'first_scheduled':
