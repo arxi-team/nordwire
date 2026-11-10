@@ -537,6 +537,20 @@ class MrpWorkcenter(models.Model):
             if workcenter.nord_sync_current_production_id == production:
                 workcenter.with_context(nord_sync_skip_mo_change=True).nord_sync_current_production_id = False
 
+    def _nord_sync_first_scheduled_mo(self):
+        """The MO a machine working with no MO picked starts: the first scheduled one that still has an
+        operation to do on this work center, an MO already started first. Starting an MO moves its date_start to
+        now, so by date alone the MO the previous operation just started would fall behind every planned one
+        and the next machine of the same MO would start another MO (the Embalagem starting WH/MO/01981 after the
+        Torragem started WH/MO/01980). With no MO having an operation here, the first scheduled one, as before."""
+        self.ensure_one()
+        candidates = self.env['mrp.production'].search([
+            ('company_id', '=', self.company_id.id), ('state', 'in', ('confirmed', 'progress')),
+        ], order='date_start asc, id asc')
+        here = candidates.filtered(lambda m: any(
+            w.workcenter_id == self and w.state not in ('done', 'cancel') for w in m.workorder_ids))
+        return (here.filtered(lambda m: m.state == 'progress') or here or candidates)[:1]
+
     def _nord_sync_close_previous_operations(self, workorder, start_date=None):
         """Chain Close (nord_sync_chain_close, on the work center of the EARLIER operation): `workorder`
         starting ends the Nord time lines still open on the earlier operations of the same MO, so the
@@ -617,10 +631,7 @@ class MrpWorkcenter(models.Model):
 
         if behavior == 'first_scheduled':
             # 5.1: Agarra na 1ª MO programada, organizada por data ascendente e marca start
-            mo = self.env['mrp.production'].search([
-                ('company_id', '=', self.company_id.id),
-                ('state', 'in', ('confirmed', 'progress')),
-            ], order='date_start asc, id asc', limit=1)
+            mo = self._nord_sync_first_scheduled_mo()
             if mo:
                 try:
                     # A MO that cannot start must not lose the machine's time:
