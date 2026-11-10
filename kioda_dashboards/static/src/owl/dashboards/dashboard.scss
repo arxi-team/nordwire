@@ -1,0 +1,63 @@
+.kioda-dashboard-test {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #0a0a0a;
+    color: white;
+    font-family: 'Segoe UI', sans-serif;
+    text-align: center;
+}
+
+.kioda-header {
+    width: 100%;
+    background-color: #0a0a0a;
+    padding: 1.5rem;
+    flex: 0 0 auto;
+}
+
+.kioda-header-title {
+    color: #f8d03c;
+    font-size: 28px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.kioda-main-content {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.kioda-btn {
+    background-color: #f8d03c;
+    color: #0a0a0a;
+    border: none;
+    font-weight: bold;
+    padding: 6px 14px;
+    margin-left: 8px;
+    cursor: pointer;
+}
+
+.kioda-footer {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f8d03c;
+    color: #0a0a0a;
+    padding: 10px 20px;
+    width: 100%;
+}
+
+.kioda-footer-text {
+    font-size: 25px;
+}
+
+.kioda-footer-clock {
+    font-weight: bold;
+    font-size: 40px;
+}

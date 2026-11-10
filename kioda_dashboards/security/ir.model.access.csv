@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+kioda_dashboards.access_kioda_dashboards,access_kioda_dashboards,kioda_dashboards.model_kioda_dashboards,base.group_user,1,1,1,1
+kioda_dashboards.access_kioda_dashboards_devices,access_kioda_dashboards_devices,kioda_dashboards.model_kioda_dashboards_devices,base.group_user,1,1,1,1

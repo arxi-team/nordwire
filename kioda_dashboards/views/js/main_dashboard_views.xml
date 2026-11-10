@@ -1,0 +1,13 @@
+<odoo>
+    <template id="main_dashboard_views" name="Kioda Dashboard">
+        <html>
+            <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <t t-call-assets="web.assets_frontend"/>
+            </head>
+            <body>
+                <div id="kioda-dashboard-root" t-att-value="data" style="display: none"/>
+            </body>
+        </html>
+    </template>
+</odoo>
