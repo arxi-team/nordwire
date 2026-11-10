@@ -83,8 +83,6 @@ export class NordSyncMachineOverview extends Component {
                 key: "performance",
                 label: _t("Performance"),
                 value: oee.performance,
-                // Above 100% the pace beats the capacity per hour: the OEE counts it as 100%
-                over: oee.performance > 100,
             },
             { key: "quality", label: _t("Quality"), value: oee.quality },
         ];

@@ -33,8 +33,6 @@
                             </div>
                             <div class="o_nord_overview_donut_label">
                                 <t t-out="factor.label"/>
-                                <i t-if="factor.over" class="fa fa-exclamation-triangle text-warning ms-1"
-                                   title="Above 100%: the real pace beats the capacity per hour. The OEE counts it as 100%. Review the capacity per hour of this work center."/>
                             </div>
                         </div>
                     </div>

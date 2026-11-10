@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
+import contextlib
 import io
 import logging
 from datetime import timedelta
@@ -58,6 +59,11 @@ class MrpProduction(models.Model):
             })
 
     def _nord_sync_demo_deliver(self, qty=None, scrap=0.0, not_ok=0.0):
+        self.ensure_one()
+        with self._nord_sync_no_synthetic_time():
+            return self._nord_sync_demo_deliver_inner(qty, scrap, not_ok)
+
+    def _nord_sync_demo_deliver_inner(self, qty=None, scrap=0.0, not_ok=0.0):
         """Fair demo (PDA "Entregar", /nordwire/pda/deliver): finishes this MO as if its
         Nord job had been marked done, through the same result path
         (_nord_sync_apply_result): qty good units (default: the planned
@@ -139,6 +145,20 @@ class MrpProduction(models.Model):
             picking._nord_sync_notify('write')
         return picking
 
+    @contextlib.contextmanager
+    def _nord_sync_no_synthetic_time(self):
+        """Closing an MO makes Odoo book the expected duration on every
+        operation nobody worked on, as a time line ending now (a 30 hour
+        "productive" line in the last night). Those lines are dropped: time
+        is only what a work center really ran."""
+        worked = self.workorder_ids.filtered('time_ids')
+        before = set(self.workorder_ids.time_ids.ids)
+        yield
+        fake = self.workorder_ids.time_ids.filtered(
+            lambda t: t.id not in before and t.workorder_id not in worked)
+        if fake:
+            fake.with_context(nord_sync_skip_push=True).unlink()
+
     def _nord_sync_force_close(self):
         """PDA "Fechar MO" (/nordwire/pda/close_mo): closes the MO with its
         planned quantity. On a stop-tracking work center it goes through the
@@ -154,8 +174,9 @@ class MrpProduction(models.Model):
             return self._nord_sync_demo_deliver()
         self.workorder_ids.time_ids.filtered(lambda t: not t.date_end).write({'date_end': fields.Datetime.now()})
         self.qty_producing = self.product_qty
-        self.with_context(skip_backorder=True, skip_consumption=True, skip_immediate=True,
-                          mo_ids_to_backorder=[]).button_mark_done()
+        with self._nord_sync_no_synthetic_time():
+            self.with_context(skip_backorder=True, skip_consumption=True, skip_immediate=True,
+                              mo_ids_to_backorder=[]).button_mark_done()
         if self.state != 'done':
             return False, f'{self.name}: não foi possível fechar ({self.state}).'
         return True, f'{self.name}: fechada.'

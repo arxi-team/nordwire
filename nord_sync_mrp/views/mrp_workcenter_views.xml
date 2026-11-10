@@ -25,6 +25,15 @@
                     <field name="nord_sync_capacity_per_hour"/> units / hour
                 </div>
             </xpath>
+            <!-- Work center actions, in the form header -->
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <button name="action_nord_sync_emit_alert" type="object" string="Emit alert"
+                            icon="fa-exclamation-triangle" class="btn-warning"/>
+                    <button name="action_nord_sync_clear_alerts" type="object" string="Clear alerts"
+                            icon="fa-check" class="btn-secondary"/>
+                </header>
+            </xpath>
             <xpath expr="//page[@name='general_info']" position="after">
                 <page string="Nordwire" name="nord_sync">
                     <div class="mb-2">
@@ -61,11 +70,12 @@
                                    invisible="nord_sync_mo_parallel"/>
                             <field name="nord_sync_mo_parallel" invisible="1"/>
                             <field name="nord_sync_auto_start_on_mo_select"/>
-                            <field name="nord_sync_stop_others_on_start"/>
                             <field name="nord_sync_auto_reason_id" options="{'no_quick_create': True}"
                                    context="{'default_manual': True}"/>
                         </group>
                         <group>
+                            <field name="nord_sync_stop_others_on_start"/>
+                            <field name="nord_sync_clear_mo_on_stop"/>
                             <field name="nord_sync_unassigned_work_behavior"/>
                         </group>
                     </group>
@@ -241,5 +251,24 @@
               parent="mrp.menu_mrp_configuration"
               groups="mrp.group_mrp_manager"
               sequence="91"/>
+
+
+    <record id="view_nord_sync_alert_wizard_form" model="ir.ui.view">
+        <field name="name">nord_sync.alert.wizard.form</field>
+        <field name="model">nord_sync.alert.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Emit Alert">
+                <group>
+                    <field name="workcenter_id" invisible="1"/>
+                    <field name="loss_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="description"/>
+                </group>
+                <footer>
+                    <button name="action_emit" type="object" string="Emit alert" class="btn-warning"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
 
 </odoo>

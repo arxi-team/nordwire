@@ -257,12 +257,17 @@ class MrpWorkorder(models.Model):
         return result
 
     def _nord_sync_update_wc_current_production_on_stop(self):
-        """When this work order stops (finished, paused, cancelled, or employee stopped),
+        """When this work order stops (finished or cancelled; a pause only with the work center's option),
         checks whether the work center is still being used by this MO. If no active
         open timesheets or running work orders remain on that work center, clears
         nord_sync_current_production_id so it does not stay stuck on an MO that is not in use."""
         for wo in self:
             wc = wo.workcenter_id
+            if wo.state not in ('done', 'cancel') and not wc.nord_sync_clear_mo_on_stop:
+                # A stop / pause keeps the MO on the work center (the Undefined
+                # downtime that follows is about this MO) unless the work center
+                # asks to clear it ("Clear MO when Work Order stops").
+                continue
             if wc and wc.nord_sync_current_production_id == wo.production_id:
                 other_open_session = self.env['mrp.workcenter.productivity'].search([
                     ('workcenter_id', '=', wc.id),
