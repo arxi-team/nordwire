@@ -1,6 +1,8 @@
 from datetime import timedelta
 from unittest.mock import patch
 
+import psycopg2
+
 from odoo import fields
 from odoo.tests import TransactionCase, tagged
 
@@ -152,6 +154,13 @@ class TestWorkcenterSequentialOperationsNordSync(TransactionCase):
         self.assertTrue(first.date_end, 'the first operation stopped when the second started')
         self.assertFalse(second.date_end)
         self.assertLessEqual(first.date_end, second.date_start)
+
+    def test_starting_the_second_operation_marks_the_first_workorder_done(self):
+        first_workorder = self.mo.workorder_ids.filtered(lambda w: w.workcenter_id == self.first)
+        self._start(self.first, 9212)
+        self.assertEqual(first_workorder.state, 'progress')
+        self._start(self.second, 9213)
+        self.assertEqual(first_workorder.state, 'done')
 
     def test_the_stop_of_the_first_operation_ends_when_the_second_starts(self):
         # the bag leaves the first machine (its plate is released: a stop opens there), then the second starts
@@ -315,3 +324,39 @@ class TestFirstScheduledNordSync(TransactionCase):
 
     def test_without_an_mo_started_the_first_planned_one(self):
         self.assertEqual(self.second._nord_sync_first_scheduled_mo(), self.mos.sorted('date_start')[:1])
+
+
+@tagged('post_install', '-at_install')
+class TestFirstScheduledConcurrencyNordSync(TransactionCase):
+    """A machine taking the first scheduled MO while another transaction updates the same sync queue row
+    gets a PostgreSQL serialization failure. It must reach Odoo's request retry, not be turned into an
+    unassigned line with the MO left unstarted."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.workcenter = cls.env['mrp.workcenter'].create({
+            'name': 'Concurrency WC', 'nord_sync_unassigned_work_behavior': 'first_scheduled'})
+        product = cls.env['product.product'].create({'name': 'Concurrency Test Product'})
+        bom = cls.env['mrp.bom'].create({
+            'product_tmpl_id': product.product_tmpl_id.id, 'product_qty': 1.0,
+            'operation_ids': [(0, 0, {'name': 'Op', 'workcenter_id': cls.workcenter.id, 'time_cycle_manual': 30})],
+        })
+        with patch(POST_TARGET):
+            mo = cls.env['mrp.production'].create({'product_id': product.id, 'product_qty': 1.0, 'bom_id': bom.id})
+            mo.action_confirm()
+
+    def test_a_concurrent_update_is_not_swallowed(self):
+        with patch.object(type(self.workcenter), '_nord_sync_on_change_current_mo',
+                          side_effect=psycopg2.errors.SerializationFailure('could not serialize access')):
+            with self.assertRaises(psycopg2.errors.TransactionRollbackError):
+                self.workcenter._nord_sync_handle_machine_working_without_mo(payload={'nord_timesheet_id': 9501})
+        self.assertFalse(self.env['mrp.workcenter.productivity'].search([('nord_sync_timesheet_id', '=', 9501)]),
+                         'no unassigned line was left behind')
+
+    def test_another_failure_still_falls_back_to_an_unassigned_line(self):
+        with patch.object(type(self.workcenter), '_nord_sync_on_change_current_mo',
+                          side_effect=ValueError('cannot start')):
+            ok, _msg = self.workcenter._nord_sync_handle_machine_working_without_mo(payload={'nord_timesheet_id': 9502})
+        self.assertTrue(ok)
+        self.assertTrue(self.env['mrp.workcenter.productivity'].search([('nord_sync_timesheet_id', '=', 9502)]))

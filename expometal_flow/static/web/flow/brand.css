@@ -1,0 +1,11 @@
+/* Brand layer (options 5 and 12): SK Coffee brown = the product/ambience · Nordwire navy = the data layer.
+   Fonts: SK Dense (titles) + Montserrat (secondary), Nordwire DM Sans — used when available, see fonts note. */
+:root { --sk-brown: #392F2E; --nw-navy: #142137; --font-sk-title: 'Dense', 'Fraunces', Georgia, serif; --font-sk: 'Montserrat', 'Inter', system-ui, sans-serif; --font-nw: 'DM Sans', 'Inter', system-ui, sans-serif; }
+.fl.-brand { background: radial-gradient(120% 95% at 50% -10%, var(--sk-brown) 0%, #1e1918 55%, #0f0c0b 100%); }
+.fl.-brand.jr, .fl.-brand.jr .jr__map { background: transparent; }
+/* data surfaces in Nordwire navy */
+.fl.-brand .jr__card > div, .fl.-brand .ofun, .fl.-brand .jr__legend { background: color-mix(in srgb, var(--nw-navy) 88%, transparent) !important; border-color: color-mix(in srgb, #4a6a9a 35%, transparent); }
+.fl.-brand .ll__row { background: color-mix(in srgb, var(--nw-navy) 70%, transparent); border-color: color-mix(in srgb, #4a6a9a 25%, transparent); }
+.fl.-brand .fl__kicker { font-family: var(--font-nw); }
+.fl.-brand .ofun, .fl.-brand .jr__legend, .fl.-brand .ll__row span { font-family: var(--font-nw); }
+.fl.-brand .jr__title, .fl.-brand .fl__title, .fl.-brand .c-name { font-family: var(--font-sk-title); }

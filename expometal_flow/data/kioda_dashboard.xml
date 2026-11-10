@@ -1,0 +1,6 @@
+<odoo noupdate="1">
+    <record id="kioda_dashboard_flow" model="kioda.dashboards">
+        <field name="name">Linha de produção</field>
+        <field name="screen">flow</field>
+    </record>
+</odoo>

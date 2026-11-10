@@ -2,6 +2,7 @@
 import logging
 from datetime import datetime, timedelta
 
+import psycopg2
 import pytz
 
 from odoo import _, api, fields, models
@@ -653,6 +654,17 @@ class MrpWorkcenter(models.Model):
             lines |= workorder_before._nord_sync_open_machine_lines()  # opened with no session id, see there
         for line in lines:
             line.date_end = max(start, line.date_start)
+        # The earlier operation is over, not just its time lines: mark it done. button_finish (what Mark as Done
+        # calls) and not action_mark_as_done itself, which refuses to run with no employee logged in, and a plate
+        # event has none. nord_sync_from_core: the Core already closed its own session, nothing to tell it back.
+        # Only the ones that ran (progress/paused); one that never started is not finished by someone else starting.
+        for workorder_before in earlier.filtered(lambda w: w.state in ('progress', 'pending')):
+            try:
+                with self.env.cr.savepoint():
+                    workorder_before.with_context(nord_sync_from_core=True).button_finish()
+            except UserError:
+                # e.g. an unanswered quality check: must not stop the operation that is starting from starting
+                _logger.warning('Chain Close: could not mark %s as done', workorder_before.display_name, exc_info=True)
 
     def _nord_sync_close_open_downtime(self, end_date=None):
         """A stop line of this work center still open ends where the machine starts again."""
@@ -735,7 +747,13 @@ class MrpWorkcenter(models.Model):
                         self.with_context(
                             nord_sync_skip_prevent_check=True, nord_sync_skip_mo_change=True,
                         ).nord_sync_current_production_id = mo.id
-                    return True, _("Selected first scheduled MO: %s", mo.name)
+                    return True, _("Started first scheduled MO: %s", mo.name)
+                except psycopg2.errors.TransactionRollbackError:
+                    # A concurrent update (the Core pulling the queue at the same instant) or a deadlock: not a
+                    # MO that cannot start. Let it through so Odoo repeats the whole request, as it does for
+                    # every such error; swallowed here it left the machine with an unassigned line and the
+                    # MO not started (Embalagem, 15:51:55).
+                    raise
                 except Exception as exc:  # noqa: BLE001 - never reject a Nord event
                     _logger.warning(
                         'nord_sync: first scheduled MO %s could not start on %s (%s); '

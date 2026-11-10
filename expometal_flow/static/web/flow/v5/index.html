@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/expometal_flow/static/web/favicon.svg" type="image/svg+xml">
+<title>Do grão à entrega — Linha de produção</title>
+<link rel="stylesheet" href="/expometal_flow/static/web/shared/css/base.css">
+<link rel="stylesheet" href="/expometal_flow/static/web/flow/flow.css">
+<link rel="stylesheet" href="line.css">
+<script type="importmap">{ "imports": { "three": "/expometal_flow/static/web/vendor/three/three.module.js", "three/addons/": "/expometal_flow/static/web/vendor/three/addons/" } }</script>
+<link rel="stylesheet" href="/expometal_flow/static/web/flow/brand.css">
+</head>
+<body>
+<div class="fl ln -brand" id="app" data-active="">
+  <canvas class="fl__fx" data-el="fx" aria-hidden="true"></canvas>
+  <header class="fl__top">
+    <div>
+      <div class="fl__kicker">Nordwire <i>×</i> Arxi <span>·</span> SK Coffee</div>
+      <h1 class="fl__title">Do grão à entrega<em>.</em></h1>
+    </div>
+    <div class="fl__meta">
+      <div class="fl__clock" data-el="clock">--<i>:</i>--<small>00</small></div>
+      <div class="fl__badges"><span class="fl__badge" data-el="source">A ligar…</span><span class="fl__badge -live" data-el="link"><b></b>Ao vivo</span></div>
+    </div>
+  </header>
+  <main class="ln__stage">
+    <div class="ln__track" data-el="track"><i class="ln__track-fill" data-el="fill"></i></div>
+    <div class="ln__stations" data-el="stations"></div>
+    <div class="ln__capsules" data-el="caps"></div>
+  </main>
+  <section class="ln__lists" data-el="lists"></section>
+  <footer class="fl__foot">
+    <div class="fl__kpis" data-el="kpis"></div>
+    <nav class="fl__dock" data-el="dock" aria-label="Simular botões físicos"></nav>
+    <div class="fl__ticker" data-el="ticker"></div>
+  </footer>
+</div>
+<script type="module" src="main.js"></script>
+</body>
+</html>

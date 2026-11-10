@@ -1,0 +1,88 @@
+/* DESIGN TOKENS — The Connected Coffee Factory
+   Single source of truth. See docs/03_EXPERIENCE_ARCHITECTURE.md §Design System.
+   Base: warm charcoal (coffee × metal). Colour means state. */
+:root {
+  /* surfaces */
+  --carvao-0: #0F0E0C;
+  --carvao-1: #171512;
+  --carvao-2: #1F1C18;
+  --carvao-3: #2A2621;
+  --carvao-4: #35302A;
+  /* text */
+  --creme: #F3EDE3;
+  --creme-2: #B8AE9F;
+  --creme-3: #7D7468;
+  --creme-4: #534C43;
+  --linha: rgba(243, 237, 227, 0.10);
+  --linha-2: rgba(243, 237, 227, 0.18);
+  --aco: #9A9EA3;
+  --aco-2: #5E6267;
+  /* brand accents (meaningful only) */
+  --terracota: #C8482A;
+  --crema: #E0A32A;
+  --crema-2: #F2C25A;
+  --crema-dim: rgba(224, 163, 42, 0.16);
+  --sinal: #3B7BF5;
+  --sinal-dim: rgba(59, 123, 245, 0.16);
+  --clareza: #E9F25A;
+  --clareza-dim: rgba(233, 242, 90, 0.14);
+  /* states */
+  --ok: #6FAE7A;
+  --ok-dim: rgba(111, 174, 122, 0.16);
+  --alarme: #D9402E;
+  --alarme-dim: rgba(217, 64, 46, 0.18);
+  --idle: var(--aco);
+
+  --bg: var(--carvao-1);
+  --fg: var(--creme);
+
+  /* type */
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-craft: 'Fraunces', Georgia, serif;
+
+  --fs-12: 0.75rem;
+  --fs-14: 0.875rem;
+  --fs-16: 1rem;
+  --fs-20: 1.25rem;
+  --fs-28: 1.75rem;
+  --fs-40: 2.5rem;
+  --fs-64: 4rem;
+  --fs-96: 6rem;
+  --fs-160: 10rem;
+  --track-label: 0.14em;
+  --lh-tight: 1.0;
+  --lh-ui: 1.35;
+
+  /* space (4-pt grid) */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 64px; --s-9: 96px;
+  --r-1: 4px; --r-2: 8px; --r-3: 14px;
+  --gutter: clamp(16px, 2.2vw, 40px);
+
+  /* motion — precise, no bounce */
+  --ease: cubic-bezier(0.2, 0.0, 0.0, 1);
+  --ease-out: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --t-fast: 160ms;
+  --t-med: 320ms;
+  --t-slow: 720ms;
+
+  --shadow-1: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 24px rgba(0,0,0,0.35);
+}
+
+/* DISPLAY mode: TVs seen from metres away. Numbers go up, density goes down. */
+:root[data-mode="display"] {
+  --fs-12: 0.95rem;
+  --fs-14: 1.1rem;
+  --fs-16: 1.25rem;
+  --fs-20: 1.6rem;
+  --fs-28: 2.25rem;
+  --fs-40: 3.4rem;
+  --fs-64: 5.5rem;
+  --fs-96: 8.5rem;
+  --fs-160: 14rem;
+}
+/* TOUCH mode: tablets. Bigger targets, same density. */
+:root[data-mode="touch"] {
+  --fs-14: 1rem;
+  --fs-16: 1.1rem;
+}
