@@ -19,6 +19,8 @@ class IrHttp(models.AbstractModel):
         restricted to the Bearer form only — this leg is always Core-to-Odoo,
         never a human, so there's no Basic-auth fallback to support.
         """
+        if request.env['ir.config_parameter'].sudo().get_param('database.is_neutralized'):
+            raise Forbidden('Database is neutralized')
         auth_header = request.httprequest.headers.get('Authorization', '')
         if not auth_header.startswith('Bearer '):
             raise Unauthorized('Missing bearer API key')
