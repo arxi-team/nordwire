@@ -153,8 +153,86 @@ class TestWorkcenterSequentialOperationsNordSync(TransactionCase):
         self.assertFalse(second.date_end)
         self.assertLessEqual(first.date_end, second.date_start)
 
+    def test_a_first_operation_line_with_no_session_id_is_ended_too(self):
+        first_workorder = self.mo.workorder_ids.filtered(lambda w: w.workcenter_id == self.first)
+        loss = self.env['mrp.workcenter.productivity.loss'].search([], limit=1)
+        unstamped = self.Line.create({
+            'workcenter_id': self.first.id, 'workorder_id': first_workorder.id, 'loss_id': loss.id,
+            'date_start': fields.Datetime.now() - timedelta(minutes=5), 'user_id': False, 'employee_id': False,
+        })
+        self._start(self.second, 9205)
+        self.assertTrue(unstamped.date_end)
+
     def test_without_chain_close_the_first_operation_keeps_running(self):
         self.first.nord_sync_chain_close = False
         first = self._start(self.first, 9203)
         self._start(self.second, 9204)
         self.assertFalse(first.date_end)
+
+
+@tagged('post_install', '-at_install')
+class TestWorkcenterUnstampedLinesNordSync(TransactionCase):
+    """A Nord start once left its time line with no session id (opened some other way than by the helper
+    that stamps it), and the stop, which looks the line up by that id, never closed it: 65 minutes of
+    "work" for a 24 second plate press. The start now ends such a stale machine line and stamps the line
+    it opens, and the stop also ends the machine lines of the current MO's work order. A line a person
+    opened (an employee or a user on it) is never touched."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.config = cls.env['nord_sync.config']._get_or_create_for_company(cls.env.company)
+        cls.workcenter = cls.env['mrp.workcenter'].create({'name': 'Unstamped WC'})
+        product = cls.env['product.product'].create({'name': 'Unstamped Test Product'})
+        bom = cls.env['mrp.bom'].create({
+            'product_tmpl_id': product.product_tmpl_id.id, 'product_qty': 1.0,
+            'operation_ids': [(0, 0, {'name': 'Op', 'workcenter_id': cls.workcenter.id, 'time_cycle_manual': 30})],
+        })
+        with patch(POST_TARGET):
+            mo = cls.env['mrp.production'].create({'product_id': product.id, 'product_qty': 1.0, 'bom_id': bom.id})
+            mo.action_confirm()
+        cls.workorder = mo.workorder_ids
+        cls.workcenter.with_context(nord_sync_skip_mo_change=True).nord_sync_current_production_id = mo
+        cls.Line = cls.env['mrp.workcenter.productivity']
+        cls.loss = cls.env['mrp.workcenter.productivity.loss'].search([], limit=1)
+
+    def _open_line(self, **vals):
+        return self.Line.create({
+            'workcenter_id': self.workcenter.id, 'workorder_id': self.workorder.id,
+            'date_start': fields.Datetime.now() - timedelta(minutes=5), 'loss_id': self.loss.id,
+            'user_id': False, 'employee_id': False, **vals,
+        })
+
+    def _event(self, event_type, nord_timesheet_id):
+        payload = {'nord_timesheet_id': nord_timesheet_id}
+        payload['start_date' if event_type == 'session_start' else 'end_date'] = str(fields.Datetime.now())
+        ok, _msg = self.config._nord_sync_apply_workorder_event(
+            {'res_id': self.workcenter.id, 'payload': payload}, 'mrp.workcenter', event_type)
+        self.assertTrue(ok)
+
+    def test_stop_ends_a_machine_line_that_has_no_session_id(self):
+        line = self._open_line()
+        self._event('session_stop', 9401)
+        self.assertTrue(line.date_end)
+
+    def test_stop_leaves_a_line_a_person_opened(self):
+        operator = self.env['hr.employee'].create({'name': 'Unstamped Test Operator'})
+        by_person = self._open_line(employee_id=operator.id)
+        self._event('session_stop', 9402)
+        self.assertFalse(by_person.date_end)
+
+    def test_start_ends_the_stale_machine_line_and_stamps_the_one_it_opens(self):
+        stale = self._open_line()
+        self._event('session_start', 9403)
+        self.assertTrue(stale.date_end, 'the stale line ended where the new session starts')
+        fresh = self.Line.search([('nord_sync_timesheet_id', '=', 9403)])
+        self.assertEqual(len(fresh), 1)
+        self.assertFalse(fresh.date_end)
+        self._event('session_stop', 9403)
+        self.assertTrue(fresh.date_end, 'the stop finds the stamped line')
+
+    def test_start_leaves_a_line_a_person_opened(self):
+        operator = self.env['hr.employee'].create({'name': 'Unstamped Test Operator 2'})
+        by_person = self._open_line(employee_id=operator.id)
+        self._event('session_start', 9404)
+        self.assertFalse(by_person.date_end)

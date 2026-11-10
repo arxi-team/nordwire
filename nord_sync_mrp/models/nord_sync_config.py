@@ -161,6 +161,12 @@ class NordSyncConfig(models.Model):
                 domain.append('|')
                 domain += [('nord_sync_timesheet_id', '!=', 0), ('nord_sync_is_unassigned', '=', True)]
             open_lines = self.env['mrp.workcenter.productivity'].sudo().search(domain)
+            # ... and the machine lines (no person) of the current MO's work order that carry no id: a start that
+            # did not stamp its line left it open for good (65 minutes once)
+            current_wo = workcenter.nord_sync_current_production_id.workorder_ids.filtered(
+                lambda w: w.workcenter_id == workcenter and w.state not in ('done', 'cancel'))[:1]
+            if current_wo and payload.get('nord_timesheet_id'):
+                open_lines |= current_wo._nord_sync_open_machine_lines()
             end_date = payload.get('end_date') or fields.Datetime.now()
             open_lines.write({'date_end': end_date})
             return True, 'ok'
