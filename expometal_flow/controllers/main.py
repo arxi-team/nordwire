@@ -15,7 +15,11 @@ from odoo.tools import file_path
 
 PAGE = 'expometal_flow/static/web/flow/v5/'
 POLL_MS = 5000  # each screen asks every 5 s; the snapshot is a handful of reads
-SETUP_RE = re.compile(r'setup|ajust|mudan|limpeza', re.I)  # stop reasons that count as setup (same as the screens)
+MAX_PENDING = 20  # unapproved screens kept in the devices list
+PENDING_HTML = ('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="10">'
+                '<body style="background:#111;color:#eee;font:24px sans-serif;display:grid;place-items:center;height:100vh;margin:0">'
+                '<p>À espera de autorização…<br><small style="opacity:.6">Peça para dar acesso a este ecrã em Kioda → Dashboards.</small></p>')
+SETUP_RE =re.compile(r'setup|ajust|mudan|limpeza', re.I)  # stop reasons that count as setup (same as the screens)
 
 
 def _ms(dt):
@@ -439,9 +443,34 @@ class ExpometalFlow(http.Controller):
         return bool(request.env['kioda.dashboards.devices'].sudo().search_count(
             [('token', '=', token), ('access_granted', '=', True), ('dashboard_id.screen', '=', 'flow')]))
 
+    def _register(self):
+        # first visit of an unknown screen: it shows up in Kioda > Dashboards > Ver dispositivos, waiting for "Dar Acesso"
+        Dash = request.env['kioda.dashboards'].sudo()
+        dash = request.env.ref('expometal_flow.kioda_dashboard_flow', raise_if_not_found=False) or Dash.search([('screen', '=', 'flow')], limit=1)
+        dash = dash.sudo()
+        if not dash or len(dash.kioda_dashboard_device_ids.filtered(lambda d: not d.access_granted)) >= MAX_PENDING:
+            return None  # public route: cap pending rows so it cannot be used to flood the list
+        return dash.env['kioda.dashboards.devices'].create({
+            'dashboard_id': dash.id,
+            'name': (request.httprequest.user_agent.string or 'Ecrã')[:80],
+            'mac': request.httprequest.remote_addr or '?',  # a browser cannot know its MAC: the IP identifies the screen in the list
+        }).token
+
     @http.route(['/flow/v6', '/flow/v6/'], type='http', auth='public', methods=['GET'])
     def line(self, token=None, **kw):
+        Dev = request.env['kioda.dashboards.devices'].sudo()
+        if not token:
+            token = request.httprequest.cookies.get('flow_device')
+            if not (token and Dev.search_count([('token', '=', token)])):
+                token = self._register()
+            if not token:
+                return request.render('kioda_dashboards.not_found', {'uuid': 'device-not-authorized'})
+            resp = request.redirect(f"/flow/v6/?{'clean&' if 'clean' in kw else ''}token={token}")
+            resp.set_cookie('flow_device', token, max_age=10 * 365 * 86400, httponly=True, samesite='Lax')
+            return resp
         if not self._authorized(token):
+            if Dev.search_count([('token', '=', token), ('dashboard_id.screen', '=', 'flow')]):  # known, not approved yet
+                return request.make_response(PENDING_HTML, headers=[('Content-Type', 'text/html; charset=utf-8'), ('Cache-Control', 'no-store')])
             return request.render('kioda_dashboards.not_found', {'uuid': 'device-not-authorized'})
         with open(file_path(PAGE + 'index.html'), encoding='utf-8') as f:
             html = f.read()
