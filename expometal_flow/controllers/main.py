@@ -296,8 +296,10 @@ def summary(env, origin=None, picking_id=None, mo_id=None):
     costs = _costs(env)
     made = {m['product_id'][0] for m in mos}
     prods = _products(env, {m['product_id'][0] for m in raw} | made, ('standard_price', 'weight', 'uom_id', 'display_name'))
-    quality = env['quality.check'].search_read([('production_id', 'in', [m['id'] for m in mos]), ('quality_state', '!=', 'none')],
-                                               ['title', 'measure', 'norm_unit', 'quality_state', 'test_type']) if 'quality.check' in env else []
+    # 'quality' alone has no measure/norm_unit (quality_control) nor production_id (quality_mrp): ask only for the fields that exist
+    QC = env['quality.check'] if 'quality.check' in env else None
+    quality = QC.search_read([('production_id', 'in', [m['id'] for m in mos]), ('quality_state', '!=', 'none')],
+                             [f for f in ('title', 'measure', 'norm_unit', 'quality_state', 'test_type') if f in QC._fields]) if QC is not None and 'production_id' in QC._fields else []
     lot_ids = [i for m in mos for i in m['lot_producing_ids']]
     lots = env['stock.lot'].browse(lot_ids).read(['name']) if lot_ids else []
     now = int(time.time() * 1000)
@@ -428,7 +430,7 @@ def summary(env, origin=None, picking_id=None, mo_id=None):
         'delivered': delivered, 'created': created, 'prodEnd': prod_end, 'produced': produced,
         'lead': mins(created, delivered or (produced and prod_end) or now), 'steps': steps, 'route': route, 'timeline': timeline,
         'materials': materials, 'cost': cost, 'perKg': cost['total'] / kg if kg else None,
-        'quality': [{'title': q['title'], 'value': q['measure'] if q['test_type'] == 'measure' else None, 'unit': q['norm_unit'] or '',
+        'quality': [{'title': q['title'], 'value': q.get('measure') if q.get('test_type') == 'measure' else None, 'unit': q.get('norm_unit') or '',
                      'ok': q['quality_state'] == 'pass'} for q in quality],
         'team': len(people), 'ts': now, 'source': 'odoo',  # public screen: how many people, not who (labour € is shown next to it)
     }
